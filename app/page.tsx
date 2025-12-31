@@ -6,10 +6,22 @@ import * as THREE from "three"
 import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
-function DraggableCube({ is2D, onDraggingChange }: { is2D: boolean; onDraggingChange?: (isDragging: boolean) => void }) {
+function DraggableMesh({
+  initialPosition = [0, 0, 0],
+  onDraggingChange,
+  children,
+  defaultColor = "orange",
+  dragColor = "hotpink",
+}: {
+  initialPosition?: [number, number, number]
+  onDraggingChange?: (isDragging: boolean) => void
+  children: React.ReactNode
+  defaultColor?: string
+  dragColor?: string
+}) {
   const meshRef = useRef<THREE.Mesh>(null)
   const [isDragging, setIsDragging] = useState(false)
-  const [position, setPosition] = useState<[number, number, number]>([0, 0, 0])
+  const [position, setPosition] = useState<[number, number, number]>(initialPosition)
   const { raycaster, camera, pointer, gl } = useThree()
   const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3())
   const pointerIdRef = useRef<number | null>(null)
@@ -37,11 +49,11 @@ function DraggableCube({ is2D, onDraggingChange }: { is2D: boolean; onDraggingCh
     raycaster.setFromCamera(pointer, camera)
 
     if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Calculate offset from cube center to intersection point
-      const cubePos = new THREE.Vector3(...position)
+      // Calculate offset from mesh center to intersection point
+      const meshPos = new THREE.Vector3(...position)
       // Intersection is on X-Z plane, so use X and Z, keep Y constant
       const planeIntersection = new THREE.Vector3(intersection.x, position[1], intersection.z)
-      offsetRef.current.subVectors(cubePos, planeIntersection)
+      offsetRef.current.subVectors(meshPos, planeIntersection)
       setIsDragging(true)
       onDraggingChange?.(true)
 
@@ -85,9 +97,9 @@ function DraggableCube({ is2D, onDraggingChange }: { is2D: boolean; onDraggingCh
         e.stopPropagation()
       }}
     >
-      <boxGeometry args={[1, 1, 1]} />
+      {children}
       <meshStandardMaterial
-        color={isDragging ? "hotpink" : "orange"}
+        color={isDragging ? dragColor : defaultColor}
         opacity={isDragging ? 0.8 : 1}
         transparent
       />
@@ -116,7 +128,24 @@ function Scene({ is2D }: { is2D: boolean }) {
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
       {/* Draggable cube */}
-      <DraggableCube is2D={is2D} onDraggingChange={setIsDragging} />
+      <DraggableMesh
+        initialPosition={[0, 0, 0]}
+        onDraggingChange={setIsDragging}
+        defaultColor="orange"
+        dragColor="hotpink"
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </DraggableMesh>
+
+      {/* Draggable pyramid */}
+      <DraggableMesh
+        initialPosition={[2, 0, 0]}
+        onDraggingChange={setIsDragging}
+        defaultColor="blue"
+        dragColor="cyan"
+      >
+        <coneGeometry args={[0.7, 1, 4]} />
+      </DraggableMesh>
 
       {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
       <OrbitControls
