@@ -1,26 +1,212 @@
 "use client"
 
-import { useState } from "react"
+import { Canvas, useThree, useFrame } from "@react-three/fiber"
+import { OrbitControls } from "@react-three/drei"
+import * as THREE from "three"
+import { useState, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
 
+function DraggableCube({ is2D, onDraggingChange }: { is2D: boolean; onDraggingChange?: (isDragging: boolean) => void }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [position, setPosition] = useState<[number, number, number]>([0, 0, 0])
+  const { raycaster, camera, pointer, gl } = useThree()
+  const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3())
+  const pointerIdRef = useRef<number | null>(null)
+
+  // X-Z plane is the horizontal plane in Three.js (Y is up)
+  // Plane normal (0, 1, 0) with constant -Y defines the X-Z plane at height Y
+  const getPlane = () => {
+    return new THREE.Plane(new THREE.Vector3(0, 1, 0), -position[1])
+  }
+
+  const handlePointerUp = () => {
+    setIsDragging(false)
+    onDraggingChange?.(false)
+    if (pointerIdRef.current !== null) {
+      gl.domElement.releasePointerCapture(pointerIdRef.current)
+      pointerIdRef.current = null
+    }
+  }
+
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation()
+
+    const plane = getPlane()
+    const intersection = new THREE.Vector3()
+    raycaster.setFromCamera(pointer, camera)
+
+    if (raycaster.ray.intersectPlane(plane, intersection)) {
+      // Calculate offset from cube center to intersection point
+      const cubePos = new THREE.Vector3(...position)
+      // Intersection is on X-Z plane, so use X and Z, keep Y constant
+      const planeIntersection = new THREE.Vector3(intersection.x, position[1], intersection.z)
+      offsetRef.current.subVectors(cubePos, planeIntersection)
+      setIsDragging(true)
+      onDraggingChange?.(true)
+
+      // Capture pointer to continue tracking even outside mesh
+      pointerIdRef.current = e.pointerId
+      gl.domElement.setPointerCapture(e.pointerId)
+    }
+  }
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pointerIdRef.current !== null) {
+        gl.domElement.releasePointerCapture(pointerIdRef.current)
+      }
+    }
+  }, [gl.domElement])
+
+  useFrame(() => {
+    if (!isDragging || !meshRef.current) return
+
+    const plane = getPlane()
+    const intersection = new THREE.Vector3()
+    raycaster.setFromCamera(pointer, camera)
+
+    if (raycaster.ray.intersectPlane(plane, intersection)) {
+      // Apply offset and constrain to X-Z plane (keep Y constant)
+      const newPos = intersection.clone().add(offsetRef.current)
+      setPosition([newPos.x, position[1], newPos.z])
+    }
+  })
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={position}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={(e) => {
+        e.stopPropagation()
+      }}
+    >
+      <boxGeometry args={[1, 1, 1]} />
+      <meshStandardMaterial
+        color={isDragging ? "hotpink" : "orange"}
+        opacity={isDragging ? 0.8 : 1}
+        transparent
+      />
+    </mesh>
+  )
+}
+
+function Scene({ is2D }: { is2D: boolean }) {
+  const { camera } = useThree()
+  const controlsRef = useRef<any>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  useEffect(() => {
+    // Reset controls target when camera changes
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0)
+      controlsRef.current.update()
+    }
+  }, [is2D, camera])
+
+  return (
+    <>
+      {/* Lighting */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <pointLight position={[-5, -5, -5]} intensity={0.5} />
+
+      {/* Draggable cube */}
+      <DraggableCube is2D={is2D} onDraggingChange={setIsDragging} />
+
+      {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
+      <OrbitControls
+        ref={controlsRef}
+        enableDamping
+        dampingFactor={0.05}
+        minDistance={is2D ? 1 : 1}
+        maxDistance={is2D ? 20 : 50}
+        rotateSpeed={0.5}
+        panSpeed={0.8}
+        zoomSpeed={is2D ? 0.5 : 1.2} // Slower zoom for orthographic
+        enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
+        enableZoom={!isDragging || is2D} // Disable zoom when dragging in 3D
+        enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
+        // Lock polar angle to top-down (90 degrees = Math.PI / 2)
+        minPolarAngle={is2D ? Math.PI / 2 : 0}
+        maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
+        // Lock azimuth angle in 2D (prevent spinning around)
+        minAzimuthAngle={is2D ? 0 : -Infinity}
+        maxAzimuthAngle={is2D ? 0 : Infinity}
+      />
+
+      {/* Helpers */}
+      <axesHelper args={[2]} />
+      <gridHelper args={[10, 10]} />
+    </>
+  )
+}
+
+function CameraController({ is2D }: { is2D: boolean }) {
+  const { set, camera, size } = useThree()
+  const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null)
+
+  useEffect(() => {
+    if (is2D) {
+      // Create orthographic camera
+      const aspect = size.width / size.height
+      const viewSize = 10
+      const orthoCamera = new THREE.OrthographicCamera(
+        -viewSize * aspect, // left
+        viewSize * aspect, // right
+        viewSize,          // top
+        -viewSize,         // bottom
+        0.1,               // near
+        1000               // far
+      )
+
+      orthoCamera.position.set(0, 10, 0)
+      orthoCamera.lookAt(0, 0, 0)
+      orthoCamera.up.set(0, 0, 1)
+      orthoCamera.updateProjectionMatrix()
+
+      orthoCameraRef.current = orthoCamera
+      set({ camera: orthoCamera })
+    } else {
+      // Switch back to perspective camera
+      const perspCamera = new THREE.PerspectiveCamera(75, size.width / size.height, 0.1, 1000)
+      perspCamera.position.set(0, 0, 5)
+      perspCamera.lookAt(0, 0, 0)
+      perspCamera.up.set(0, 1, 0)
+      perspCamera.updateProjectionMatrix()
+      set({ camera: perspCamera })
+    }
+  }, [is2D, set, size])
+
+  // Update orthographic camera bounds on resize
+  useEffect(() => {
+    if (is2D && orthoCameraRef.current) {
+      const aspect = size.width / size.height
+      const viewSize = 10
+      orthoCameraRef.current.left = -viewSize * aspect
+      orthoCameraRef.current.right = viewSize * aspect
+      orthoCameraRef.current.top = viewSize
+      orthoCameraRef.current.bottom = -viewSize
+      orthoCameraRef.current.updateProjectionMatrix()
+    } else if (!is2D && camera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = size.width / size.height
+      camera.updateProjectionMatrix()
+    }
+  }, [size, is2D, camera])
+
+  return null
+}
+
 export default function Home() {
-  const [text, setText] = useState("")
-  const [saved, setSaved] = useState(false)
-
-  const handleSave = () => {
-    // Save logic here
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleClear = () => {
-    setText("")
-    setSaved(false)
-  }
+  const [is2D, setIs2D] = useState(false)
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
             Loft Visualizer
@@ -30,52 +216,29 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="rounded-lg bg-white shadow-sm dark:bg-gray-800">
-          <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Text Editor
-              </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSave}
-                  className={cn(
-                    "rounded-md px-4 py-2 text-sm font-medium transition-colors",
-                    saved
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                      : "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                  )}
-                >
-                  {saved ? "Saved!" : "Save"}
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-4">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Start typing your loft geometry data here..."
+        <div className="rounded-lg bg-white shadow-sm dark:bg-gray-800 p-4">
+          {/* Toggle button */}
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => setIs2D(!is2D)}
               className={cn(
-                "w-full resize-none rounded-md border border-gray-300 px-3 py-2",
-                "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-0",
-                "dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400",
-                "min-h-[400px] font-mono text-sm"
+                "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                is2D
+                  ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
               )}
-            />
+            >
+              {is2D ? "Switch to 3D" : "Switch to 2D"}
+            </button>
           </div>
 
-          <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700">
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Characters: {text.length} | Words: {text.trim() ? text.trim().split(/\s+/).length : 0}
-            </p>
+          <div className="w-full h-[600px] bg-gray-900 rounded-lg overflow-hidden">
+            <Canvas
+              gl={{ antialias: true, alpha: false }}
+            >
+              <CameraController is2D={is2D} />
+              <Scene is2D={is2D} />
+            </Canvas>
           </div>
         </div>
       </div>

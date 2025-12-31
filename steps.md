@@ -1,48 +1,76 @@
 # Repo Creation Steps
 
 1. Install homebrew and yarn
-`/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
 2. Install fnm (Fast Node Manager)
-`brew install fnm`
+```bash
+brew install fnm
+```
 
 3. Add fnm to zshrc
-```
+```bash
 echo 'eval "$(fnm env --use-on-cd)"' >> ~/.zshrc
 source ~/.zshrc
-``` 
+```
 
 4. Install Node.js
-`fnm install --lts`
-`fnm use --install-if-missing lts-latest`
+```bash
+fnm install --lts
+fnm use --install-if-missing lts-latest
+```
 
 5. Verify Node Version
-`node --version`
-`npm --version`
+```bash
+node --version
+npm --version
+```
 
 6. Install yarn
-`npm install -g yarn`
+```bash
+npm install -g yarn
+```
 
 7. Install next with some opinions (`ESLint` yes, `React Compiler` no)
-`npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias "@/*" --use-pnpm`
+```bash
+npx create-next-app@latest . --typescript --tailwind --app --no-src-dir --import-alias "@/*" --use-pnpm
+```
 
 8. Install deps for server-state, schema validation, and client state
-`yarn add @tanstack/react-query zod zustand`
+```bash
+yarn add @tanstack/react-query zod zustand
+```
 
 9. Form handling
-`yarn add react-hook-form @hookform/resolvers`
+```bash
+yarn add react-hook-form @hookform/resolvers
+```
 
 10. Style Composition
-`yarn add clsx class-variance-authority`
+```bash
+yarn add clsx class-variance-authority
+```
 
 11. Typescript > Node Globals Access and Code Formatting
-`yarn add -D @types/node prettier prettier-plugin-tailwindcss`
+```bash
+yarn add -D @types/node prettier prettier-plugin-tailwindcss
+```
 
 12. Additional
-`yarn add tailwind-merge`
+```bash
+yarn add tailwind-merge
+```
 
 13. Use yarn instead of pnpm
-```
+```bash
 rm pnpm-lock.yaml
 yarn install
+```
+
+14. Install libs for 3D
+```bash
+yarn add @react-three/fiber @react-three/drei three
+yarn add -D @types/three
 ```
