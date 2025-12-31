@@ -9,7 +9,7 @@ export function proxy(request: NextRequest) {
     const basicAuth = authHeader.split(' ')[1]
     if (basicAuth) {
       const [user, pass] = Buffer.from(basicAuth, 'base64').toString().split(':')
-      
+
       // Check password (user can be anything, we only check password)
       if (pass === process.env.APP_PASSWORD) {
         return NextResponse.next()
