@@ -1,7 +1,6 @@
 import { Polygon, Polyline2, Vector2 } from "./geom";
 import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
-
-export const DIST_EPSILON = 1e-6;
+import { DIST_EPSILON } from "./scalar";
 
 /**
  * Shifts the vertices in a polyline2
