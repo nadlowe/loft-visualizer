@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { faceToThree } from "@/lib/geomToThree";
 import { testPacManFaces } from "@/lib/testPacMan";
+import { InfiniteGrid } from "@/components/InfiniteGrid";
 
 function DraggableMesh({
     initialPosition = [0, 0, 0],
@@ -189,7 +190,7 @@ function Scene({ is2D }: { is2D: boolean }) {
                 enableDamping
                 dampingFactor={0.05}
                 minDistance={1}
-                maxDistance={is2D ? 20 : 50}
+                maxDistance={is2D ? 2000 : 5000}
                 rotateSpeed={0.5}
                 panSpeed={0.8}
                 zoomSpeed={is2D ? 0.5 : 1.2} // Slower zoom for orthographic
@@ -207,7 +208,7 @@ function Scene({ is2D }: { is2D: boolean }) {
 
             {/* Helpers */}
             <axesHelper args={[2]} />
-            <gridHelper args={[10, 10]} />
+            <InfiniteGrid cellSize={1} sectionSize={12} />
         </>
     );
 }
