@@ -1,23 +1,17 @@
 {
     "editor.formatOnSave": true,
-    "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true,
-    "files.trimFinalNewlines": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": false,
+    "prettier.tabWidth": 4,
+    "prettier.enable": true,
+    "prettier.requireConfig": false,
+    "prettier.resolveGlobalModules": false,
     "editor.codeActionsOnSave": {
-        "source.fixAll": "explicit"
+        "source.fixAll.eslint": "explicit"
     },
-    "[javascript]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features"
-    },
-    "[javascriptreact]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features"
-    },
-    "[typescript]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features"
-    },
-    "[typescriptreact]": {
-        "editor.defaultFormatter": "vscode.typescript-language-features"
-    },
+    "files.trimFinalNewlines": true,
     "[json]": {
         "editor.defaultFormatter": "vscode.json-language-features"
     },
