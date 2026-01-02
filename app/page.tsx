@@ -192,8 +192,9 @@ function Scene({ is2D }: { is2D: boolean }) {
                 minDistance={1}
                 maxDistance={is2D ? 2000 : 5000}
                 rotateSpeed={0.5}
-                panSpeed={0.8}
+                panSpeed={1}
                 zoomSpeed={is2D ? 0.5 : 1.2} // Slower zoom for orthographic
+                screenSpacePanning={true} // Makes panning feel like grabbing and dragging the canvas
                 enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
                 enableZoom={!isDragging || is2D} // Disable zoom when dragging in 3D
                 enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
@@ -282,40 +283,25 @@ export default function Home() {
     const [is2D, setIs2D] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                        Loft Visualizer
-                    </h1>
-                    <p className="mt-2 text-gray-600 dark:text-gray-400">
-                        A simple app for authoring and visualizing loft geometry
-                    </p>
-                </div>
+        <div className="relative h-screen w-screen overflow-hidden bg-gray-900">
+            {/* Toggle button */}
+            <button
+                onClick={() => setIs2D(!is2D)}
+                className={cn(
+                    "absolute top-4 right-4 z-10 rounded-md px-4 py-2 text-sm font-medium transition-colors",
+                    is2D
+                        ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                )}
+            >
+                {is2D ? "Switch to 3D" : "Switch to 2D"}
+            </button>
 
-                <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-800">
-                    {/* Toggle button */}
-                    <div className="mb-4 flex justify-end">
-                        <button
-                            onClick={() => setIs2D(!is2D)}
-                            className={cn(
-                                "rounded-md px-4 py-2 text-sm font-medium transition-colors",
-                                is2D
-                                    ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                            )}
-                        >
-                            {is2D ? "Switch to 3D" : "Switch to 2D"}
-                        </button>
-                    </div>
-
-                    <div className="h-[600px] w-full overflow-hidden rounded-lg bg-gray-900">
-                        <Canvas gl={{ antialias: true, alpha: false }}>
-                            <CameraController is2D={is2D} />
-                            <Scene is2D={is2D} />
-                        </Canvas>
-                    </div>
-                </div>
+            <div className="h-full w-full">
+                <Canvas gl={{ antialias: true, alpha: false }}>
+                    <CameraController is2D={is2D} />
+                    <Scene is2D={is2D} />
+                </Canvas>
             </div>
         </div>
     );
