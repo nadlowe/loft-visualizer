@@ -251,7 +251,7 @@ function CameraController({ is2D }: { is2D: boolean }) {
                 0.1,
                 1000
             );
-            perspCamera.position.set(0, 0, 5);
+            perspCamera.position.set(-5, 5, 0);
             perspCamera.lookAt(0, 0, 0);
             perspCamera.up.set(0, 1, 0);
             perspCamera.updateProjectionMatrix();
