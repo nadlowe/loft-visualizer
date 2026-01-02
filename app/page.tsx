@@ -3,19 +3,23 @@
 import { Canvas, useThree, useFrame } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { cn } from "@/lib/utils"
+import { faceToThree } from "@/lib/geomToThree"
+import { testPacManFaces } from "@/lib/testPacMan"
 
 function DraggableMesh({
   initialPosition = [0, 0, 0],
   onDraggingChange,
   children,
+  geometry,
   defaultColor = "orange",
   dragColor = "hotpink",
 }: {
   initialPosition?: [number, number, number]
   onDraggingChange?: (isDragging: boolean) => void
-  children: React.ReactNode
+  children?: React.ReactNode
+  geometry?: THREE.BufferGeometry
   defaultColor?: string
   dragColor?: string
 }) {
@@ -90,6 +94,7 @@ function DraggableMesh({
     <mesh
       ref={meshRef}
       position={position}
+      geometry={geometry}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
@@ -112,11 +117,44 @@ function Scene({ is2D }: { is2D: boolean }) {
   const controlsRef = useRef<any>(null)
   const [isDragging, setIsDragging] = useState(false)
 
+  // Convert Pac-Man faces to Three.js geometries and extract initial positions
+  const pacManData = useMemo(() => {
+    return testPacManFaces.map((face) => {
+      let geometry = faceToThree(face)
+
+      // Convert kernel coordinates to Three.js coordinates for initial position
+      // geom [x, y, z] → Three.js [y, z, x]
+      // geom X → Three.js Z (blue), geom Y → Three.js X (red), geom Z → Three.js Y (green)
+      const origin = face.plane.origin
+      const initialPosition: [number, number, number] = [
+        origin[1], // geom Y → Three.js X (red)
+        origin[2], // geom Z → Three.js Y (green)
+        origin[0], // geom X → Three.js Z (blue)
+      ]
+
+      // Clone geometry and reset position to origin so mesh.position controls placement
+      // The geometry already has rotation/orientation baked in, we just need to remove translation
+      geometry = geometry.clone()
+      const inverseTranslation = new THREE.Matrix4().makeTranslation(
+        -initialPosition[0],
+        -initialPosition[1],
+        -initialPosition[2]
+      )
+      geometry.applyMatrix4(inverseTranslation)
+
+      return { geometry, initialPosition }
+    })
+  }, [])
+
   useEffect(() => {
     // Reset controls target when camera changes
     if (controlsRef.current) {
       controlsRef.current.target.set(0, 0, 0)
-      controlsRef.current.update()
+      // Don't call update() in 2D mode as it resets camera rotation
+      // Only update in 3D mode
+      if (!is2D) {
+        controlsRef.current.update()
+      }
     }
   }, [is2D, camera])
 
@@ -126,6 +164,22 @@ function Scene({ is2D }: { is2D: boolean }) {
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
+
+      {/* Render draggable Pac-Man faces */}
+      {pacManData.map(({ geometry, initialPosition }, index) => (
+        <DraggableMesh
+          key={index}
+          initialPosition={initialPosition}
+          onDraggingChange={setIsDragging}
+          geometry={geometry}
+          defaultColor={index % 2 === 0 ? "#FFD700" : "#FFA500"} // Gold and orange
+          dragColor={index % 2 === 0 ? "#FFA500" : "#FF8C00"} // Darker orange when dragging
+        >
+          <meshStandardMaterial
+            side={THREE.DoubleSide}
+          />
+        </DraggableMesh>
+      ))}
 
       {/* Draggable cube */}
       <DraggableMesh
@@ -152,7 +206,7 @@ function Scene({ is2D }: { is2D: boolean }) {
         ref={controlsRef}
         enableDamping
         dampingFactor={0.05}
-        minDistance={is2D ? 1 : 1}
+        minDistance={1}
         maxDistance={is2D ? 20 : 50}
         rotateSpeed={0.5}
         panSpeed={0.8}
@@ -163,9 +217,10 @@ function Scene({ is2D }: { is2D: boolean }) {
         // Lock polar angle to top-down (90 degrees = Math.PI / 2)
         minPolarAngle={is2D ? Math.PI / 2 : 0}
         maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
-        // Lock azimuth angle in 2D (prevent spinning around)
-        minAzimuthAngle={is2D ? 0 : -Infinity}
-        maxAzimuthAngle={is2D ? 0 : Infinity}
+        // Allow azimuth rotation in 2D to match camera rotation
+        // Don't lock it to 0, allow the 90° rotation
+        minAzimuthAngle={is2D ? -Infinity : -Infinity}
+        maxAzimuthAngle={is2D ? Infinity : Infinity}
       />
 
       {/* Helpers */}
@@ -193,9 +248,15 @@ function CameraController({ is2D }: { is2D: boolean }) {
         1000               // far
       )
 
+
       orthoCamera.position.set(0, 10, 0)
+      orthoCamera.up.set(1, 0, 0)
       orthoCamera.lookAt(0, 0, 0)
-      orthoCamera.up.set(0, 0, 1)
+
+      const forward = new THREE.Vector3()
+      orthoCamera.getWorldDirection(forward)
+      orthoCamera.rotateOnAxis(forward, -Math.PI / 2)
+
       orthoCamera.updateProjectionMatrix()
 
       orthoCameraRef.current = orthoCamera
