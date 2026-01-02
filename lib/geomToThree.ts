@@ -2,17 +2,10 @@ import * as THREE from 'three'
 import { Face, Vector3 } from './geom'
 
 /**
- * Converts a kernel Vector3 to Three.js Vector3.
- *
- * Coordinate system differences:
- * - Kernel: x=right, y=depth, z=up (vertical)
- * - Three.js: x=right, y=up (vertical), z=depth
- *
- * Conversion: [x, y, z] → [x, z, y]
- * (swaps y and z to convert kernel's z-up to Three.js's y-up)
+ * Conversion: [x, y, z] → [y, z, x]
  */
 function vector3ToThree(vec3: Vector3): THREE.Vector3 {
-    return new THREE.Vector3(vec3[0], vec3[2], vec3[1])
+    return new THREE.Vector3(vec3[1], vec3[2], vec3[0])
 }
 
 /**

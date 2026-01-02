@@ -1,4 +1,4 @@
-import { Face, Plane3, Polygon } from './geom'
+import { Face, Plane3, Polygon, Polyline2 } from './geom'
 
 /**
  * Creates a Pac-Man shape polygon.
@@ -60,11 +60,35 @@ export function createPacManPolygon(
     return [outer, eyeHole]
 }
 
+export function createSquareWithHoleOnUpperRightCornerPolygon(): Polygon {
+    // Create a 2x2 square (from -1 to 1 in both x and y, centered at origin)
+    // Outer boundary (CCW)
+    const outer: Polyline2 = [
+        -1, -1, // bottom-left
+        1, -1,  // bottom-right
+        1, 1,   // top-right
+        -1, 1,  // top-left
+        -1, -1 // close back to start
+    ]
+
+    // Create hole in upper right corner (at 1, 1)
+    // Hole should be CW (clockwise) for proper rendering
+    const hole: Polyline2 = [
+        .8, .8, // bottom-left
+        .9, .8, // bottom-right
+        .9, .9, // top-right
+        .8, .9, // top-left
+        .8, .8 // close back to start
+    ]
+
+    return [outer, hole]
+}
+
 /**
  * Creates a Pac-Man face on a flat XY plane (kernel coordinates).
  * In kernel: z is up, so normal [0, 0, 1] means flat on XY plane.
  */
-export function createFlatPacMan(centerX: number = 0, centerY: number = 0, centerZ: number = 0): Face {
+export function placePolygonOnFace(centerX: number = 0, centerY: number = 0, centerZ: number = 0, polygon: Polygon): Face {
     const plane: Plane3 = {
         origin: [centerX, centerY, centerZ],
         normal: [0, 0, 1] // z-up in kernel = vertical
@@ -72,7 +96,7 @@ export function createFlatPacMan(centerX: number = 0, centerY: number = 0, cente
 
     return {
         plane,
-        polygon: createPacManPolygon()
+        polygon
     }
 }
 
@@ -111,14 +135,14 @@ export function createTiltedPacMan(
  */
 export const testPacManFaces: Face[] = [
     // Flat Pac-Man at origin
-    createFlatPacMan(0, 0, 0),
+    placePolygonOnFace(0, 0, 0, createPacManPolygon()),
 
     // Flat Pac-Man offset to the right
-    createFlatPacMan(3, 0, 0),
+    placePolygonOnFace(3, 3, 0, createSquareWithHoleOnUpperRightCornerPolygon()),
 
     // Tilted Pac-Man (45 degrees up)
-    createTiltedPacMan(0, 3, 0, Math.PI / 4),
+    //createTiltedPacMan(0, 3, 0, Math.PI / 4),
 
     // Tilted Pac-Man (60 degrees up)
-    createTiltedPacMan(3, 3, 0, Math.PI / 3),
+    //createTiltedPacMan(3, 3, 0, Math.PI / 3),
 ]

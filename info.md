@@ -2,6 +2,9 @@
 
 - The X-Z plane is the horizontal plane in Three.js (Y is up)
 
+Blue (Three.js Z) = geom X (2D right)
+Red (Three.js X) = geom Y (2D up)
+Green (Three.js Y) = geom Z (2D vertical)
 
 
 ## Decisions
