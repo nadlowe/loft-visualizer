@@ -1,4 +1,5 @@
-import { Polyline2 } from "./geom";
+import { Polygon, Polyline2, Vector2 } from "./geom";
+import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
 
 export const DIST_EPSILON = 1e-6;
 
@@ -58,4 +59,90 @@ export function polyline2Shift(
     }
 
     return result;
+}
+
+/**
+ * Vector2
+ */
+export function vec2Transform(vec: Vector2, mat: Mat3): Vector2 {
+    const [x, y] = vec;
+    return [mat[0] * x + mat[1] * y + mat[2], mat[3] * x + mat[4] * y + mat[5]];
+}
+
+export function vec2Translate(
+    vec: Vector2,
+    translationX: number,
+    translationY: number
+): Vector2 {
+    return [vec[0] + translationX, vec[1] + translationY];
+}
+
+export function vec2Rotate(
+    vec: Vector2,
+    angleRad: number,
+    originX: number = 0,
+    originY: number = 0
+): Vector2 {
+    const mat = mat3Rotate(angleRad, originX, originY);
+    return vec2Transform(vec, mat);
+}
+
+/**
+ * Polyline2
+ */
+export function polyline2Transform(polyline: Polyline2, mat: Mat3): Polyline2 {
+    const result: Polyline2 = [];
+    for (let i = 0; i < polyline.length; i += 2) {
+        const [x, y] = vec2Transform([polyline[i], polyline[i + 1]], mat);
+        result.push(x, y);
+    }
+    return result;
+}
+
+export function polyline2Translate(
+    polyline: Polyline2,
+    translationX: number,
+    translationY: number
+): Polyline2 {
+    return polyline2Transform(
+        polyline,
+        mat3Translate(translationX, translationY)
+    );
+}
+
+export function polyline2Rotate(
+    polyline: Polyline2,
+    angleRad: number,
+    originX: number = 0,
+    originY: number = 0
+): Polyline2 {
+    return polyline2Transform(polyline, mat3Rotate(angleRad, originX, originY));
+}
+
+/**
+ * Polygon
+ */
+export function polygonTransform(polygon: Polygon, mat: Mat3): Polygon {
+    const result: Polygon = [];
+    for (let i = 0; i < polygon.length; i++) {
+        result.push(polyline2Transform(polygon[i], mat));
+    }
+    return result;
+}
+
+export function polygonTranslate(
+    polygon: Polygon,
+    translationX: number,
+    translationY: number
+): Polygon {
+    return polygonTransform(polygon, mat3Translate(translationX, translationY));
+}
+
+export function polygonRotate(
+    polygon: Polygon,
+    angleRad: number,
+    originX: number,
+    originY: number
+): Polygon {
+    return polygonTransform(polygon, mat3Rotate(angleRad, originX, originY));
 }

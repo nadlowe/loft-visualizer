@@ -13,6 +13,11 @@ export type Polyline2 = number[];
 export type Polygon = Polyline2[];
 
 /**
+ * A vector is a 2D vector.
+ */
+export type Vector2 = [number, number];
+
+/**
  * A vector is a 3D vector.
  */
 export type Vector3 = [number, number, number];

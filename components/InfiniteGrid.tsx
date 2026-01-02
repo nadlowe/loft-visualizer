@@ -53,8 +53,8 @@ interface InfiniteGridProps {
 export function InfiniteGrid({
     cellSize = 1,
     sectionSize = 12,
-    majorSectionSize = 120,
-    superSectionSize = 120,
+    majorSectionSize = 12,
+    superSectionSize = 12,
 
     cellLineWidthPx = 1.0,
     sectionLineWidthPx = 1.0,
