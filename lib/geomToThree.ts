@@ -1,11 +1,11 @@
 import * as THREE from "three";
-import { Face, Plane3, Polygon, Vec3 } from "./geomTypes";
+import { Vec3, Polygon, Plane3, Face } from "./geom/geomTypes";
 
 /**
  * Conversion: [x, y, z] → [y, z, x]
  */
 function vector3ToThree(vec3: Vec3): THREE.Vector3 {
-    return new THREE.Vector3(vec3[1], vec3[2], vec3[0]);
+  return new THREE.Vector3(vec3[1], vec3[2], vec3[0]);
 }
 
 /**
@@ -13,27 +13,27 @@ function vector3ToThree(vec3: Vec3): THREE.Vector3 {
  * This is a pure 2D operation with no 3D transformation.
  */
 function polygonToShape(polygon: Polygon): THREE.Shape {
-    const shape = new THREE.Shape();
-    const outer = polygon[0];
+  const shape = new THREE.Shape();
+  const outer = polygon[0];
 
-    // Build outer boundary
-    shape.moveTo(outer[0], outer[1]);
-    for (let i = 2; i < outer.length; i += 2) {
-        shape.lineTo(outer[i], outer[i + 1]);
+  // Build outer boundary
+  shape.moveTo(outer[0], outer[1]);
+  for (let i = 2; i < outer.length; i += 2) {
+    shape.lineTo(outer[i], outer[i + 1]);
+  }
+
+  // Add holes
+  for (let h = 1; h < polygon.length; h++) {
+    const hole = polygon[h];
+    const holePath = new THREE.Path();
+    holePath.moveTo(hole[0], hole[1]);
+    for (let i = 2; i < hole.length; i += 2) {
+      holePath.lineTo(hole[i], hole[i + 1]);
     }
+    shape.holes.push(holePath);
+  }
 
-    // Add holes
-    for (let h = 1; h < polygon.length; h++) {
-        const hole = polygon[h];
-        const holePath = new THREE.Path();
-        holePath.moveTo(hole[0], hole[1]);
-        for (let i = 2; i < hole.length; i += 2) {
-            holePath.lineTo(hole[i], hole[i + 1]);
-        }
-        shape.holes.push(holePath);
-    }
-
-    return shape;
+  return shape;
 }
 
 /**
@@ -42,61 +42,61 @@ function polygonToShape(polygon: Polygon): THREE.Shape {
  * Returns both the full matrix (with translation) and the rotation-only matrix.
  */
 function buildPlaneTransformation(plane: Plane3): {
-    fullMatrix: THREE.Matrix4;
-    rotationMatrix: THREE.Matrix4;
-    position: [number, number, number];
+  fullMatrix: THREE.Matrix4;
+  rotationMatrix: THREE.Matrix4;
+  position: [number, number, number];
 } {
-    const normal = vector3ToThree(plane.normal);
-    const origin = vector3ToThree(plane.origin);
+  const normal = vector3ToThree(plane.normal);
+  const origin = vector3ToThree(plane.origin);
 
-    // Build orthonormal basis (u, v, normal) that spans the plane
-    let u: THREE.Vector3;
-    if (plane.u) {
-        // Use provided orientation vector
-        u = vector3ToThree(plane.u).normalize();
-        // Ensure it's orthogonal to normal (project out normal component)
-        const normalComponent = u.dot(normal);
-        u.sub(normal.clone().multiplyScalar(normalComponent));
-        u.normalize();
+  // Build orthonormal basis (u, v, normal) that spans the plane
+  let u: THREE.Vector3;
+  if (plane.u) {
+    // Use provided orientation vector
+    u = vector3ToThree(plane.u).normalize();
+    // Ensure it's orthogonal to normal (project out normal component)
+    const normalComponent = u.dot(normal);
+    u.sub(normal.clone().multiplyScalar(normalComponent));
+    u.normalize();
 
-        // If u becomes too small (was nearly parallel to normal), fall back to computation
-        if (u.length() < 0.001) {
-            const worldUp = new THREE.Vector3(0, 1, 0);
-            u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
-            if (u.length() < 0.001) {
-                u = new THREE.Vector3()
-                    .crossVectors(new THREE.Vector3(1, 0, 0), normal)
-                    .normalize();
-            }
-        }
-    } else {
-        // Compute from normal (existing behavior)
-        const worldUp = new THREE.Vector3(0, 1, 0);
-        u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
-        if (u.length() < 0.001) {
-            u = new THREE.Vector3()
-                .crossVectors(new THREE.Vector3(1, 0, 0), normal)
-                .normalize();
-        }
+    // If u becomes too small (was nearly parallel to normal), fall back to computation
+    if (u.length() < 0.001) {
+      const worldUp = new THREE.Vector3(0, 1, 0);
+      u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
+      if (u.length() < 0.001) {
+        u = new THREE.Vector3()
+          .crossVectors(new THREE.Vector3(1, 0, 0), normal)
+          .normalize();
+      }
     }
-    const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+  } else {
+    // Compute from normal (existing behavior)
+    const worldUp = new THREE.Vector3(0, 1, 0);
+    u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
+    if (u.length() < 0.001) {
+      u = new THREE.Vector3()
+        .crossVectors(new THREE.Vector3(1, 0, 0), normal)
+        .normalize();
+    }
+  }
+  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
 
-    // Create rotation matrix: [u, v, normal] as columns
-    const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeBasis(u, v, normal);
+  // Create rotation matrix: [u, v, normal] as columns
+  const rotationMatrix = new THREE.Matrix4();
+  rotationMatrix.makeBasis(u, v, normal);
 
-    // Create full matrix with translation
-    const fullMatrix = rotationMatrix.clone();
-    fullMatrix.setPosition(origin);
+  // Create full matrix with translation
+  const fullMatrix = rotationMatrix.clone();
+  fullMatrix.setPosition(origin);
 
-    // Convert origin to Three.js coordinates for position
-    const position: [number, number, number] = [
-        origin.x, // Three.js X
-        origin.y, // Three.js Y
-        origin.z, // Three.js Z
-    ];
+  // Convert origin to Three.js coordinates for position
+  const position: [number, number, number] = [
+    origin.x, // Three.js X
+    origin.y, // Three.js Y
+    origin.z, // Three.js Z
+  ];
 
-    return { fullMatrix, rotationMatrix, position };
+  return { fullMatrix, rotationMatrix, position };
 }
 
 /**
@@ -109,20 +109,20 @@ function buildPlaneTransformation(plane: Plane3): {
  * and the position where the mesh should be placed.
  */
 export function faceToThree(face: Face): {
-    geometry: THREE.BufferGeometry;
-    position: [number, number, number];
+  geometry: THREE.BufferGeometry;
+  position: [number, number, number];
 } {
-    const { plane, polygon } = face;
+  const { plane, polygon } = face;
 
-    // Step 1: Convert polygon to 2D shape (pure 2D operation)
-    const shape = polygonToShape(polygon);
+  // Step 1: Convert polygon to 2D shape (pure 2D operation)
+  const shape = polygonToShape(polygon);
 
-    // Step 2: Build transformation from plane (pure transformation logic)
-    const { rotationMatrix, position } = buildPlaneTransformation(plane);
+  // Step 2: Build transformation from plane (pure transformation logic)
+  const { rotationMatrix, position } = buildPlaneTransformation(plane);
 
-    // Step 3: Create geometry in XY plane, then apply only rotation (no translation)
-    const shapeGeometry = new THREE.ShapeGeometry(shape);
-    shapeGeometry.applyMatrix4(rotationMatrix);
+  // Step 3: Create geometry in XY plane, then apply only rotation (no translation)
+  const shapeGeometry = new THREE.ShapeGeometry(shape);
+  shapeGeometry.applyMatrix4(rotationMatrix);
 
-    return { geometry: shapeGeometry, position };
+  return { geometry: shapeGeometry, position };
 }

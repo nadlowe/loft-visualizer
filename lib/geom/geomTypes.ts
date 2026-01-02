@@ -28,12 +28,12 @@ export type Vec3 = [number, number, number];
  * If not provided, it will be computed from the normal when needed.
  */
 export interface Plane3 {
-    readonly origin: Vec3;
-    readonly normal: Vec3;
-    readonly u?: Vec3; // In-plane orientation vector (optional)
+  readonly origin: Vec3;
+  readonly normal: Vec3;
+  readonly u?: Vec3; // In-plane orientation vector (optional)
 }
 
 export interface Face {
-    readonly plane: Plane3;
-    readonly polygon: Polygon;
+  readonly plane: Plane3;
+  readonly polygon: Polygon;
 }

@@ -5,122 +5,122 @@ import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 interface InfiniteGridProps {
-    /** Base cell spacing in world units. (Your "inch") */
-    cellSize?: number; // default 1
-    /** Section spacing in world units. (Your "foot" = 12 * cellSize) */
-    sectionSize?: number; // default 12
-    /** Major spacing in world units. (Your "10ft" = 120 * cellSize) */
-    majorSectionSize?: number; // default 120
-    /** Super-major spacing in world units. (Your "100ft" = 1200 * cellSize) */
-    superSectionSize?: number; // default 1200
+  /** Base cell spacing in world units. (Your "inch") */
+  cellSize?: number; // default 1
+  /** Section spacing in world units. (Your "foot" = 12 * cellSize) */
+  sectionSize?: number; // default 12
+  /** Major spacing in world units. (Your "10ft" = 120 * cellSize) */
+  majorSectionSize?: number; // default 120
+  /** Super-major spacing in world units. (Your "100ft" = 1200 * cellSize) */
+  superSectionSize?: number; // default 1200
 
-    /** Constant pixel widths for each grid level (independent of zoom). */
-    cellLineWidthPx?: number; // default 1.0
-    sectionLineWidthPx?: number; // default 1.25
-    majorLineWidthPx?: number; // default 1.5
-    superLineWidthPx?: number; // default 1.75
+  /** Constant pixel widths for each grid level (independent of zoom). */
+  cellLineWidthPx?: number; // default 1.0
+  sectionLineWidthPx?: number; // default 1.25
+  majorLineWidthPx?: number; // default 1.5
+  superLineWidthPx?: number; // default 1.75
 
-    /** When a grid level's cell is smaller than this many pixels, it fades out. */
-    minCellSizePixels?: number; // default 2
-    /** Fade band in pixels for smooth transitions (bigger = softer). */
-    fadeBandPixels?: number; // default 5
+  /** When a grid level's cell is smaller than this many pixels, it fades out. */
+  minCellSizePixels?: number; // default 2
+  /** Fade band in pixels for smooth transitions (bigger = softer). */
+  fadeBandPixels?: number; // default 5
 
-    /** Opacity multipliers per level (0..1). */
-    cellOpacity?: number; // default 0.35
-    sectionOpacity?: number; // default 0.45
-    majorOpacity?: number; // default 0.55
-    superOpacity?: number; // default 0.7
+  /** Opacity multipliers per level (0..1). */
+  cellOpacity?: number; // default 0.35
+  sectionOpacity?: number; // default 0.45
+  majorOpacity?: number; // default 0.55
+  superOpacity?: number; // default 0.7
 
-    /** Grid color */
-    colorGrid?: THREE.Color | string | number;
+  /** Grid color */
+  colorGrid?: THREE.Color | string | number;
 
-    /** Plane size (world units). If you pan very far, consider "followCamera" below. */
-    planeSize?: number; // default 2000
+  /** Plane size (world units). If you pan very far, consider "followCamera" below. */
+  planeSize?: number; // default 2000
 
-    /**
-     * If true, the plane follows the camera in XZ (good for large panning ranges).
-     * Keeps the grid near the camera and reduces floating-point jitter far from origin.
-     */
-    followCamera?: boolean;
+  /**
+   * If true, the plane follows the camera in XZ (good for large panning ranges).
+   * Keeps the grid near the camera and reduces floating-point jitter far from origin.
+   */
+  followCamera?: boolean;
 
-    /**
-     * Snap the follower plane to this multiple (in world units).
-     * Usually set this to your largest spacing (e.g. superSectionSize) to keep movement stable.
-     */
-    followSnap?: number; // default superSectionSize
+  /**
+   * Snap the follower plane to this multiple (in world units).
+   * Usually set this to your largest spacing (e.g. superSectionSize) to keep movement stable.
+   */
+  followSnap?: number; // default superSectionSize
 }
 
 export function InfiniteGrid({
-    cellSize = 1,
-    sectionSize = 12,
-    majorSectionSize = 12,
-    superSectionSize = 12,
+  cellSize = 1,
+  sectionSize = 12,
+  majorSectionSize = 12,
+  superSectionSize = 12,
 
-    cellLineWidthPx = 1.0,
-    sectionLineWidthPx = 1.0,
-    majorLineWidthPx = 1.0,
-    superLineWidthPx = 1.0,
+  cellLineWidthPx = 1.0,
+  sectionLineWidthPx = 1.0,
+  majorLineWidthPx = 1.0,
+  superLineWidthPx = 1.0,
 
-    minCellSizePixels = 2,
-    fadeBandPixels = 5,
+  minCellSizePixels = 2,
+  fadeBandPixels = 5,
 
-    cellOpacity = 0.6,
-    sectionOpacity = 0.6,
-    majorOpacity = 0.6,
-    superOpacity = 0.6,
+  cellOpacity = 0.6,
+  sectionOpacity = 0.6,
+  majorOpacity = 0.6,
+  superOpacity = 0.6,
 
-    colorGrid = "#cccccc",
+  colorGrid = "#cccccc",
 
-    planeSize = 20000,
-    followCamera = false,
-    followSnap,
+  planeSize = 20000,
+  followCamera = false,
+  followSnap,
 }: InfiniteGridProps) {
-    const { camera, size } = useThree();
-    const meshRef = useRef<THREE.Mesh>(null);
+  const { camera, size } = useThree();
+  const meshRef = useRef<THREE.Mesh>(null);
 
-    const shaderMaterial = useMemo(() => {
-        const gridColor = new THREE.Color(colorGrid);
+  const shaderMaterial = useMemo(() => {
+    const gridColor = new THREE.Color(colorGrid);
 
-        return new THREE.ShaderMaterial({
-            side: THREE.DoubleSide,
-            transparent: true,
-            depthWrite: false,
-            uniforms: {
-                // sizes
-                uMinorSize: { value: cellSize },
-                uSectionSize: { value: sectionSize },
-                uMajorSize: { value: majorSectionSize },
-                uSuperSize: { value: superSectionSize },
+    return new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+      uniforms: {
+        // sizes
+        uMinorSize: { value: cellSize },
+        uSectionSize: { value: sectionSize },
+        uMajorSize: { value: majorSectionSize },
+        uSuperSize: { value: superSectionSize },
 
-                // line widths in pixels (constant visual thickness)
-                uMinorPxWidth: { value: cellLineWidthPx },
-                uSectionPxWidth: { value: sectionLineWidthPx },
-                uMajorPxWidth: { value: majorLineWidthPx },
-                uSuperPxWidth: { value: superLineWidthPx },
+        // line widths in pixels (constant visual thickness)
+        uMinorPxWidth: { value: cellLineWidthPx },
+        uSectionPxWidth: { value: sectionLineWidthPx },
+        uMajorPxWidth: { value: majorLineWidthPx },
+        uSuperPxWidth: { value: superLineWidthPx },
 
-                // fade behavior
-                uMinPx: { value: minCellSizePixels },
-                uFadePx: { value: fadeBandPixels },
+        // fade behavior
+        uMinPx: { value: minCellSizePixels },
+        uFadePx: { value: fadeBandPixels },
 
-                // per-level opacity
-                uMinorOpacity: { value: cellOpacity },
-                uSectionOpacity: { value: sectionOpacity },
-                uMajorOpacity: { value: majorOpacity },
-                uSuperOpacity: { value: superOpacity },
+        // per-level opacity
+        uMinorOpacity: { value: cellOpacity },
+        uSectionOpacity: { value: sectionOpacity },
+        uMajorOpacity: { value: majorOpacity },
+        uSuperOpacity: { value: superOpacity },
 
-                uGridColor: { value: gridColor },
+        uGridColor: { value: gridColor },
 
-                // computed each frame
-                uViewScale: { value: 1.0 }, // pixels per world unit at the grid plane
-            },
-            vertexShader: `
+        // computed each frame
+        uViewScale: { value: 1.0 }, // pixels per world unit at the grid plane
+      },
+      vertexShader: `
         varying vec3 vWorldPosition;
         void main() {
           vWorldPosition = (modelMatrix * vec4(position, 1.0)).xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
-            fragmentShader: `
+      fragmentShader: `
         precision highp float;
 
         uniform vec3  uGridColor;
@@ -223,104 +223,100 @@ export function InfiniteGrid({
           gl_FragColor = vec4(uGridColor, alpha);
         }
       `,
-        });
-    }, [
-        cellSize,
-        sectionSize,
-        majorSectionSize,
-        superSectionSize,
-        cellLineWidthPx,
-        sectionLineWidthPx,
-        majorLineWidthPx,
-        superLineWidthPx,
-        minCellSizePixels,
-        fadeBandPixels,
-        cellOpacity,
-        sectionOpacity,
-        majorOpacity,
-        superOpacity,
-        colorGrid,
-    ]);
-
-    const planeGeometry = useMemo(() => {
-        return new THREE.PlaneGeometry(planeSize, planeSize);
-    }, [planeSize]);
-
-    // Helper: compute pixels-per-world-unit at the grid plane (y = 0)
-    const raycaster = useMemo(() => new THREE.Raycaster(), []);
-    const ndcCenter = useMemo(() => new THREE.Vector2(0, 0), []);
-    const plane = useMemo(
-        () => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), // y = 0
-        []
-    );
-
-    useFrame(() => {
-        const mat = meshRef.current?.material as
-            | THREE.ShaderMaterial
-            | undefined;
-        if (!mat) return;
-
-        // Compute uViewScale (px per world unit) robustly for both ortho + perspective,
-        // even when the camera tilts/orbits: sample at the intersection of the camera's
-        // center ray with the y=0 plane.
-        let viewScale = 1;
-
-        if (camera instanceof THREE.OrthographicCamera) {
-            const heightWorld = (camera.top - camera.bottom) / camera.zoom;
-            viewScale = size.height / heightWorld;
-        } else {
-            // Perspective: use ray-plane intersection to get a reference depth on the grid plane
-            raycaster.setFromCamera(ndcCenter, camera);
-            const hitPoint = new THREE.Vector3();
-            const hit = raycaster.ray.intersectPlane(plane, hitPoint);
-
-            // If we're looking parallel to the plane and can't intersect, fall back to old heuristic
-            if (!hit) {
-                const distance = Math.abs(camera.position.y);
-                const fov =
-                    (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
-                const viewHeightWorld = 2.0 * distance * Math.tan(fov / 2.0);
-                viewScale = size.height / viewHeightWorld;
-            } else {
-                // At the hitPoint depth, world-units-per-pixel ~= (2*z*tan(fov/2))/heightPx
-                // Where z is distance along camera forward direction.
-                const camToHit = hitPoint.clone().sub(camera.position);
-                const forward = new THREE.Vector3();
-                camera.getWorldDirection(forward);
-                const z = Math.max(camToHit.dot(forward), 1e-6);
-
-                const fov =
-                    (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
-                const viewHeightWorld = 2.0 * z * Math.tan(fov / 2.0);
-                viewScale = size.height / viewHeightWorld;
-            }
-        }
-
-        // Ensure viewScale is never zero or too small
-        mat.uniforms.uViewScale.value = Math.max(viewScale, 0.001);
-
-        // Optional: keep the grid centered under the camera to reduce jitter at large coordinates
-        if (followCamera && meshRef.current) {
-            const snap = followSnap ?? superSectionSize;
-
-            const x = camera.position.x;
-            const z = camera.position.z;
-
-            const sx = snap > 0 ? Math.round(x / snap) * snap : x;
-            const sz = snap > 0 ? Math.round(z / snap) * snap : z;
-
-            meshRef.current.position.set(sx, 0, sz);
-        }
     });
+  }, [
+    cellSize,
+    sectionSize,
+    majorSectionSize,
+    superSectionSize,
+    cellLineWidthPx,
+    sectionLineWidthPx,
+    majorLineWidthPx,
+    superLineWidthPx,
+    minCellSizePixels,
+    fadeBandPixels,
+    cellOpacity,
+    sectionOpacity,
+    majorOpacity,
+    superOpacity,
+    colorGrid,
+  ]);
 
-    return (
-        <mesh
-            ref={meshRef}
-            rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, 0, 0]}
-            geometry={planeGeometry}
-            material={shaderMaterial}
-            renderOrder={-1}
-        />
-    );
+  const planeGeometry = useMemo(() => {
+    return new THREE.PlaneGeometry(planeSize, planeSize);
+  }, [planeSize]);
+
+  // Helper: compute pixels-per-world-unit at the grid plane (y = 0)
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const ndcCenter = useMemo(() => new THREE.Vector2(0, 0), []);
+  const plane = useMemo(
+    () => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), // y = 0
+    []
+  );
+
+  useFrame(() => {
+    const mat = meshRef.current?.material as THREE.ShaderMaterial | undefined;
+    if (!mat) return;
+
+    // Compute uViewScale (px per world unit) robustly for both ortho + perspective,
+    // even when the camera tilts/orbits: sample at the intersection of the camera's
+    // center ray with the y=0 plane.
+    let viewScale = 1;
+
+    if (camera instanceof THREE.OrthographicCamera) {
+      const heightWorld = (camera.top - camera.bottom) / camera.zoom;
+      viewScale = size.height / heightWorld;
+    } else {
+      // Perspective: use ray-plane intersection to get a reference depth on the grid plane
+      raycaster.setFromCamera(ndcCenter, camera);
+      const hitPoint = new THREE.Vector3();
+      const hit = raycaster.ray.intersectPlane(plane, hitPoint);
+
+      // If we're looking parallel to the plane and can't intersect, fall back to old heuristic
+      if (!hit) {
+        const distance = Math.abs(camera.position.y);
+        const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+        const viewHeightWorld = 2.0 * distance * Math.tan(fov / 2.0);
+        viewScale = size.height / viewHeightWorld;
+      } else {
+        // At the hitPoint depth, world-units-per-pixel ~= (2*z*tan(fov/2))/heightPx
+        // Where z is distance along camera forward direction.
+        const camToHit = hitPoint.clone().sub(camera.position);
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        const z = Math.max(camToHit.dot(forward), 1e-6);
+
+        const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+        const viewHeightWorld = 2.0 * z * Math.tan(fov / 2.0);
+        viewScale = size.height / viewHeightWorld;
+      }
+    }
+
+    // Ensure viewScale is never zero or too small
+    mat.uniforms.uViewScale.value = Math.max(viewScale, 0.001);
+
+    // Optional: keep the grid centered under the camera to reduce jitter at large coordinates
+    if (followCamera && meshRef.current) {
+      const snap = followSnap ?? superSectionSize;
+
+      const x = camera.position.x;
+      const z = camera.position.z;
+
+      const sx = snap > 0 ? Math.round(x / snap) * snap : x;
+      const sz = snap > 0 ? Math.round(z / snap) * snap : z;
+
+      meshRef.current.position.set(sx, 0, sz);
+    }
+  });
+
+  return (
+    <mesh
+      ref={meshRef}
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0, 0]}
+      geometry={planeGeometry}
+      material={shaderMaterial}
+      renderOrder={-1}
+    />
+  );
 }

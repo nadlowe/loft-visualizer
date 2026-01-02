@@ -4,325 +4,325 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useState, useEffect, useRef, useMemo } from "react";
-import { cn } from "@/lib/utils";
-import { faceToThree } from "@/lib/geomToThree";
-import { testPacManFaces } from "@/lib/testPacMan";
+import { cn } from "../lib/utils";
+import { faceToThree } from "../lib/geomToThree";
+import { testPacManFaces } from "../lib/testPacMan";
 import { InfiniteGrid } from "@/components/InfiniteGrid";
 
 function DraggableMesh({
-    initialPosition = [0, 0, 0],
-    onDraggingChange,
-    children,
-    geometry,
-    defaultColor = "orange",
-    dragColor = "hotpink",
-    snapSize = 1,
+  initialPosition = [0, 0, 0],
+  onDraggingChange,
+  children,
+  geometry,
+  defaultColor = "orange",
+  dragColor = "hotpink",
+  snapSize = 1,
 }: {
-    initialPosition?: [number, number, number];
-    onDraggingChange?: (isDragging: boolean) => void;
-    children?: React.ReactNode;
-    geometry?: THREE.BufferGeometry;
-    defaultColor?: string;
-    dragColor?: string;
-    snapSize?: number;
+  initialPosition?: [number, number, number];
+  onDraggingChange?: (isDragging: boolean) => void;
+  children?: React.ReactNode;
+  geometry?: THREE.BufferGeometry;
+  defaultColor?: string;
+  dragColor?: string;
+  snapSize?: number;
 }) {
-    const meshRef = useRef<THREE.Mesh>(null);
-    const [isDragging, setIsDragging] = useState(false);
-    const [position, setPosition] =
-        useState<[number, number, number]>(initialPosition);
-    const { raycaster, camera, pointer, gl } = useThree();
-    const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
-    const pointerIdRef = useRef<number | null>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [position, setPosition] =
+    useState<[number, number, number]>(initialPosition);
+  const { raycaster, camera, pointer, gl } = useThree();
+  const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const pointerIdRef = useRef<number | null>(null);
 
-    // X-Z plane is the horizontal plane in Three.js (Y is up)
-    // Plane normal (0, 1, 0) with constant -Y defines the X-Z plane at height Y
-    const getPlane = () => {
-        return new THREE.Plane(new THREE.Vector3(0, 1, 0), -position[1]);
+  // X-Z plane is the horizontal plane in Three.js (Y is up)
+  // Plane normal (0, 1, 0) with constant -Y defines the X-Z plane at height Y
+  const getPlane = () => {
+    return new THREE.Plane(new THREE.Vector3(0, 1, 0), -position[1]);
+  };
+
+  const handlePointerUp = () => {
+    setIsDragging(false);
+    onDraggingChange?.(false);
+    if (pointerIdRef.current !== null) {
+      gl.domElement.releasePointerCapture(pointerIdRef.current);
+      pointerIdRef.current = null;
+    }
+  };
+
+  const handlePointerDown = (e: any) => {
+    e.stopPropagation();
+
+    const plane = getPlane();
+    const intersection = new THREE.Vector3();
+    raycaster.setFromCamera(pointer, camera);
+
+    if (raycaster.ray.intersectPlane(plane, intersection)) {
+      // Calculate offset from mesh center to intersection point
+      const meshPos = new THREE.Vector3(...position);
+      // Intersection is on X-Z plane, so use X and Z, keep Y constant
+      const planeIntersection = new THREE.Vector3(
+        intersection.x,
+        position[1],
+        intersection.z
+      );
+      offsetRef.current.subVectors(meshPos, planeIntersection);
+      setIsDragging(true);
+      onDraggingChange?.(true);
+
+      // Capture pointer to continue tracking even outside mesh
+      pointerIdRef.current = e.pointerId;
+      gl.domElement.setPointerCapture(e.pointerId);
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pointerIdRef.current !== null) {
+        gl.domElement.releasePointerCapture(pointerIdRef.current);
+      }
     };
+  }, [gl.domElement]);
 
-    const handlePointerUp = () => {
-        setIsDragging(false);
-        onDraggingChange?.(false);
-        if (pointerIdRef.current !== null) {
-            gl.domElement.releasePointerCapture(pointerIdRef.current);
-            pointerIdRef.current = null;
-        }
-    };
+  // useFrame(() => {
+  //     if (!isDragging || !meshRef.current) return;
 
-    const handlePointerDown = (e: any) => {
+  //     const plane = getPlane();
+  //     const intersection = new THREE.Vector3();
+  //     raycaster.setFromCamera(pointer, camera);
+
+  //     if (raycaster.ray.intersectPlane(plane, intersection)) {
+  //         // Apply offset and constrain to X-Z plane (keep Y constant)
+  //         const newPos = intersection.clone().add(offsetRef.current);
+  //         setPosition([newPos.x, position[1], newPos.z]);
+  //     }
+  // });
+
+  useFrame(() => {
+    if (!isDragging || !meshRef.current) return;
+
+    const plane = getPlane();
+    const intersection = new THREE.Vector3();
+    raycaster.setFromCamera(pointer, camera);
+
+    if (raycaster.ray.intersectPlane(plane, intersection)) {
+      // Apply offset and constrain to X-Z plane (keep Y constant)
+      const newPos = intersection.clone().add(offsetRef.current);
+
+      // Snap to grid
+      const snappedX = Math.round(newPos.x / snapSize) * snapSize;
+      const snappedZ = Math.round(newPos.z / snapSize) * snapSize;
+
+      setPosition([snappedX, position[1], snappedZ]);
+    }
+  });
+
+  return (
+    <mesh
+      ref={meshRef}
+      position={position}
+      geometry={geometry}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onClick={(e) => {
         e.stopPropagation();
-
-        const plane = getPlane();
-        const intersection = new THREE.Vector3();
-        raycaster.setFromCamera(pointer, camera);
-
-        if (raycaster.ray.intersectPlane(plane, intersection)) {
-            // Calculate offset from mesh center to intersection point
-            const meshPos = new THREE.Vector3(...position);
-            // Intersection is on X-Z plane, so use X and Z, keep Y constant
-            const planeIntersection = new THREE.Vector3(
-                intersection.x,
-                position[1],
-                intersection.z
-            );
-            offsetRef.current.subVectors(meshPos, planeIntersection);
-            setIsDragging(true);
-            onDraggingChange?.(true);
-
-            // Capture pointer to continue tracking even outside mesh
-            pointerIdRef.current = e.pointerId;
-            gl.domElement.setPointerCapture(e.pointerId);
-        }
-    };
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (pointerIdRef.current !== null) {
-                gl.domElement.releasePointerCapture(pointerIdRef.current);
-            }
-        };
-    }, [gl.domElement]);
-
-    // useFrame(() => {
-    //     if (!isDragging || !meshRef.current) return;
-
-    //     const plane = getPlane();
-    //     const intersection = new THREE.Vector3();
-    //     raycaster.setFromCamera(pointer, camera);
-
-    //     if (raycaster.ray.intersectPlane(plane, intersection)) {
-    //         // Apply offset and constrain to X-Z plane (keep Y constant)
-    //         const newPos = intersection.clone().add(offsetRef.current);
-    //         setPosition([newPos.x, position[1], newPos.z]);
-    //     }
-    // });
-
-    useFrame(() => {
-        if (!isDragging || !meshRef.current) return;
-
-        const plane = getPlane();
-        const intersection = new THREE.Vector3();
-        raycaster.setFromCamera(pointer, camera);
-
-        if (raycaster.ray.intersectPlane(plane, intersection)) {
-            // Apply offset and constrain to X-Z plane (keep Y constant)
-            const newPos = intersection.clone().add(offsetRef.current);
-
-            // Snap to grid
-            const snappedX = Math.round(newPos.x / snapSize) * snapSize;
-            const snappedZ = Math.round(newPos.z / snapSize) * snapSize;
-
-            setPosition([snappedX, position[1], snappedZ]);
-        }
-    });
-
-    return (
-        <mesh
-            ref={meshRef}
-            position={position}
-            geometry={geometry}
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
-            onClick={(e) => {
-                e.stopPropagation();
-            }}
-        >
-            {children}
-            <meshStandardMaterial
-                color={isDragging ? dragColor : defaultColor}
-                opacity={isDragging ? 0.8 : 1}
-                transparent
-            />
-        </mesh>
-    );
+      }}
+    >
+      {children}
+      <meshStandardMaterial
+        color={isDragging ? dragColor : defaultColor}
+        opacity={isDragging ? 0.8 : 1}
+        transparent
+      />
+    </mesh>
+  );
 }
 
 function Scene({ is2D }: { is2D: boolean }) {
-    const { camera } = useThree();
-    const controlsRef = useRef<any>(null);
-    const [isDragging, setIsDragging] = useState(false);
+  const { camera } = useThree();
+  const controlsRef = useRef<any>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-    // Convert Pac-Man faces to Three.js geometries and extract initial positions
-    const pacManData = useMemo(() => {
-        return testPacManFaces.map((face) => {
-            const { geometry, position: initialPosition } = faceToThree(face);
-            return { geometry, initialPosition };
-        });
-    }, []);
+  // Convert Pac-Man faces to Three.js geometries and extract initial positions
+  const pacManData = useMemo(() => {
+    return testPacManFaces.map((face) => {
+      const { geometry, position: initialPosition } = faceToThree(face);
+      return { geometry, initialPosition };
+    });
+  }, []);
 
-    useEffect(() => {
-        // Reset controls target when camera changes
-        if (controlsRef.current) {
-            controlsRef.current.target.set(0, 0, 0);
-            // Don't call update() in 2D mode as it resets camera rotation
-            // Only update in 3D mode
-            if (!is2D) {
-                controlsRef.current.update();
-            }
-        }
-    }, [is2D, camera]);
+  useEffect(() => {
+    // Reset controls target when camera changes
+    if (controlsRef.current) {
+      controlsRef.current.target.set(0, 0, 0);
+      // Don't call update() in 2D mode as it resets camera rotation
+      // Only update in 3D mode
+      if (!is2D) {
+        controlsRef.current.update();
+      }
+    }
+  }, [is2D, camera]);
 
-    return (
-        <>
-            {/* Lighting */}
-            <ambientLight intensity={0.5} />
-            <directionalLight position={[5, 5, 5]} intensity={1} />
-            <pointLight position={[-5, -5, -5]} intensity={0.5} />
+  return (
+    <>
+      {/* Lighting */}
+      <ambientLight intensity={0.5} />
+      <directionalLight position={[5, 5, 5]} intensity={1} />
+      <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
-            {/* Render draggable Pac-Man faces */}
-            {pacManData.map(({ geometry, initialPosition }, index) => (
-                <DraggableMesh
-                    key={index}
-                    initialPosition={initialPosition}
-                    onDraggingChange={setIsDragging}
-                    geometry={geometry}
-                    defaultColor={index % 2 === 0 ? "#FFD700" : "#FFA500"} // Gold and orange
-                    dragColor={index % 2 === 0 ? "#FFA500" : "#FF8C00"} // Darker orange when dragging
-                >
-                    <meshStandardMaterial side={THREE.DoubleSide} />
-                </DraggableMesh>
-            ))}
+      {/* Render draggable Pac-Man faces */}
+      {pacManData.map(({ geometry, initialPosition }, index) => (
+        <DraggableMesh
+          key={index}
+          initialPosition={initialPosition}
+          onDraggingChange={setIsDragging}
+          geometry={geometry}
+          defaultColor={index % 2 === 0 ? "#FFD700" : "#FFA500"} // Gold and orange
+          dragColor={index % 2 === 0 ? "#FFA500" : "#FF8C00"} // Darker orange when dragging
+        >
+          <meshStandardMaterial side={THREE.DoubleSide} />
+        </DraggableMesh>
+      ))}
 
-            {/* Draggable cube */}
-            <DraggableMesh
-                initialPosition={[0, 0, 0]}
-                onDraggingChange={setIsDragging}
-                defaultColor="orange"
-                dragColor="hotpink"
-            >
-                <boxGeometry args={[1, 1, 1]} />
-            </DraggableMesh>
+      {/* Draggable cube */}
+      <DraggableMesh
+        initialPosition={[0, 0, 0]}
+        onDraggingChange={setIsDragging}
+        defaultColor="orange"
+        dragColor="hotpink"
+      >
+        <boxGeometry args={[1, 1, 1]} />
+      </DraggableMesh>
 
-            {/* Draggable pyramid */}
-            <DraggableMesh
-                initialPosition={[2, 0, 0]}
-                onDraggingChange={setIsDragging}
-                defaultColor="blue"
-                dragColor="cyan"
-            >
-                <coneGeometry args={[0.7, 1, 4]} />
-            </DraggableMesh>
+      {/* Draggable pyramid */}
+      <DraggableMesh
+        initialPosition={[2, 0, 0]}
+        onDraggingChange={setIsDragging}
+        defaultColor="blue"
+        dragColor="cyan"
+      >
+        <coneGeometry args={[0.7, 1, 4]} />
+      </DraggableMesh>
 
-            {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
-            <OrbitControls
-                ref={controlsRef}
-                enableDamping={false}
-                minDistance={1}
-                maxDistance={is2D ? 2000 : 5000}
-                rotateSpeed={0.5}
-                //panSpeed={1.0}
-                zoomSpeed={1.2} // Slower zoom for orthographic
-                screenSpacePanning={true} // Makes panning feel like grabbing and dragging the canvas
-                enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
-                enableZoom={true} // Disable zoom when dragging in 3D
-                enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
-                // Lock polar angle to top-down (90 degrees = Math.PI / 2)
-                minPolarAngle={is2D ? Math.PI / 2 : 0}
-                maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
-                // Allow azimuth rotation in 2D to match camera rotation
-                // Don't lock it to 0, allow the 90° rotation
-                minAzimuthAngle={is2D ? -Infinity : -Infinity}
-                maxAzimuthAngle={is2D ? Infinity : Infinity}
-            />
+      {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
+      <OrbitControls
+        ref={controlsRef}
+        enableDamping={false}
+        minDistance={1}
+        maxDistance={is2D ? 2000 : 5000}
+        rotateSpeed={0.5}
+        //panSpeed={1.0}
+        zoomSpeed={1.2} // Slower zoom for orthographic
+        screenSpacePanning={true} // Makes panning feel like grabbing and dragging the canvas
+        enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
+        enableZoom={true} // Disable zoom when dragging in 3D
+        enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
+        // Lock polar angle to top-down (90 degrees = Math.PI / 2)
+        minPolarAngle={is2D ? Math.PI / 2 : 0}
+        maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
+        // Allow azimuth rotation in 2D to match camera rotation
+        // Don't lock it to 0, allow the 90° rotation
+        minAzimuthAngle={is2D ? -Infinity : -Infinity}
+        maxAzimuthAngle={is2D ? Infinity : Infinity}
+      />
 
-            {/* Helpers */}
-            <axesHelper args={[2]} />
-            <InfiniteGrid cellSize={1} sectionSize={12} />
-        </>
-    );
+      {/* Helpers */}
+      <axesHelper args={[2]} />
+      <InfiniteGrid cellSize={1} sectionSize={12} />
+    </>
+  );
 }
 
 function CameraController({ is2D }: { is2D: boolean }) {
-    const { set, camera, size } = useThree();
-    const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null);
+  const { set, camera, size } = useThree();
+  const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null);
 
-    useEffect(() => {
-        if (is2D) {
-            // Create orthographic camera
-            const aspect = size.width / size.height;
-            const viewSize = 10;
-            const orthoCamera = new THREE.OrthographicCamera(
-                -viewSize * aspect, // left
-                viewSize * aspect, // right
-                viewSize, // top
-                -viewSize, // bottom
-                0.1, // near
-                10000 // far
-            );
+  useEffect(() => {
+    if (is2D) {
+      // Create orthographic camera
+      const aspect = size.width / size.height;
+      const viewSize = 10;
+      const orthoCamera = new THREE.OrthographicCamera(
+        -viewSize * aspect, // left
+        viewSize * aspect, // right
+        viewSize, // top
+        -viewSize, // bottom
+        0.1, // near
+        10000 // far
+      );
 
-            orthoCamera.position.set(0, 10, 0);
-            orthoCamera.up.set(1, 0, 0);
-            orthoCamera.lookAt(0, 0, 0);
+      orthoCamera.position.set(0, 10, 0);
+      orthoCamera.up.set(1, 0, 0);
+      orthoCamera.lookAt(0, 0, 0);
 
-            const forward = new THREE.Vector3();
-            orthoCamera.getWorldDirection(forward);
-            orthoCamera.rotateOnAxis(forward, -Math.PI / 2);
+      const forward = new THREE.Vector3();
+      orthoCamera.getWorldDirection(forward);
+      orthoCamera.rotateOnAxis(forward, -Math.PI / 2);
 
-            orthoCamera.updateProjectionMatrix();
+      orthoCamera.updateProjectionMatrix();
 
-            orthoCameraRef.current = orthoCamera;
-            set({ camera: orthoCamera });
-        } else {
-            // Switch back to perspective camera
-            const perspCamera = new THREE.PerspectiveCamera(
-                75,
-                size.width / size.height,
-                0.1,
-                10000
-            );
-            perspCamera.position.set(-5, 5, 0);
-            perspCamera.lookAt(0, 0, 0);
-            perspCamera.up.set(0, 1, 0);
-            perspCamera.updateProjectionMatrix();
-            set({ camera: perspCamera });
-        }
-    }, [is2D, set, size]);
+      orthoCameraRef.current = orthoCamera;
+      set({ camera: orthoCamera });
+    } else {
+      // Switch back to perspective camera
+      const perspCamera = new THREE.PerspectiveCamera(
+        75,
+        size.width / size.height,
+        0.1,
+        10000
+      );
+      perspCamera.position.set(-5, 5, 0);
+      perspCamera.lookAt(0, 0, 0);
+      perspCamera.up.set(0, 1, 0);
+      perspCamera.updateProjectionMatrix();
+      set({ camera: perspCamera });
+    }
+  }, [is2D, set, size]);
 
-    // Update orthographic camera bounds on resize
-    useEffect(() => {
-        if (is2D && orthoCameraRef.current) {
-            const aspect = size.width / size.height;
-            const viewSize = 10;
-            orthoCameraRef.current.left = -viewSize * aspect;
-            orthoCameraRef.current.right = viewSize * aspect;
-            orthoCameraRef.current.top = viewSize;
-            orthoCameraRef.current.bottom = -viewSize;
-            orthoCameraRef.current.updateProjectionMatrix();
-        } else if (!is2D && camera instanceof THREE.PerspectiveCamera) {
-            camera.aspect = size.width / size.height;
-            camera.updateProjectionMatrix();
-        }
-    }, [size, is2D, camera]);
+  // Update orthographic camera bounds on resize
+  useEffect(() => {
+    if (is2D && orthoCameraRef.current) {
+      const aspect = size.width / size.height;
+      const viewSize = 10;
+      orthoCameraRef.current.left = -viewSize * aspect;
+      orthoCameraRef.current.right = viewSize * aspect;
+      orthoCameraRef.current.top = viewSize;
+      orthoCameraRef.current.bottom = -viewSize;
+      orthoCameraRef.current.updateProjectionMatrix();
+    } else if (!is2D && camera instanceof THREE.PerspectiveCamera) {
+      camera.aspect = size.width / size.height;
+      camera.updateProjectionMatrix();
+    }
+  }, [size, is2D, camera]);
 
-    return null;
+  return null;
 }
 
 export default function Home() {
-    const [is2D, setIs2D] = useState(false);
+  const [is2D, setIs2D] = useState(false);
 
-    return (
-        <div className="relative h-screen w-screen overflow-hidden bg-gray-900">
-            {/* Toggle button */}
-            <button
-                onClick={() => setIs2D(!is2D)}
-                className={cn(
-                    "absolute top-4 right-4 z-10 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-                    is2D
-                        ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                )}
-            >
-                {is2D ? "Switch to 3D" : "Switch to 2D"}
-            </button>
+  return (
+    <div className="relative h-screen w-screen overflow-hidden bg-gray-900">
+      {/* Toggle button */}
+      <button
+        onClick={() => setIs2D(!is2D)}
+        className={cn(
+          "absolute top-4 right-4 z-10 rounded-md px-4 py-2 text-sm font-medium transition-colors",
+          is2D
+            ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+            : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+        )}
+      >
+        {is2D ? "Switch to 3D" : "Switch to 2D"}
+      </button>
 
-            <div className="h-full w-full">
-                <Canvas gl={{ antialias: true, alpha: false }}>
-                    <CameraController is2D={is2D} />
-                    <Scene is2D={is2D} />
-                </Canvas>
-            </div>
-        </div>
-    );
+      <div className="h-full w-full">
+        <Canvas gl={{ antialias: true, alpha: false }}>
+          <CameraController is2D={is2D} />
+          <Scene is2D={is2D} />
+        </Canvas>
+      </div>
+    </div>
+  );
 }
