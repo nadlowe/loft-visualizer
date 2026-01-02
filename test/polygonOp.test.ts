@@ -3,8 +3,8 @@ import {
     polygonTransform,
     polygonTranslate,
     polygonRotate,
-} from "../lib/geomOp";
-import { Polygon } from "../lib/geom";
+} from "@/lib/polygon";
+import { Polygon } from "../lib/geomTypes";
 import { mat3Identity, mat3Translate, mat3Rotate } from "../lib/mat3";
 
 describe("polygonTransform", () => {

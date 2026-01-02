@@ -1,4 +1,5 @@
-import { Face, Plane3, Polygon, Polyline2 } from "./geom";
+import { Face, Plane3, Polygon, Polyline2 } from "./geomTypes";
+import { plane3New } from "./plane3";
 
 /**
  * Creates a Pac-Man shape polygon.
@@ -110,10 +111,10 @@ export function placePolygonOnFace(
     centerZ: number = 0,
     polygon: Polygon
 ): Face {
-    const plane: Plane3 = {
-        origin: [centerX, centerY, centerZ],
-        normal: [0, 0, 1], // z-up in kernel = vertical
-    };
+    const plane = plane3New(
+        [centerX, centerY, centerZ],
+        [0, 0, 1] // z-up in kernel = vertical
+    );
 
     return {
         plane,
@@ -140,10 +141,7 @@ export function createTiltedPacMan(
         Math.cos(tiltAngle), // z component (up)
     ];
 
-    const plane: Plane3 = {
-        origin: [centerX, centerY, centerZ],
-        normal,
-    };
+    const plane = plane3New([centerX, centerY, centerZ], normal);
 
     return {
         plane,

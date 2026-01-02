@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { Face, Plane3, Polygon, Vector3 } from "./geom";
+import { Face, Plane3, Polygon, Vec3 } from "./geomTypes";
 
 /**
  * Conversion: [x, y, z] → [y, z, x]
  */
-function vector3ToThree(vec3: Vector3): THREE.Vector3 {
+function vector3ToThree(vec3: Vec3): THREE.Vector3 {
     return new THREE.Vector3(vec3[1], vec3[2], vec3[0]);
 }
 
@@ -50,12 +50,34 @@ function buildPlaneTransformation(plane: Plane3): {
     const origin = vector3ToThree(plane.origin);
 
     // Build orthonormal basis (u, v, normal) that spans the plane
-    const worldUp = new THREE.Vector3(0, 1, 0);
-    let u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
-    if (u.length() < 0.001) {
-        u = new THREE.Vector3()
-            .crossVectors(new THREE.Vector3(1, 0, 0), normal)
-            .normalize();
+    let u: THREE.Vector3;
+    if (plane.u) {
+        // Use provided orientation vector
+        u = vector3ToThree(plane.u).normalize();
+        // Ensure it's orthogonal to normal (project out normal component)
+        const normalComponent = u.dot(normal);
+        u.sub(normal.clone().multiplyScalar(normalComponent));
+        u.normalize();
+
+        // If u becomes too small (was nearly parallel to normal), fall back to computation
+        if (u.length() < 0.001) {
+            const worldUp = new THREE.Vector3(0, 1, 0);
+            u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
+            if (u.length() < 0.001) {
+                u = new THREE.Vector3()
+                    .crossVectors(new THREE.Vector3(1, 0, 0), normal)
+                    .normalize();
+            }
+        }
+    } else {
+        // Compute from normal (existing behavior)
+        const worldUp = new THREE.Vector3(0, 1, 0);
+        u = new THREE.Vector3().crossVectors(worldUp, normal).normalize();
+        if (u.length() < 0.001) {
+            u = new THREE.Vector3()
+                .crossVectors(new THREE.Vector3(1, 0, 0), normal)
+                .normalize();
+        }
     }
     const v = new THREE.Vector3().crossVectors(normal, u).normalize();
 

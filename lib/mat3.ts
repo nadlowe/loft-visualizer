@@ -1,4 +1,4 @@
-import { Vector2, Polyline2 } from "./geom";
+import { Vec2, Polyline2 } from "./geomTypes";
 
 // Matrix3 type for 2D transformations (3x3 matrix stored as flat array)
 // [a, b, tx, c, d, ty, 0, 0, 1] in row-major order

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "@jest/globals";
-import { polyline2Shift } from "../lib/geomOp";
+import { polyline2Shift } from "@/lib/polyline2";
 import { DIST_EPSILON } from "@/lib/scalar";
-import { Polyline2 } from "../lib/geom";
+import { Polyline2 } from "../lib/geomTypes";
 
 describe("polyline2Shift", () => {
     type TestCase = {

@@ -3,8 +3,8 @@ import {
     polyline2Transform,
     polyline2Translate,
     polyline2Rotate,
-} from "../lib/geomOp";
-import { Polyline2 } from "../lib/geom";
+} from "@/lib/polyline2";
+import { Polyline2 } from "../lib/geomTypes";
 import { mat3Identity, mat3Translate, mat3Rotate } from "../lib/mat3";
 
 describe("polyline2Transform", () => {
