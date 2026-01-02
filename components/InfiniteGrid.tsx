@@ -57,21 +57,21 @@ export function InfiniteGrid({
     superSectionSize = 120,
 
     cellLineWidthPx = 1.0,
-    sectionLineWidthPx = 1.1,
-    majorLineWidthPx = 1.1,
-    superLineWidthPx = 1.1,
+    sectionLineWidthPx = 1.0,
+    majorLineWidthPx = 1.0,
+    superLineWidthPx = 1.0,
 
     minCellSizePixels = 2,
     fadeBandPixels = 5,
 
     cellOpacity = 0.6,
-    sectionOpacity = 0.7,
-    majorOpacity = 0.7,
-    superOpacity = 0.7,
+    sectionOpacity = 0.6,
+    majorOpacity = 0.6,
+    superOpacity = 0.6,
 
     colorGrid = "#cccccc",
 
-    planeSize = 2000,
+    planeSize = 20000,
     followCamera = false,
     followSnap,
 }: InfiniteGridProps) {

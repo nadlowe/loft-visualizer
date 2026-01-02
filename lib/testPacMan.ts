@@ -71,7 +71,7 @@ export function createSquareWithHoleOnUpperRightCornerPolygon(): Polygon {
     // Outer boundary (CCW)
     const outer: Polyline2 = [
         -1,
-        -1, // bottom-left
+        -1.5, // bottom-left
         1,
         -1, // bottom-right
         1,

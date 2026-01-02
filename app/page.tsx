@@ -16,6 +16,7 @@ function DraggableMesh({
     geometry,
     defaultColor = "orange",
     dragColor = "hotpink",
+    snapSize = 1,
 }: {
     initialPosition?: [number, number, number];
     onDraggingChange?: (isDragging: boolean) => void;
@@ -23,6 +24,7 @@ function DraggableMesh({
     geometry?: THREE.BufferGeometry;
     defaultColor?: string;
     dragColor?: string;
+    snapSize?: number;
 }) {
     const meshRef = useRef<THREE.Mesh>(null);
     const [isDragging, setIsDragging] = useState(false);
@@ -82,6 +84,20 @@ function DraggableMesh({
         };
     }, [gl.domElement]);
 
+    // useFrame(() => {
+    //     if (!isDragging || !meshRef.current) return;
+
+    //     const plane = getPlane();
+    //     const intersection = new THREE.Vector3();
+    //     raycaster.setFromCamera(pointer, camera);
+
+    //     if (raycaster.ray.intersectPlane(plane, intersection)) {
+    //         // Apply offset and constrain to X-Z plane (keep Y constant)
+    //         const newPos = intersection.clone().add(offsetRef.current);
+    //         setPosition([newPos.x, position[1], newPos.z]);
+    //     }
+    // });
+
     useFrame(() => {
         if (!isDragging || !meshRef.current) return;
 
@@ -92,7 +108,12 @@ function DraggableMesh({
         if (raycaster.ray.intersectPlane(plane, intersection)) {
             // Apply offset and constrain to X-Z plane (keep Y constant)
             const newPos = intersection.clone().add(offsetRef.current);
-            setPosition([newPos.x, position[1], newPos.z]);
+
+            // Snap to grid
+            const snappedX = Math.round(newPos.x / snapSize) * snapSize;
+            const snappedZ = Math.round(newPos.z / snapSize) * snapSize;
+
+            setPosition([snappedX, position[1], snappedZ]);
         }
     });
 
@@ -187,16 +208,15 @@ function Scene({ is2D }: { is2D: boolean }) {
             {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
             <OrbitControls
                 ref={controlsRef}
-                enableDamping
-                dampingFactor={0.05}
+                enableDamping={false}
                 minDistance={1}
                 maxDistance={is2D ? 2000 : 5000}
                 rotateSpeed={0.5}
-                panSpeed={1}
-                zoomSpeed={is2D ? 0.5 : 1.2} // Slower zoom for orthographic
+                //panSpeed={1.0}
+                zoomSpeed={1.2} // Slower zoom for orthographic
                 screenSpacePanning={true} // Makes panning feel like grabbing and dragging the canvas
                 enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
-                enableZoom={!isDragging || is2D} // Disable zoom when dragging in 3D
+                enableZoom={true} // Disable zoom when dragging in 3D
                 enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
                 // Lock polar angle to top-down (90 degrees = Math.PI / 2)
                 minPolarAngle={is2D ? Math.PI / 2 : 0}
@@ -229,7 +249,7 @@ function CameraController({ is2D }: { is2D: boolean }) {
                 viewSize, // top
                 -viewSize, // bottom
                 0.1, // near
-                1000 // far
+                10000 // far
             );
 
             orthoCamera.position.set(0, 10, 0);
@@ -250,7 +270,7 @@ function CameraController({ is2D }: { is2D: boolean }) {
                 75,
                 size.width / size.height,
                 0.1,
-                1000
+                10000
             );
             perspCamera.position.set(-5, 5, 0);
             perspCamera.lookAt(0, 0, 0);
