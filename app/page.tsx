@@ -139,9 +139,14 @@ function DraggableMesh({
   );
 }
 
-function Scene({ is2D }: { is2D: boolean }) {
+function Scene({
+  is2D,
+  controlsRef,
+}: {
+  is2D: boolean;
+  controlsRef: React.RefObject<any>;
+}) {
   const { camera } = useThree();
-  const controlsRef = useRef<any>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Convert Pac-Man faces to Three.js geometries and extract initial positions
@@ -248,47 +253,198 @@ function Scene({ is2D }: { is2D: boolean }) {
   );
 }
 
-function CameraController({ is2D }: { is2D: boolean }) {
+function CameraController({
+  is2D,
+  controlsRef,
+}: {
+  is2D: boolean;
+  controlsRef: React.RefObject<any>;
+}) {
   const { set, camera, size } = useThree();
   const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null);
+  const perspCameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+
+  // Load saved camera state from localStorage
+  const loadCameraState = (mode: "2D" | "3D") => {
+    try {
+      const saved = localStorage.getItem(`camera_${mode}`);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("Failed to load camera state", e);
+    }
+    return null;
+  };
+
+  // Save camera state to localStorage
+  const saveCameraState = (
+    mode: "2D" | "3D",
+    camera: THREE.Camera,
+    controls?: any
+  ) => {
+    try {
+      const state: any = {
+        position: camera.position.toArray(),
+        rotation: camera.rotation.toArray(),
+        // For orthographic camera, also save bounds
+        ...(camera instanceof THREE.OrthographicCamera && {
+          zoom: camera.zoom,
+          left: camera.left,
+          right: camera.right,
+          top: camera.top,
+          bottom: camera.bottom,
+        }),
+        // For perspective camera, save fov and zoom
+        ...(camera instanceof THREE.PerspectiveCamera && {
+          zoom: camera.zoom,
+          fov: camera.fov,
+        }),
+        // Save OrbitControls target if available
+        ...(controls && {
+          target: controls.target?.toArray() || [0, 0, 0],
+        }),
+      };
+      localStorage.setItem(`camera_${mode}`, JSON.stringify(state));
+    } catch (e) {
+      console.warn("Failed to save camera state", e);
+    }
+  };
 
   useEffect(() => {
     if (is2D) {
-      // Create orthographic camera
+      // Save current 3D camera state before switching
+      if (perspCameraRef.current && controlsRef.current) {
+        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
+      }
+
       const aspect = size.width / size.height;
       const viewSize = 10;
-      const orthoCamera = new THREE.OrthographicCamera(
-        -viewSize * aspect, // left
-        viewSize * aspect, // right
-        viewSize, // top
-        -viewSize, // bottom
-        0.1, // near
-        10000 // far
-      );
 
-      orthoCamera.position.set(0, 0, 10);
-      orthoCamera.up.set(0, 1, 0); // Z is up
-      orthoCamera.lookAt(0, 0, 0);
+      // Try to load saved state
+      const saved = loadCameraState("2D");
+
+      let orthoCamera: THREE.OrthographicCamera;
+      if (orthoCameraRef.current) {
+        orthoCamera = orthoCameraRef.current;
+        // Update bounds on resize
+        orthoCamera.left = -viewSize * aspect;
+        orthoCamera.right = viewSize * aspect;
+        orthoCamera.top = viewSize;
+        orthoCamera.bottom = -viewSize;
+      } else {
+        orthoCamera = new THREE.OrthographicCamera(
+          -viewSize * aspect,
+          viewSize * aspect,
+          viewSize,
+          -viewSize,
+          0.1,
+          10000
+        );
+
+        if (saved) {
+          orthoCamera.position.fromArray(saved.position);
+          orthoCamera.rotation.fromArray(saved.rotation);
+          orthoCamera.zoom = saved.zoom || 1;
+          if (saved.left !== undefined) {
+            orthoCamera.left = saved.left;
+            orthoCamera.right = saved.right;
+            orthoCamera.top = saved.top;
+            orthoCamera.bottom = saved.bottom;
+          }
+          orthoCamera.up.set(0, 1, 0);
+        } else {
+          orthoCamera.position.set(0, 0, 10);
+          orthoCamera.up.set(0, 1, 0);
+          orthoCamera.lookAt(0, 0, 0);
+        }
+      }
 
       orthoCamera.updateProjectionMatrix();
-
       orthoCameraRef.current = orthoCamera;
       set({ camera: orthoCamera });
+
+      // Restore OrbitControls target after camera is set
+      if (saved?.target && controlsRef.current) {
+        // Use setTimeout to ensure controls are ready
+        setTimeout(() => {
+          if (controlsRef.current) {
+            controlsRef.current.target.fromArray(saved.target);
+            // Don't call update() in 2D mode as it resets camera rotation
+          }
+        }, 0);
+      }
     } else {
-      // Switch back to perspective camera
-      const perspCamera = new THREE.PerspectiveCamera(
-        75,
-        size.width / size.height,
-        0.1,
-        10000
-      );
-      perspCamera.position.set(0, -5, 5);
-      perspCamera.lookAt(0, 0, 0);
-      perspCamera.up.set(0, 0, 1); // Z is up
+      // Save current 2D camera state before switching
+      if (orthoCameraRef.current && controlsRef.current) {
+        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
+      }
+
+      // Try to load saved 3D state
+      const saved = loadCameraState("3D");
+
+      let perspCamera: THREE.PerspectiveCamera;
+      if (perspCameraRef.current) {
+        perspCamera = perspCameraRef.current;
+        perspCamera.aspect = size.width / size.height;
+      } else {
+        perspCamera = new THREE.PerspectiveCamera(
+          75,
+          size.width / size.height,
+          0.1,
+          10000
+        );
+
+        if (saved) {
+          perspCamera.position.fromArray(saved.position);
+          perspCamera.rotation.fromArray(saved.rotation);
+          perspCamera.zoom = saved.zoom || 1;
+          if (saved.fov) perspCamera.fov = saved.fov;
+          perspCamera.up.set(0, 0, 1);
+        } else {
+          perspCamera.position.set(0, -5, 5);
+          perspCamera.up.set(0, 0, 1);
+          perspCamera.lookAt(0, 0, 0);
+        }
+      }
+
       perspCamera.updateProjectionMatrix();
+      perspCameraRef.current = perspCamera;
       set({ camera: perspCamera });
+
+      // Restore OrbitControls target after camera is set
+      if (saved?.target && controlsRef.current) {
+        // Use setTimeout to ensure controls are ready
+        setTimeout(() => {
+          if (controlsRef.current) {
+            controlsRef.current.target.fromArray(saved.target);
+            controlsRef.current.update();
+          }
+        }, 0);
+      }
     }
-  }, [is2D, set, size]);
+  }, [is2D, set, size, controlsRef]);
+
+  // Save camera state periodically and on unmount
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (is2D && orthoCameraRef.current && controlsRef.current) {
+        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
+      } else if (!is2D && perspCameraRef.current && controlsRef.current) {
+        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
+      }
+    }, 1000); // Save every second
+
+    return () => {
+      clearInterval(interval);
+      // Save on unmount
+      if (is2D && orthoCameraRef.current && controlsRef.current) {
+        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
+      } else if (!is2D && perspCameraRef.current && controlsRef.current) {
+        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
+      }
+    };
+  }, [is2D, controlsRef]);
 
   // Update orthographic camera bounds on resize
   useEffect(() => {
@@ -300,17 +456,18 @@ function CameraController({ is2D }: { is2D: boolean }) {
       orthoCameraRef.current.top = viewSize;
       orthoCameraRef.current.bottom = -viewSize;
       orthoCameraRef.current.updateProjectionMatrix();
-    } else if (!is2D && camera instanceof THREE.PerspectiveCamera) {
-      camera.aspect = size.width / size.height;
-      camera.updateProjectionMatrix();
+    } else if (!is2D && perspCameraRef.current) {
+      perspCameraRef.current.aspect = size.width / size.height;
+      perspCameraRef.current.updateProjectionMatrix();
     }
-  }, [size, is2D, camera]);
+  }, [size, is2D]);
 
   return null;
 }
 
 export default function Home() {
   const [is2D, setIs2D] = useState(false);
+  const controlsRef = useRef<any>(null);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-gray-900">
@@ -329,8 +486,8 @@ export default function Home() {
 
       <div className="h-full w-full">
         <Canvas gl={{ antialias: true, alpha: false }}>
-          <CameraController is2D={is2D} />
-          <Scene is2D={is2D} />
+          <CameraController is2D={is2D} controlsRef={controlsRef} />
+          <Scene is2D={is2D} controlsRef={controlsRef} />
         </Canvas>
       </div>
     </div>
