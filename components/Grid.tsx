@@ -4,7 +4,7 @@ import { useMemo, useRef } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-interface InfiniteGridProps {
+interface GridProps {
   /** Base cell spacing in world units. (Your "inch") */
   cellSize?: number;
   /** Section spacing in world units. (Your "foot" = 12 * cellSize) */
@@ -37,7 +37,7 @@ interface InfiniteGridProps {
   followSnap?: number; // default superSectionSize
 }
 
-export function InfiniteGrid({
+export function Grid({
   cellSize = 1,
   sectionSize = 12,
   majorSectionSize = 12,
@@ -50,7 +50,7 @@ export function InfiniteGrid({
   planeSize = 40000,
   followCamera = false,
   followSnap,
-}: InfiniteGridProps) {
+}: GridProps) {
   const { camera, size } = useThree();
   const meshRef = useRef<THREE.Mesh>(null);
 

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { cn } from "../lib/utils";
 import { faceToThree } from "../lib/geomToThree";
 import { testPacManFaces } from "../lib/testPacMan";
-import { InfiniteGrid } from "@/components/InfiniteGrid";
+import { Grid } from "@/components/Grid";
 import { DraggableMesh } from "@/components/DraggableMesh";
 
 function Scene({
@@ -119,7 +119,7 @@ function Scene({
 
       {/* Helpers */}
       <axesHelper args={[2]} />
-      <InfiniteGrid cellSize={1} sectionSize={12} followCamera={true} />
+      <Grid cellSize={1} sectionSize={12} followCamera={true} />
     </>
   );
 }
