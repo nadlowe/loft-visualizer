@@ -502,4 +502,3 @@ describe("vec3Rotate", () => {
     expect(result).toEqual([0, 0, 0]);
   });
 });
-

@@ -1,6 +1,6 @@
 "use client";
 
-import { Canvas, useThree, useFrame } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -8,136 +8,7 @@ import { cn } from "../lib/utils";
 import { faceToThree } from "../lib/geomToThree";
 import { testPacManFaces } from "../lib/testPacMan";
 import { InfiniteGrid } from "@/components/InfiniteGrid";
-
-function DraggableMesh({
-  initialPosition = [0, 0, 0],
-  onDraggingChange,
-  children,
-  geometry,
-  defaultColor = "orange",
-  dragColor = "hotpink",
-  snapSize = 1,
-}: {
-  initialPosition?: [number, number, number];
-  onDraggingChange?: (isDragging: boolean) => void;
-  children?: React.ReactNode;
-  geometry?: THREE.BufferGeometry;
-  defaultColor?: string;
-  dragColor?: string;
-  snapSize?: number;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] =
-    useState<[number, number, number]>(initialPosition);
-  const { raycaster, camera, pointer, gl } = useThree();
-  const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
-  const pointerIdRef = useRef<number | null>(null);
-
-  // X-Y plane is the horizontal plane (Z is up)
-  // Plane normal (0, 0, 1) with constant -Z defines the X-Y plane at height Z
-  const getPlane = () => {
-    return new THREE.Plane(new THREE.Vector3(0, 0, 1), -position[2]);
-  };
-
-  const handlePointerUp = () => {
-    setIsDragging(false);
-    onDraggingChange?.(false);
-    if (pointerIdRef.current !== null) {
-      gl.domElement.releasePointerCapture(pointerIdRef.current);
-      pointerIdRef.current = null;
-    }
-  };
-
-  const handlePointerDown = (e: any) => {
-    e.stopPropagation();
-
-    const plane = getPlane();
-    const intersection = new THREE.Vector3();
-    raycaster.setFromCamera(pointer, camera);
-
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Calculate offset from mesh center to intersection point
-      const meshPos = new THREE.Vector3(...position);
-      // Intersection is on X-Y plane, so use X and Y, keep Z constant
-      const planeIntersection = new THREE.Vector3(
-        intersection.x,
-        intersection.y,
-        position[2]
-      );
-      offsetRef.current.subVectors(meshPos, planeIntersection);
-      setIsDragging(true);
-      onDraggingChange?.(true);
-
-      // Capture pointer to continue tracking even outside mesh
-      pointerIdRef.current = e.pointerId;
-      gl.domElement.setPointerCapture(e.pointerId);
-    }
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (pointerIdRef.current !== null) {
-        gl.domElement.releasePointerCapture(pointerIdRef.current);
-      }
-    };
-  }, [gl.domElement]);
-
-  // useFrame(() => {
-  //     if (!isDragging || !meshRef.current) return;
-
-  //     const plane = getPlane();
-  //     const intersection = new THREE.Vector3();
-  //     raycaster.setFromCamera(pointer, camera);
-
-  //     if (raycaster.ray.intersectPlane(plane, intersection)) {
-  //         // Apply offset and constrain to X-Y plane (keep Z constant)
-  //         const newPos = intersection.clone().add(offsetRef.current);
-  //         setPosition([newPos.x, newPos.y, position[2]]);
-  //     }
-  // });
-
-  useFrame(() => {
-    if (!isDragging || !meshRef.current) return;
-
-    const plane = getPlane();
-    const intersection = new THREE.Vector3();
-    raycaster.setFromCamera(pointer, camera);
-
-    if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Apply offset and constrain to X-Y plane (keep Z constant)
-      const newPos = intersection.clone().add(offsetRef.current);
-
-      // Snap to grid
-      const snappedX = Math.round(newPos.x / snapSize) * snapSize;
-      const snappedY = Math.round(newPos.y / snapSize) * snapSize;
-
-      setPosition([snappedX, snappedY, position[2]]);
-    }
-  });
-
-  return (
-    <mesh
-      ref={meshRef}
-      position={position}
-      geometry={geometry}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
-    >
-      {children}
-      <meshStandardMaterial
-        color={isDragging ? dragColor : defaultColor}
-        opacity={isDragging ? 0.8 : 1}
-        transparent
-      />
-    </mesh>
-  );
-}
+import { DraggableMesh } from "@/components/DraggableMesh";
 
 function Scene({
   is2D,
@@ -263,66 +134,46 @@ function CameraController({
   const { set, camera, size } = useThree();
   const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const perspCameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-
-  // Load saved camera state from localStorage
-  const loadCameraState = (mode: "2D" | "3D") => {
-    try {
-      const saved = localStorage.getItem(`camera_${mode}`);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.warn("Failed to load camera state", e);
-    }
-    return null;
-  };
-
-  // Save camera state to localStorage
-  const saveCameraState = (
-    mode: "2D" | "3D",
-    camera: THREE.Camera,
-    controls?: any
-  ) => {
-    try {
-      const state: any = {
-        position: camera.position.toArray(),
-        rotation: camera.rotation.toArray(),
-        // For orthographic camera, also save bounds
-        ...(camera instanceof THREE.OrthographicCamera && {
-          zoom: camera.zoom,
-          left: camera.left,
-          right: camera.right,
-          top: camera.top,
-          bottom: camera.bottom,
-        }),
-        // For perspective camera, save fov and zoom
-        ...(camera instanceof THREE.PerspectiveCamera && {
-          zoom: camera.zoom,
-          fov: camera.fov,
-        }),
-        // Save OrbitControls target if available
-        ...(controls && {
-          target: controls.target?.toArray() || [0, 0, 0],
-        }),
-      };
-      localStorage.setItem(`camera_${mode}`, JSON.stringify(state));
-    } catch (e) {
-      console.warn("Failed to save camera state", e);
-    }
-  };
+  // Store camera state in memory (clears on refresh)
+  const camera2DStateRef = useRef<{
+    position: [number, number, number];
+    rotation: [number, number, number];
+    zoom: number;
+    target: [number, number, number];
+  } | null>(null);
+  const camera3DStateRef = useRef<{
+    position: [number, number, number];
+    rotation: [number, number, number];
+    zoom: number;
+    target: [number, number, number];
+  } | null>(null);
 
   useEffect(() => {
     if (is2D) {
       // Save current 3D camera state before switching
       if (perspCameraRef.current && controlsRef.current) {
-        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
+        camera3DStateRef.current = {
+          position: perspCameraRef.current.position.toArray() as [
+            number,
+            number,
+            number,
+          ],
+          rotation: perspCameraRef.current.rotation.toArray() as [
+            number,
+            number,
+            number,
+          ],
+          zoom: perspCameraRef.current.zoom,
+          target: controlsRef.current.target.toArray() as [
+            number,
+            number,
+            number,
+          ],
+        };
       }
 
       const aspect = size.width / size.height;
       const viewSize = 10;
-
-      // Try to load saved state
-      const saved = loadCameraState("2D");
 
       let orthoCamera: THREE.OrthographicCamera;
       if (orthoCameraRef.current) {
@@ -342,16 +193,11 @@ function CameraController({
           10000
         );
 
-        if (saved) {
-          orthoCamera.position.fromArray(saved.position);
-          orthoCamera.rotation.fromArray(saved.rotation);
-          orthoCamera.zoom = saved.zoom || 1;
-          if (saved.left !== undefined) {
-            orthoCamera.left = saved.left;
-            orthoCamera.right = saved.right;
-            orthoCamera.top = saved.top;
-            orthoCamera.bottom = saved.bottom;
-          }
+        // Restore saved state if available
+        if (camera2DStateRef.current) {
+          orthoCamera.position.fromArray(camera2DStateRef.current.position);
+          orthoCamera.rotation.fromArray(camera2DStateRef.current.rotation);
+          orthoCamera.zoom = camera2DStateRef.current.zoom;
           orthoCamera.up.set(0, 1, 0);
         } else {
           orthoCamera.position.set(0, 0, 10);
@@ -365,11 +211,13 @@ function CameraController({
       set({ camera: orthoCamera });
 
       // Restore OrbitControls target after camera is set
-      if (saved?.target && controlsRef.current) {
+      if (camera2DStateRef.current?.target && controlsRef.current) {
         // Use setTimeout to ensure controls are ready
         setTimeout(() => {
           if (controlsRef.current) {
-            controlsRef.current.target.fromArray(saved.target);
+            controlsRef.current.target.fromArray(
+              camera2DStateRef.current!.target
+            );
             // Don't call update() in 2D mode as it resets camera rotation
           }
         }, 0);
@@ -377,11 +225,25 @@ function CameraController({
     } else {
       // Save current 2D camera state before switching
       if (orthoCameraRef.current && controlsRef.current) {
-        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
+        camera2DStateRef.current = {
+          position: orthoCameraRef.current.position.toArray() as [
+            number,
+            number,
+            number,
+          ],
+          rotation: orthoCameraRef.current.rotation.toArray() as [
+            number,
+            number,
+            number,
+          ],
+          zoom: orthoCameraRef.current.zoom,
+          target: controlsRef.current.target.toArray() as [
+            number,
+            number,
+            number,
+          ],
+        };
       }
-
-      // Try to load saved 3D state
-      const saved = loadCameraState("3D");
 
       let perspCamera: THREE.PerspectiveCamera;
       if (perspCameraRef.current) {
@@ -395,11 +257,11 @@ function CameraController({
           10000
         );
 
-        if (saved) {
-          perspCamera.position.fromArray(saved.position);
-          perspCamera.rotation.fromArray(saved.rotation);
-          perspCamera.zoom = saved.zoom || 1;
-          if (saved.fov) perspCamera.fov = saved.fov;
+        // Restore saved state if available
+        if (camera3DStateRef.current) {
+          perspCamera.position.fromArray(camera3DStateRef.current.position);
+          perspCamera.rotation.fromArray(camera3DStateRef.current.rotation);
+          perspCamera.zoom = camera3DStateRef.current.zoom;
           perspCamera.up.set(0, 0, 1);
         } else {
           perspCamera.position.set(0, -5, 5);
@@ -413,38 +275,19 @@ function CameraController({
       set({ camera: perspCamera });
 
       // Restore OrbitControls target after camera is set
-      if (saved?.target && controlsRef.current) {
+      if (camera3DStateRef.current?.target && controlsRef.current) {
         // Use setTimeout to ensure controls are ready
         setTimeout(() => {
           if (controlsRef.current) {
-            controlsRef.current.target.fromArray(saved.target);
+            controlsRef.current.target.fromArray(
+              camera3DStateRef.current!.target
+            );
             controlsRef.current.update();
           }
         }, 0);
       }
     }
   }, [is2D, set, size, controlsRef]);
-
-  // Save camera state periodically and on unmount
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (is2D && orthoCameraRef.current && controlsRef.current) {
-        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
-      } else if (!is2D && perspCameraRef.current && controlsRef.current) {
-        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
-      }
-    }, 1000); // Save every second
-
-    return () => {
-      clearInterval(interval);
-      // Save on unmount
-      if (is2D && orthoCameraRef.current && controlsRef.current) {
-        saveCameraState("2D", orthoCameraRef.current, controlsRef.current);
-      } else if (!is2D && perspCameraRef.current && controlsRef.current) {
-        saveCameraState("3D", perspCameraRef.current, controlsRef.current);
-      }
-    };
-  }, [is2D, controlsRef]);
 
   // Update orthographic camera bounds on resize
   useEffect(() => {
