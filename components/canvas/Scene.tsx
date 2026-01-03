@@ -1,10 +1,11 @@
 "use client";
-import { faceToThree } from "@/lib/conversion/geomToThree";
 import { testPacManFaces } from "@/lib/testPacMan";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import * as THREE from "three";
+import { Face } from "@/lib/geom/geomTypes";
+import { WorkPlaneWidget } from "./WorkPlaneWidget";
 import { DraggableMesh } from "./DraggableMesh";
 import { Grid } from "./Grid";
 
@@ -17,14 +18,8 @@ export function Scene({
 }) {
   const { camera } = useThree();
   const [isDragging, setIsDragging] = useState(false);
-
-  // Convert Pac-Man faces to Three.js geometries and extract initial positions
-  const faceData = useMemo(() => {
-    return testPacManFaces.map((face) => {
-      const { geometry, position } = faceToThree(face);
-      return { geometry, initialPosition: position };
-    });
-  }, []);
+  const [faces, setFaces] = useState<Face[]>(testPacManFaces);
+  const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(0);
 
   useEffect(() => {
     // Reset controls target when camera changes
@@ -45,18 +40,22 @@ export function Scene({
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
-      {/* Render draggable Pac-Man faces */}
-      {faceData.map(({ geometry, initialPosition }, index) => (
-        <DraggableMesh
+      {/* Render workPlane widgets for Pac-Man faces */}
+      {faces.map((face, index) => (
+        <WorkPlaneWidget
           key={index}
-          initialPosition={initialPosition}
+          shape={face}
+          onShapeChange={(newShape) => {
+            const newFaces = [...faces];
+            newFaces[index] = newShape;
+            setFaces(newFaces);
+          }}
           onDraggingChange={setIsDragging}
-          geometry={geometry}
-          defaultColor={index % 2 === 0 ? "#FFD700" : "#FFA500"} // Gold and orange
-          dragColor={index % 2 === 0 ? "#FFA500" : "#FF8C00"} // Darker orange when dragging
-        >
-          <meshStandardMaterial side={THREE.DoubleSide} />
-        </DraggableMesh>
+          enabled={true}
+          showTranslate={true}
+          showRotate={true}
+          showHelpers={true}
+        />
       ))}
 
       {/* Draggable cube */}

@@ -44,6 +44,7 @@ export function plane3ToWorkPlane(plane: Plane3): {
   plane: THREE.Plane;
   matrix: THREE.Matrix4;
   matrixInverse: THREE.Matrix4;
+  position: [number, number, number];
 } {
   // Normalize the plane's normal (this will be the Z-axis of local space)
   const normalGeom = vec3Normalize(plane.normal);
@@ -106,41 +107,6 @@ export function plane3ToWorkPlane(plane: Plane3): {
   const planeConstant = -normalThree.dot(originThree);
   const threePlane = new THREE.Plane(normalThree.clone(), planeConstant);
 
-  return {
-    plane: threePlane,
-    matrix,
-    matrixInverse,
-  };
-}
-
-/**
- * Converts a Face to a THREE.BufferGeometry for rendering.
- *
- * The polygon's 2D coordinates (x, y) are in the plane's local space.
- * We transform them to 3D using the plane's work plane transformation matrix.
- * The geometry is transformed with rotation only (position handled via mesh.position).
- *
- * Returns an object with the geometry and the position from the plane's origin.
- */
-export function faceToThree(face: Face): {
-  geometry: THREE.BufferGeometry;
-  position: [number, number, number];
-} {
-  const { plane, polygon } = face;
-
-  // Step 1: Convert polygon to 2D shape (pure 2D operation)
-  const shape = polygonToShape(polygon);
-
-  // Step 2: Create work plane entity from the plane
-  const workPlane = plane3ToWorkPlane(plane);
-
-  // Step 3: Create geometry in XY plane, then apply rotation only
-  // (translation is handled separately via mesh.position)
-  const shapeGeometry = new THREE.ShapeGeometry(shape);
-  const rotationMatrix = workPlane.matrix.clone();
-  rotationMatrix.setPosition(0, 0, 0); // Remove translation, keep only rotation
-  shapeGeometry.applyMatrix4(rotationMatrix);
-
   // Extract position from plane origin
   const position: [number, number, number] = [
     plane.origin[0],
@@ -148,5 +114,52 @@ export function faceToThree(face: Face): {
     plane.origin[2],
   ];
 
-  return { geometry: shapeGeometry, position };
+  return {
+    plane: threePlane,
+    matrix,
+    matrixInverse,
+    position,
+  };
+}
+
+/**
+ * Converts a Face to workPlane and shapeGeometry for rendering.
+ *
+ * The Face is the persisted storage form (geom kernel).
+ * This function generates:
+ * - workPlane: THREE.js work plane entity from the Face's Plane3 (includes position)
+ * - shapeGeometry: THREE.BufferGeometry from the Face's Polygon
+ *
+ * The polygon's 2D coordinates (x, y) are in the plane's local space.
+ * The shapeGeometry is transformed with rotation only (position is in workPlane).
+ *
+ * Returns an object with workPlane and shapeGeometry.
+ */
+export function faceToThree(face: Face): {
+  workPlane: {
+    plane: THREE.Plane;
+    matrix: THREE.Matrix4;
+    matrixInverse: THREE.Matrix4;
+    position: [number, number, number];
+  };
+  shapeGeometry: THREE.BufferGeometry;
+} {
+  const { plane, polygon } = face;
+
+  // Generate workPlane from Plane3 (includes position)
+  const workPlane = plane3ToWorkPlane(plane);
+
+  // Generate shape from Polygon
+  const shape = polygonToShape(polygon);
+
+  // Create shapeGeometry and apply rotation transformation
+  const shapeGeometry = new THREE.ShapeGeometry(shape);
+  const rotationMatrix = workPlane.matrix.clone();
+  rotationMatrix.setPosition(0, 0, 0); // Remove translation, keep only rotation
+  shapeGeometry.applyMatrix4(rotationMatrix);
+
+  return {
+    workPlane,
+    shapeGeometry,
+  };
 }
