@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { TransformControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
@@ -34,6 +34,7 @@ export function WorkPlaneWidget({
   const rotationControlsAnchorRef = useRef<THREE.Group>(null);
   const translateControlsRef = useRef<any>(null);
   const rotateControlsRef = useRef<any>(null);
+  const [isShiftHeld, setIsShiftHeld] = useState(false);
   const isRotatingRef = useRef(false);
   const isTranslatingRef = useRef(false);
   const initialRotationRef = useRef<THREE.Euler | null>(null);
@@ -43,6 +44,29 @@ export function WorkPlaneWidget({
 
   const workPlane = plane3ToWorkPlane(shape.plane);
   const { shapeGeometry } = faceToThree(shape);
+
+  // Track Shift key state
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Shift" || e.shiftKey) {
+        setIsShiftHeld(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Shift" || !e.shiftKey) {
+        setIsShiftHeld(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, []);
 
   // Initialize translation group position from workPlane origin
   useEffect(() => {
@@ -214,71 +238,79 @@ export function WorkPlaneWidget({
       </group>
 
       {/* Transform controls for rotation - attached to empty group at origin */}
-      {enabled && showRotate && rotationControlsAnchorRef.current && (
-        <TransformControls
-          ref={rotateControlsRef}
-          object={rotationControlsAnchorRef.current}
-          mode="rotate"
-          onChange={handleRotationChange}
-          onMouseDown={() => {
-            if (rotationControlsAnchorRef.current) {
-              // Store initial state when dragging starts
-              initialRotationRef.current =
-                rotationControlsAnchorRef.current.rotation.clone();
-              initialNormalRef.current = new THREE.Vector3(
-                shape.plane.normal[0],
-                shape.plane.normal[1],
-                shape.plane.normal[2]
-              );
-              initialURef.current = shape.plane.u
-                ? new THREE.Vector3(
-                    shape.plane.u[0],
-                    shape.plane.u[1],
-                    shape.plane.u[2]
-                  )
-                : null;
-            }
-            isRotatingRef.current = true;
-            onDraggingChange?.(true);
-          }}
-          onMouseUp={() => {
-            isRotatingRef.current = false;
-            initialRotationRef.current = null;
-            initialNormalRef.current = null;
-            initialURef.current = null;
-            onDraggingChange?.(false);
-          }}
-          onPointerUp={() => {
-            isRotatingRef.current = false;
-            initialRotationRef.current = null;
-            initialNormalRef.current = null;
-            initialURef.current = null;
-            onDraggingChange?.(false);
-          }}
-        />
-      )}
+      {/* Only show when Shift is held */}
+      {enabled &&
+        showRotate &&
+        isShiftHeld &&
+        rotationControlsAnchorRef.current && (
+          <TransformControls
+            ref={rotateControlsRef}
+            object={rotationControlsAnchorRef.current}
+            mode="rotate"
+            onChange={handleRotationChange}
+            onMouseDown={() => {
+              if (rotationControlsAnchorRef.current) {
+                // Store initial state when dragging starts
+                initialRotationRef.current =
+                  rotationControlsAnchorRef.current.rotation.clone();
+                initialNormalRef.current = new THREE.Vector3(
+                  shape.plane.normal[0],
+                  shape.plane.normal[1],
+                  shape.plane.normal[2]
+                );
+                initialURef.current = shape.plane.u
+                  ? new THREE.Vector3(
+                      shape.plane.u[0],
+                      shape.plane.u[1],
+                      shape.plane.u[2]
+                    )
+                  : null;
+              }
+              isRotatingRef.current = true;
+              onDraggingChange?.(true);
+            }}
+            onMouseUp={() => {
+              isRotatingRef.current = false;
+              initialRotationRef.current = null;
+              initialNormalRef.current = null;
+              initialURef.current = null;
+              onDraggingChange?.(false);
+            }}
+            onPointerUp={() => {
+              isRotatingRef.current = false;
+              initialRotationRef.current = null;
+              initialNormalRef.current = null;
+              initialURef.current = null;
+              onDraggingChange?.(false);
+            }}
+          />
+        )}
 
       {/* Transform controls for translation - attached to translation group */}
-      {enabled && showTranslate && translationGroupRef.current && (
-        <TransformControls
-          ref={translateControlsRef}
-          object={translationGroupRef.current}
-          mode="translate"
-          onChange={handleTranslationChange}
-          onMouseDown={() => {
-            isTranslatingRef.current = true;
-            onDraggingChange?.(true);
-          }}
-          onMouseUp={() => {
-            isTranslatingRef.current = false;
-            onDraggingChange?.(false);
-          }}
-          onPointerUp={() => {
-            isTranslatingRef.current = false;
-            onDraggingChange?.(false);
-          }}
-        />
-      )}
+      {/* Hide when Shift is held */}
+      {enabled &&
+        showTranslate &&
+        !isShiftHeld &&
+        translationGroupRef.current && (
+          <TransformControls
+            ref={translateControlsRef}
+            object={translationGroupRef.current}
+            mode="translate"
+            onChange={handleTranslationChange}
+            onMouseDown={() => {
+              isTranslatingRef.current = true;
+              onDraggingChange?.(true);
+            }}
+            onMouseUp={() => {
+              isTranslatingRef.current = false;
+              onDraggingChange?.(false);
+            }}
+            onPointerUp={() => {
+              isTranslatingRef.current = false;
+              onDraggingChange?.(false);
+            }}
+          />
+        )}
     </group>
   );
 }
