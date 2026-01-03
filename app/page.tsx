@@ -119,7 +119,7 @@ function Scene({
 
       {/* Helpers */}
       <axesHelper args={[2]} />
-      <InfiniteGrid cellSize={1} sectionSize={12} />
+      <InfiniteGrid cellSize={1} sectionSize={12} followCamera={true} />
     </>
   );
 }
@@ -190,7 +190,7 @@ function CameraController({
           viewSize,
           -viewSize,
           0.1,
-          10000
+          40000
         );
 
         // Restore saved state if available
@@ -254,7 +254,7 @@ function CameraController({
           75,
           size.width / size.height,
           0.1,
-          10000
+          40000
         );
 
         // Restore saved state if available

@@ -6,43 +6,30 @@ import * as THREE from "three";
 
 interface InfiniteGridProps {
   /** Base cell spacing in world units. (Your "inch") */
-  cellSize?: number; // default 1
+  cellSize?: number;
   /** Section spacing in world units. (Your "foot" = 12 * cellSize) */
-  sectionSize?: number; // default 12
+  sectionSize?: number;
   /** Major spacing in world units. (Your "10ft" = 120 * cellSize) */
   majorSectionSize?: number; // default 120
   /** Super-major spacing in world units. (Your "100ft" = 1200 * cellSize) */
   superSectionSize?: number; // default 1200
-
-  /** Constant pixel widths for each grid level (independent of zoom). */
-  cellLineWidthPx?: number; // default 1.0
-  sectionLineWidthPx?: number; // default 1.25
-  majorLineWidthPx?: number; // default 1.5
-  superLineWidthPx?: number; // default 1.75
-
+  /** Constant pixel width for all grid levels (independent of zoom). */
+  lineWidthPx?: number; // default 1.0
   /** When a grid level's cell is smaller than this many pixels, it fades out. */
   minCellSizePixels?: number; // default 2
   /** Fade band in pixels for smooth transitions (bigger = softer). */
   fadeBandPixels?: number; // default 5
-
-  /** Opacity multipliers per level (0..1). */
-  cellOpacity?: number; // default 0.35
-  sectionOpacity?: number; // default 0.45
-  majorOpacity?: number; // default 0.55
-  superOpacity?: number; // default 0.7
-
+  /** Opacity multiplier for all grid levels (0..1). */
+  opacity?: number; // default 0.6
   /** Grid color */
   colorGrid?: THREE.Color | string | number;
-
   /** Plane size (world units). If you pan very far, consider "followCamera" below. */
   planeSize?: number; // default 2000
-
   /**
    * If true, the plane follows the camera in XY (good for large panning ranges).
    * Keeps the grid near the camera and reduces floating-point jitter far from origin.
    */
   followCamera?: boolean;
-
   /**
    * Snap the follower plane to this multiple (in world units).
    * Usually set this to your largest spacing (e.g. superSectionSize) to keep movement stable.
@@ -55,23 +42,12 @@ export function InfiniteGrid({
   sectionSize = 12,
   majorSectionSize = 12,
   superSectionSize = 12,
-
-  cellLineWidthPx = 1.0,
-  sectionLineWidthPx = 1.0,
-  majorLineWidthPx = 1.0,
-  superLineWidthPx = 1.0,
-
+  lineWidthPx = 1.0,
   minCellSizePixels = 2,
   fadeBandPixels = 5,
-
-  cellOpacity = 0.6,
-  sectionOpacity = 0.6,
-  majorOpacity = 0.6,
-  superOpacity = 0.6,
-
+  opacity = 0.4,
   colorGrid = "#cccccc",
-
-  planeSize = 20000,
+  planeSize = 40000,
   followCamera = false,
   followSnap,
 }: InfiniteGridProps) {
@@ -93,20 +69,20 @@ export function InfiniteGrid({
         uSuperSize: { value: superSectionSize },
 
         // line widths in pixels (constant visual thickness)
-        uMinorPxWidth: { value: cellLineWidthPx },
-        uSectionPxWidth: { value: sectionLineWidthPx },
-        uMajorPxWidth: { value: majorLineWidthPx },
-        uSuperPxWidth: { value: superLineWidthPx },
+        uMinorPxWidth: { value: lineWidthPx },
+        uSectionPxWidth: { value: lineWidthPx },
+        uMajorPxWidth: { value: lineWidthPx },
+        uSuperPxWidth: { value: lineWidthPx },
 
         // fade behavior
         uMinPx: { value: minCellSizePixels },
         uFadePx: { value: fadeBandPixels },
 
         // per-level opacity
-        uMinorOpacity: { value: cellOpacity },
-        uSectionOpacity: { value: sectionOpacity },
-        uMajorOpacity: { value: majorOpacity },
-        uSuperOpacity: { value: superOpacity },
+        uMinorOpacity: { value: opacity },
+        uSectionOpacity: { value: opacity },
+        uMajorOpacity: { value: opacity },
+        uSuperOpacity: { value: opacity },
 
         uGridColor: { value: gridColor },
 
@@ -229,16 +205,10 @@ export function InfiniteGrid({
     sectionSize,
     majorSectionSize,
     superSectionSize,
-    cellLineWidthPx,
-    sectionLineWidthPx,
-    majorLineWidthPx,
-    superLineWidthPx,
+    lineWidthPx,
     minCellSizePixels,
     fadeBandPixels,
-    cellOpacity,
-    sectionOpacity,
-    majorOpacity,
-    superOpacity,
+    opacity,
     colorGrid,
   ]);
 
