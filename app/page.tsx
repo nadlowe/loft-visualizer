@@ -34,10 +34,10 @@ function DraggableMesh({
   const offsetRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const pointerIdRef = useRef<number | null>(null);
 
-  // X-Z plane is the horizontal plane in Three.js (Y is up)
-  // Plane normal (0, 1, 0) with constant -Y defines the X-Z plane at height Y
+  // X-Y plane is the horizontal plane (Z is up)
+  // Plane normal (0, 0, 1) with constant -Z defines the X-Y plane at height Z
   const getPlane = () => {
-    return new THREE.Plane(new THREE.Vector3(0, 1, 0), -position[1]);
+    return new THREE.Plane(new THREE.Vector3(0, 0, 1), -position[2]);
   };
 
   const handlePointerUp = () => {
@@ -59,11 +59,11 @@ function DraggableMesh({
     if (raycaster.ray.intersectPlane(plane, intersection)) {
       // Calculate offset from mesh center to intersection point
       const meshPos = new THREE.Vector3(...position);
-      // Intersection is on X-Z plane, so use X and Z, keep Y constant
+      // Intersection is on X-Y plane, so use X and Y, keep Z constant
       const planeIntersection = new THREE.Vector3(
         intersection.x,
-        position[1],
-        intersection.z
+        intersection.y,
+        position[2]
       );
       offsetRef.current.subVectors(meshPos, planeIntersection);
       setIsDragging(true);
@@ -92,9 +92,9 @@ function DraggableMesh({
   //     raycaster.setFromCamera(pointer, camera);
 
   //     if (raycaster.ray.intersectPlane(plane, intersection)) {
-  //         // Apply offset and constrain to X-Z plane (keep Y constant)
+  //         // Apply offset and constrain to X-Y plane (keep Z constant)
   //         const newPos = intersection.clone().add(offsetRef.current);
-  //         setPosition([newPos.x, position[1], newPos.z]);
+  //         setPosition([newPos.x, newPos.y, position[2]]);
   //     }
   // });
 
@@ -106,14 +106,14 @@ function DraggableMesh({
     raycaster.setFromCamera(pointer, camera);
 
     if (raycaster.ray.intersectPlane(plane, intersection)) {
-      // Apply offset and constrain to X-Z plane (keep Y constant)
+      // Apply offset and constrain to X-Y plane (keep Z constant)
       const newPos = intersection.clone().add(offsetRef.current);
 
       // Snap to grid
       const snappedX = Math.round(newPos.x / snapSize) * snapSize;
-      const snappedZ = Math.round(newPos.z / snapSize) * snapSize;
+      const snappedY = Math.round(newPos.y / snapSize) * snapSize;
 
-      setPosition([snappedX, position[1], snappedZ]);
+      setPosition([snappedX, snappedY, position[2]]);
     }
   });
 
@@ -147,7 +147,15 @@ function Scene({ is2D }: { is2D: boolean }) {
   // Convert Pac-Man faces to Three.js geometries and extract initial positions
   const pacManData = useMemo(() => {
     return testPacManFaces.map((face) => {
-      const { geometry, position: initialPosition } = faceToThree(face);
+      const geometry = faceToThree(face);
+      // Extract position from face.plane.origin for initial positioning
+      // Use directly - no coordinate conversion (THREE.js uses Z as up)
+      const origin = face.plane.origin;
+      const initialPosition: [number, number, number] = [
+        origin[0],
+        origin[1],
+        origin[2],
+      ];
       return { geometry, initialPosition };
     });
   }, []);
@@ -202,7 +210,13 @@ function Scene({ is2D }: { is2D: boolean }) {
         defaultColor="blue"
         dragColor="cyan"
       >
-        <coneGeometry args={[0.7, 1, 4]} />
+        <meshStandardMaterial />
+        {/* Rotate cone to point along Z axis instead of Y */}
+        <group rotation={[Math.PI / 2, 0, 0]}>
+          <mesh>
+            <coneGeometry args={[0.7, 1, 4]} />
+          </mesh>
+        </group>
       </DraggableMesh>
 
       {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
@@ -252,13 +266,9 @@ function CameraController({ is2D }: { is2D: boolean }) {
         10000 // far
       );
 
-      orthoCamera.position.set(0, 10, 0);
-      orthoCamera.up.set(1, 0, 0);
+      orthoCamera.position.set(0, 0, 10);
+      orthoCamera.up.set(0, 1, 0); // Z is up
       orthoCamera.lookAt(0, 0, 0);
-
-      const forward = new THREE.Vector3();
-      orthoCamera.getWorldDirection(forward);
-      orthoCamera.rotateOnAxis(forward, -Math.PI / 2);
 
       orthoCamera.updateProjectionMatrix();
 
@@ -272,9 +282,9 @@ function CameraController({ is2D }: { is2D: boolean }) {
         0.1,
         10000
       );
-      perspCamera.position.set(-5, 5, 0);
+      perspCamera.position.set(0, -5, 5);
       perspCamera.lookAt(0, 0, 0);
-      perspCamera.up.set(0, 1, 0);
+      perspCamera.up.set(0, 0, 1); // Z is up
       perspCamera.updateProjectionMatrix();
       set({ camera: perspCamera });
     }

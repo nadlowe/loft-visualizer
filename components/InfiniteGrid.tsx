@@ -38,7 +38,7 @@ interface InfiniteGridProps {
   planeSize?: number; // default 2000
 
   /**
-   * If true, the plane follows the camera in XZ (good for large panning ranges).
+   * If true, the plane follows the camera in XY (good for large panning ranges).
    * Keeps the grid near the camera and reduces floating-point jitter far from origin.
    */
   followCamera?: boolean;
@@ -185,7 +185,7 @@ export function InfiniteGrid({
         }       
 
         void main() {
-          vec2 coord = vWorldPosition.xz;
+          vec2 coord = vWorldPosition.xy;
 
           // Pixel size of each grid spacing
           float minorPx = uMinorSize   * uViewScale;
@@ -246,11 +246,11 @@ export function InfiniteGrid({
     return new THREE.PlaneGeometry(planeSize, planeSize);
   }, [planeSize]);
 
-  // Helper: compute pixels-per-world-unit at the grid plane (y = 0)
+  // Helper: compute pixels-per-world-unit at the grid plane (z = 0)
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const ndcCenter = useMemo(() => new THREE.Vector2(0, 0), []);
   const plane = useMemo(
-    () => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), // y = 0
+    () => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), // z = 0
     []
   );
 
@@ -260,7 +260,7 @@ export function InfiniteGrid({
 
     // Compute uViewScale (px per world unit) robustly for both ortho + perspective,
     // even when the camera tilts/orbits: sample at the intersection of the camera's
-    // center ray with the y=0 plane.
+    // center ray with the z=0 plane.
     let viewScale = 1;
 
     if (camera instanceof THREE.OrthographicCamera) {
@@ -274,7 +274,7 @@ export function InfiniteGrid({
 
       // If we're looking parallel to the plane and can't intersect, fall back to old heuristic
       if (!hit) {
-        const distance = Math.abs(camera.position.y);
+        const distance = Math.abs(camera.position.z);
         const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
         const viewHeightWorld = 2.0 * distance * Math.tan(fov / 2.0);
         viewScale = size.height / viewHeightWorld;
@@ -300,19 +300,19 @@ export function InfiniteGrid({
       const snap = followSnap ?? superSectionSize;
 
       const x = camera.position.x;
-      const z = camera.position.z;
+      const y = camera.position.y;
 
       const sx = snap > 0 ? Math.round(x / snap) * snap : x;
-      const sz = snap > 0 ? Math.round(z / snap) * snap : z;
+      const sy = snap > 0 ? Math.round(y / snap) * snap : y;
 
-      meshRef.current.position.set(sx, 0, sz);
+      meshRef.current.position.set(sx, sy, 0);
     }
   });
 
   return (
     <mesh
       ref={meshRef}
-      rotation={[-Math.PI / 2, 0, 0]}
+      rotation={[0, 0, 0]}
       position={[0, 0, 0]}
       geometry={planeGeometry}
       material={shaderMaterial}

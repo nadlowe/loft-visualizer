@@ -1,10 +1,14 @@
 # Info
 
-- The X-Z plane is the horizontal plane in Three.js (Y is up)
+- THREE.js is configured to use Z as up (matching geom coordinate system)
+- The X-Y plane is the horizontal plane (Z is up)
+- No coordinate conversion needed: geom [x, y, z] = THREE.js [x, y, z]
 
-Blue (Three.js Z) = geom X (2D right)
-Red (Three.js X) = geom Y (2D up)
-Green (Three.js Y) = geom Z (2D vertical)
+Coordinate system:
+
+- Red (Three.js X) = geom X (2D right)
+- Green (Three.js Y) = geom Y (2D up)
+- Blue (Three.js Z) = geom Z (2D vertical/up)
 
 ## Decisions
 

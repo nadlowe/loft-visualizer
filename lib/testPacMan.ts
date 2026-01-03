@@ -111,10 +111,7 @@ export function placePolygonOnFace(
   centerZ: number = 0,
   polygon: Polygon
 ): Face {
-  const plane = plane3New(
-    [centerX, centerY, centerZ],
-    [0, 0, 1] // z-up in kernel = vertical
-  );
+  const plane = plane3New([centerX, centerY, centerZ], [0, 0, 1]);
 
   return {
     plane,

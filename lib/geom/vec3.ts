@@ -102,3 +102,19 @@ export function vec3Add(a: Vec3, b: Vec3): Vec3 {
 export function vec3Scale(vec: Vec3, scalar: number): Vec3 {
   return [vec[0] * scalar, vec[1] * scalar, vec[2] * scalar];
 }
+
+export function vec3Negate(vec: Vec3): Vec3 {
+  return [-vec[0], -vec[1], -vec[2]];
+}
+
+export function vec3Rotate(vec: Vec3, angle: number): Vec3 {
+  const [x, y, z] = vec;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  // Rotate about Z axis (2D rotation in XY plane)
+  return [
+    x * cos - y * sin,
+    x * sin + y * cos,
+    z, // Z component unchanged
+  ];
+}

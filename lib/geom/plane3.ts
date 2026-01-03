@@ -1,5 +1,5 @@
 import { Vec3, Plane3 } from "./geomTypes";
-import { mat4RotateAxis } from "./mat4";
+import { mat4RotateAxis, Mat4 } from "./mat4";
 import {
   computeDefaultU,
   vec3Normalize,
@@ -113,5 +113,34 @@ export function plane3BarrelRoll(plane: Plane3, angleRad: number): Plane3 {
     origin: plane.origin, // Unchanged
     normal: plane.normal, // Unchanged
     u: rotatedU,
+  };
+}
+
+/**
+ * Transforms a plane by a 4x4 transformation matrix.
+ * Transforms origin as a point, and normal/u as direction vectors.
+ */
+export function plane3Transform(plane: Plane3, mat: Mat4): Plane3 {
+  // Transform origin as a point (includes translation)
+  const transformedOrigin = vec3TransformPoint(plane.origin, mat);
+
+  // Transform normal as a direction vector (no translation)
+  const transformedNormal = vec3Normalize(
+    vec3TransformDirection(plane.normal, mat)
+  );
+
+  // Transform u vector as a direction vector (no translation)
+  let transformedU: Vec3 | undefined;
+  if (plane.u) {
+    transformedU = vec3Normalize(vec3TransformDirection(plane.u, mat));
+  } else {
+    // Compute default u from transformed normal
+    transformedU = computeDefaultU(transformedNormal);
+  }
+
+  return {
+    origin: transformedOrigin,
+    normal: transformedNormal,
+    u: transformedU,
   };
 }
