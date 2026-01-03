@@ -112,6 +112,7 @@ export function DraggableMesh({
     >
       {children}
       <meshStandardMaterial
+        side={THREE.DoubleSide}
         color={isDragging ? dragColor : defaultColor}
         opacity={isDragging ? 0.8 : 1}
         transparent
@@ -119,4 +120,3 @@ export function DraggableMesh({
     </mesh>
   );
 }
-

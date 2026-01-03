@@ -1,5 +1,5 @@
 "use client";
-import { faceToThree } from "@/lib/geomToThree";
+import { faceToThree } from "@/lib/conversion/geomToThree";
 import { testPacManFaces } from "@/lib/testPacMan";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
@@ -19,18 +19,10 @@ export function Scene({
   const [isDragging, setIsDragging] = useState(false);
 
   // Convert Pac-Man faces to Three.js geometries and extract initial positions
-  const pacManData = useMemo(() => {
+  const faceData = useMemo(() => {
     return testPacManFaces.map((face) => {
-      const geometry = faceToThree(face);
-      // Extract position from face.plane.origin for initial positioning
-      // Use directly - no coordinate conversion (THREE.js uses Z as up)
-      const origin = face.plane.origin;
-      const initialPosition: [number, number, number] = [
-        origin[0],
-        origin[1],
-        origin[2],
-      ];
-      return { geometry, initialPosition };
+      const { geometry, position } = faceToThree(face);
+      return { geometry, initialPosition: position };
     });
   }, []);
 
@@ -54,7 +46,7 @@ export function Scene({
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
       {/* Render draggable Pac-Man faces */}
-      {pacManData.map(({ geometry, initialPosition }, index) => (
+      {faceData.map(({ geometry, initialPosition }, index) => (
         <DraggableMesh
           key={index}
           initialPosition={initialPosition}
