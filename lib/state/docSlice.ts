@@ -1,4 +1,8 @@
 import { StateCreator } from "zustand";
+import { BaseEntity } from "../entity/baseEntity";
+import { entityTypeToDocField } from "../entity/entityTypeToDocField";
+import { parseHandle } from "../entity/handle";
+import { EntityHandle } from "../entity/handleTypes";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { WorkPlaneEntity } from "../entity/workPlaneEntity";
@@ -41,6 +45,12 @@ export interface DocSlice {
   updateLoft: (id: LoftId, updater: (entity: LoftEntity) => LoftEntity) => void;
   removeLoft: (id: LoftId) => void;
   getLoft: (id: LoftId) => LoftEntity | undefined;
+
+  // Generic entity update
+  updateEntity: (
+    handle: EntityHandle,
+    updater: (entity: BaseEntity<any>) => BaseEntity<any>
+  ) => void;
 
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
@@ -168,6 +178,35 @@ export const createDocSlice: StateCreator<DocSlice> = (set, get) => ({
       };
     }),
   getLoft: (id) => get().doc.lofts[id],
+
+  // Generic entity update
+  updateEntity: (handle, updater) => {
+    const { type, id } = parseHandle(handle);
+    const fieldName = entityTypeToDocField[type];
+
+    set((state) => {
+      const entity = (state.doc[fieldName] as Record<string, BaseEntity<any>>)[
+        id as any
+      ];
+      if (!entity) return state;
+
+      const updated = updater(entity);
+
+      const currentTable = state.doc[fieldName] as Record<
+        string,
+        BaseEntity<any>
+      >;
+      return {
+        doc: {
+          ...state.doc,
+          [fieldName]: {
+            ...currentTable,
+            [id]: updated,
+          },
+        },
+      };
+    });
+  },
 
   // Generic transaction for complex operations
   transact: (updater) =>

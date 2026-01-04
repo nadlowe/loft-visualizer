@@ -6,6 +6,7 @@ import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
+import { EditableEntityName } from "../EditableEntityName";
 
 interface EntityCategoryProps {
   title: string;
@@ -69,15 +70,14 @@ export function EntityCategory({
                 key={id}
                 onClick={(e) => onEntityClick(e, entityType, id)}
                 className={cn(
-                  "rounded px-2 py-1 text-left text-sm transition-colors",
+                  "rounded px-2 py-1 text-left text-sm transition-colors w-full",
                   selected ? colors.bg.selected : "",
-                  colors.text.secondary,
                   "hover:" + colors.text.primary,
                   !selected && "hover:" + colors.bg.secondary,
                   "cursor-pointer"
                 )}
               >
-                {entity.name}
+                <EditableEntityName handle={handle} />
               </button>
             );
           })}

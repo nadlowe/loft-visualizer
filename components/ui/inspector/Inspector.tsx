@@ -4,6 +4,7 @@ import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { MultiInspector } from "./MultiInspector";
+import { NoSelection } from "./NoSelection";
 import { SingleInspector } from "./SingleInspector";
 
 interface InspectorProps {
@@ -78,7 +79,7 @@ export function Inspector({
 
   let content = null;
   if (selectedCount === 0) {
-    content = null;
+    content = <NoSelection />;
   } else if (selectedCount === 1) {
     content = <SingleInspector doc={doc} handle={selectedArray[0]} />;
   } else {

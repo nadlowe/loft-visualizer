@@ -18,5 +18,5 @@ export function SingleInspector({ doc, handle }: SingleInspectorProps) {
   }
 
   const { type } = parseHandle(handle);
-  return <InspectorHeader entity={entity} entityType={type} />;
+  return <InspectorHeader entity={entity} entityType={type} handle={handle} />;
 }

@@ -8,12 +8,22 @@ import { Doc } from "@/lib/state/doc";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
-import { InspectorHeader } from "./InspectorHeader";
+import { EditableEntityName } from "../EditableEntityName";
+import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
 
 interface MultiInspectorProps {
   doc: Doc;
   handles: EntityHandle[];
 }
+
+const typeIcons: Record<
+  EntityType,
+  React.ComponentType<{ className?: string }>
+> = {
+  WORKPLANE: WorkPlaneIcon,
+  POLYLINE: PolylineIcon,
+  LOFT: LoftIcon,
+};
 
 export function MultiInspector({ doc, handles }: MultiInspectorProps) {
   const entities = handles
@@ -41,9 +51,15 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
         </span>
       </div>
       <div className="flex flex-col gap-2">
-        {entities.map(({ handle, entity, type }) => (
-          <InspectorHeader key={handle} entity={entity} entityType={type} />
-        ))}
+        {entities.map(({ handle, entity, type }) => {
+          const Icon = typeIcons[type];
+          return (
+            <div key={handle} className="flex items-center gap-2">
+              <Icon className={cn("h-4 w-4", colors.text.primary)} />
+              <EditableEntityName handle={handle} />
+            </div>
+          );
+        })}
       </div>
     </div>
   );

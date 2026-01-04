@@ -2,14 +2,17 @@
 
 import { BaseEntity } from "@/lib/entity/baseEntity";
 import { EntityType } from "@/lib/entity/entityTypes";
+import { EntityHandle } from "@/lib/entity/handleTypes";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
+import { EditableEntityName } from "../EditableEntityName";
 import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
 
 interface InspectorHeaderProps {
   entity: BaseEntity<any>;
   entityType: EntityType;
+  handle: EntityHandle;
 }
 
 const typeLabels: Record<EntityType, string> = {
@@ -27,7 +30,11 @@ const typeIcons: Record<
   LOFT: LoftIcon,
 };
 
-export function InspectorHeader({ entity, entityType }: InspectorHeaderProps) {
+export function InspectorHeader({
+  entity,
+  entityType,
+  handle,
+}: InspectorHeaderProps) {
   const Icon = typeIcons[entityType];
   const typeLabel = typeLabels[entityType];
 
@@ -45,15 +52,7 @@ export function InspectorHeader({ entity, entityType }: InspectorHeaderProps) {
           {typeLabel}
         </span>
       </div>
-      <span
-        className={cn(
-          fonts.weight.normal,
-          fonts.size.sm,
-          colors.text.secondary
-        )}
-      >
-        {entity.name}
-      </span>
+      <EditableEntityName handle={handle} />
     </div>
   );
 }
