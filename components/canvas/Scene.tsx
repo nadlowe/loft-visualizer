@@ -3,6 +3,7 @@ import { colors } from "@/components/ui/colors";
 import { renderDoc } from "@/lib/conversion/geomToThree";
 import { handleNew } from "@/lib/entity/handle";
 import { useStore } from "@/lib/state/useStore";
+import { WorkPlaneId } from "@/lib/util/uid";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
@@ -45,18 +46,23 @@ export function Scene({
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
       {/* Render work planes from doc */}
-      {workPlanes.map((workPlane, index) => (
-        <WorkPlaneWidget
-          key={index}
-          workPlane={workPlane as any}
-          onWorkPlaneChange={() => {}}
-          onDraggingChange={setIsDragging}
-          enabled={true}
-          showTranslate={true}
-          showRotate={true}
-          showHelpers={true}
-        />
-      ))}
+      {workPlanes.map(({ workPlane, id }) => {
+        const handle = handleNew("WORKPLANE", id as WorkPlaneId);
+        const selected = isSelected(handle);
+        if (!selected) return null;
+        return (
+          <WorkPlaneWidget
+            key={id}
+            workPlane={workPlane as any}
+            onWorkPlaneChange={() => {}}
+            onDraggingChange={setIsDragging}
+            enabled={true}
+            showTranslate={true}
+            showRotate={true}
+            showHelpers={true}
+          />
+        );
+      })}
 
       {/* Render polylines from doc */}
       {polylines.map(({ path, id }, index) => {

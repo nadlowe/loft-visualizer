@@ -2,9 +2,10 @@
 
 import { handleNew } from "@/lib/entity/handle";
 import { EntityHandle } from "@/lib/entity/handleTypes";
+import { plane3New } from "@/lib/geom/plane3";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
-import { EntityId, LoftId, PolylineId, WorkPlaneId } from "@/lib/util/uid";
+import { EntityId, LoftId, PolylineId, uid, WorkPlaneId } from "@/lib/util/uid";
 import { useRef, useState } from "react";
 import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
 import { EntityCategory } from "./EntityCategory";
@@ -14,8 +15,14 @@ interface EntityMenuProps {
 }
 
 export function EntityMenu({ doc }: EntityMenuProps) {
-  const { isSelected, selectOnly, toggleSelection, selectMultiple } =
-    useStore();
+  const {
+    isSelected,
+    selectOnly,
+    toggleSelection,
+    selectMultiple,
+    startDrawPolyline,
+    addWorkPlane,
+  } = useStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(["workPlanes", "polylines", "lofts"])
   );
@@ -74,6 +81,24 @@ export function EntityMenu({ doc }: EntityMenuProps) {
     }
   };
 
+  const handleAddWorkPlane = () => {
+    const workPlaneId = uid<WorkPlaneId>();
+    const workPlaneCount = Object.keys(doc.workPlanes).length;
+    const newWorkPlane = {
+      id: workPlaneId,
+      type: "WORKPLANE" as const,
+      name: `Work Plane ${workPlaneCount + 1}`,
+      plane3: plane3New([0, 0, 0], [0, 0, 1]),
+    };
+    addWorkPlane(newWorkPlane);
+    const handle = handleNew("WORKPLANE", workPlaneId);
+    selectOnly(handle);
+  };
+
+  const handleAddPolyline = () => {
+    startDrawPolyline();
+  };
+
   return (
     <div className="flex flex-col">
       <EntityCategory
@@ -86,6 +111,7 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         onEntityClick={handleEntityClick}
         isSelected={isSelected}
         idCaster={(id) => id as WorkPlaneId}
+        onAdd={handleAddWorkPlane}
       />
       <EntityCategory
         title="Polylines"
@@ -97,6 +123,7 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         onEntityClick={handleEntityClick}
         isSelected={isSelected}
         idCaster={(id) => id as PolylineId}
+        onAdd={handleAddPolyline}
       />
       <EntityCategory
         title="Lofts"

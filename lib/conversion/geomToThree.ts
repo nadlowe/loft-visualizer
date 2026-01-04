@@ -110,15 +110,15 @@ export function polyline2ToPath(polyline: Polyline2): THREE.Path {
 }
 
 export function renderDoc(doc: Doc): {
-  workPlanes: THREE.Group[];
+  workPlanes: Array<{ workPlane: THREE.Group; id: string }>;
   polylines: Array<{ path: THREE.Path; id: string }>;
 } {
-  const workPlanes: THREE.Group[] = [];
+  const workPlanes: Array<{ workPlane: THREE.Group; id: string }> = [];
   const polylines: Array<{ path: THREE.Path; id: string }> = [];
 
-  for (const workPlaneEntity of Object.values(doc.workPlanes)) {
+  for (const [id, workPlaneEntity] of Object.entries(doc.workPlanes)) {
     const workPlane = plane3ToWorkPlane(workPlaneEntity.plane3);
-    workPlanes.push(workPlane);
+    workPlanes.push({ workPlane, id });
   }
 
   for (const [id, polylineEntity] of Object.entries(doc.polylines)) {
