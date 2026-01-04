@@ -1,10 +1,6 @@
 import { Vec2 } from "./geomTypes";
 import { Mat3, mat3Rotate } from "./mat3";
 
-/**
- * Vector2
- */
-
 export function vec2Transform(vec: Vec2, mat: Mat3): Vec2 {
   const [x, y] = vec;
   return [mat[0] * x + mat[1] * y + mat[2], mat[3] * x + mat[4] * y + mat[5]];

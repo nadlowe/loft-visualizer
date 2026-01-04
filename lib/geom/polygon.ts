@@ -2,10 +2,6 @@ import { Polygon } from "./geomTypes";
 import { Mat3, mat3Translate, mat3Rotate } from "./mat3";
 import { polyline2Transform } from "./polyline2";
 
-/**
- * Polygon
- */
-
 export function polygonTransform(polygon: Polygon, mat: Mat3): Polygon {
   const result: Polygon = [];
   for (let i = 0; i < polygon.length; i++) {

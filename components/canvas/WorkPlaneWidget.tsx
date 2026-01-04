@@ -15,9 +15,6 @@ interface WorkPlaneWidgetProps {
   showRotate?: boolean;
 }
 
-/**
- * Extracts normal and u vectors from a WorkPlane's rotation matrix.
- */
 function extractNormalAndU(workPlane: WorkPlane): {
   normal: THREE.Vector3;
   u: THREE.Vector3 | null;

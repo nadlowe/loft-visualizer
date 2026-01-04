@@ -25,27 +25,15 @@ export type Mat4 = [
   number, // row 3
 ];
 
-/**
- * Creates an identity matrix
- */
 export function mat4Identity(): Mat4 {
   return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 }
 
-/**
- * Creates a translation matrix
- */
 export function mat4Translate(tx: number, ty: number, tz: number): Mat4 {
   return [1, 0, 0, tx, 0, 1, 0, ty, 0, 0, 1, tz, 0, 0, 0, 1];
 }
 
-/**
- * Creates a rotation matrix around an arbitrary axis using Rodrigues' rotation formula
- * @param axis - The rotation axis direction (will be normalized)
- * @param angleRad - Rotation angle in radians
- */
 export function mat4RotateAxis(axis: Vec3, angleRad: number): Mat4 {
-  // Normalize axis
   const len = Math.sqrt(
     axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]
   );
@@ -83,9 +71,6 @@ export function mat4RotateAxis(axis: Vec3, angleRad: number): Mat4 {
   ];
 }
 
-/**
- * Multiplies two matrices: result = a * b
- */
 export function mat4Multiply(a: Mat4, b: Mat4): Mat4 {
   const a00 = a[0],
     a01 = a[1],

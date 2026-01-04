@@ -14,17 +14,10 @@ export type Mat3 = [
   number, // row 2: 0, 0, 1
 ];
 
-/**
- * Creates an identity matrix
- */
 export function mat3Identity(): Mat3 {
   return [1, 0, 0, 0, 1, 0, 0, 0, 1];
 }
 
-/**
- * Creates a rotation matrix around the origin
- * @param angleRad Rotation angle in radians
- */
 export function mat3Rotate(
   angleRad: number,
   originX: number = 0,
@@ -45,18 +38,10 @@ export function mat3Rotate(
   ];
 }
 
-/**
- * Creates a translation matrix
- * @param tx Translation in X direction
- * @param ty Translation in Y direction
- */
 export function mat3Translate(tx: number, ty: number): Mat3 {
   return [1, 0, tx, 0, 1, ty, 0, 0, 1];
 }
 
-/**
- * Multiplies two matrices: result = a * b
- */
 export function mat3Multiply(a: Mat3, b: Mat3): Mat3 {
   const a00 = a[0],
     a01 = a[1],

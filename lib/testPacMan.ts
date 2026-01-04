@@ -1,14 +1,6 @@
 import { Face, Plane3, Polygon, Polyline2 } from "./geom/geomTypes";
 import { plane3New } from "./geom/plane3";
 
-/**
- * Creates a Pac-Man shape polygon.
- * @param radius - Radius of the Pac-Man circle
- * @param mouthAngle - Angle of the mouth opening in radians (default: Math.PI / 3 = 60 degrees)
- * @param eyeRadius - Radius of the eye hole
- * @param eyeOffsetX - X offset of the eye from center
- * @param eyeOffsetY - Y offset of the eye from center
- */
 export function createPacManPolygon(
   radius: number = 1,
   mouthAngle: number = Math.PI / 3,
@@ -101,10 +93,6 @@ export function createSquareWithHoleOnUpperRightCornerPolygon(): Polygon {
   return [outer, hole];
 }
 
-/**
- * Creates a Pac-Man face on a flat XY plane (kernel coordinates).
- * In kernel: z is up, so normal [0, 0, 1] means flat on XY plane.
- */
 export function placePolygonOnFace(
   centerX: number = 0,
   centerY: number = 0,
@@ -119,19 +107,12 @@ export function placePolygonOnFace(
   };
 }
 
-/**
- * Creates a Pac-Man face on a tilted plane.
- * The plane is rotated 45 degrees around the X axis.
- * In kernel: normal [0, 0.707, 0.707] means tilted up.
- */
 export function createTiltedPacMan(
   centerX: number = 0,
   centerY: number = 0,
   centerZ: number = 0,
-  tiltAngle: number = Math.PI / 4 // 45 degrees
+  tiltAngle: number = Math.PI / 4
 ): Face {
-  // Normal vector: rotate [0, 0, 1] around X axis by tiltAngle
-  // In kernel: z is up, so rotating around x means y and z change
   const normal: [number, number, number] = [
     0,
     Math.sin(tiltAngle), // y component
@@ -146,9 +127,6 @@ export function createTiltedPacMan(
   };
 }
 
-/**
- * Test data: Multiple Pac-Man faces in different positions and orientations
- */
 export const testPacManFaces: Face[] = [
   // Flat Pac-Man at origin
   placePolygonOnFace(0, 0, 0, createPacManPolygon()),

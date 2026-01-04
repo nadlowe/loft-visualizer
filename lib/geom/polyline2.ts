@@ -3,10 +3,6 @@ import { Polyline2 } from "./geomTypes";
 import { Mat3, mat3Translate, mat3Rotate } from "./mat3";
 import { DIST_EPSILON } from "./scalar";
 
-/**
- * Polyline2
- */
-
 export function polyline2Transform(polyline: Polyline2, mat: Mat3): Polyline2 {
   const result: Polyline2 = [];
   for (let i = 0; i < polyline.length; i += 2) {
@@ -34,9 +30,7 @@ export function polyline2Rotate(
   originY: number = 0
 ): Polyline2 {
   return polyline2Transform(polyline, mat3Rotate(angleRad, originX, originY));
-} /**
- * Shifts the vertices in a polyline2
- */
+}
 
 export function polyline2Shift(
   polyline: Polyline2,
