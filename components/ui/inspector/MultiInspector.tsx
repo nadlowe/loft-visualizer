@@ -5,6 +5,7 @@ import { getEntityFromHandle } from "@/lib/entity/entityUtils";
 import { parseHandle } from "@/lib/entity/handle";
 import { EntityHandle } from "@/lib/entity/handleTypes";
 import { Doc } from "@/lib/state/doc";
+import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
@@ -26,6 +27,7 @@ const typeIcons: Record<
 };
 
 export function MultiInspector({ doc, handles }: MultiInspectorProps) {
+  const { selectOnly } = useStore();
   const entities = handles
     .map((handle) => {
       const entity = getEntityFromHandle(doc, handle);
@@ -54,7 +56,14 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
         {entities.map(({ handle, entity, type }) => {
           const Icon = typeIcons[type];
           return (
-            <div key={handle} className="flex items-center gap-2">
+            <div
+              key={handle}
+              onClick={() => selectOnly(handle)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors",
+                "hover:" + colors.bg.secondary
+              )}
+            >
               <Icon className={cn("h-4 w-4", colors.text.primary)} />
               <EditableEntityName handle={handle} />
             </div>
