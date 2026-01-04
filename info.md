@@ -11,6 +11,7 @@ Coordinate system:
 1. Store polylines as arrays of numbers... odd and even for x and y.
 2. Store vectors as tuples for more compact serialized form.
 3. Don't use direct memory Float64Array representation for polylines, since perf/serialization complexity is not the focus of the code challenge.
+4. Created geom unit tests mostly to ensure geometry is working correctly, but I'm not diving into perfecting them yet or perhaps not at all.
 
 ## Design Thoughts
 
