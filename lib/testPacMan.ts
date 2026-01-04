@@ -1,4 +1,4 @@
-import { Face, Plane3, Polygon, Polyline2 } from "./geom/geomTypes";
+import { Face, Polygon, Polyline2 } from "./geom/geomTypes";
 import { plane3New } from "./geom/plane3";
 
 export function createPacManPolygon(

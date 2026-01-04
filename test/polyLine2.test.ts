@@ -1,12 +1,12 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
+import { Polyline2 } from "../lib/geom/geomTypes";
+import { mat3Identity, mat3Rotate, mat3Translate } from "../lib/geom/mat3";
 import {
-  polyline2Transform,
-  polyline2Translate,
   polyline2Rotate,
   polyline2Shift,
+  polyline2Transform,
+  polyline2Translate,
 } from "../lib/geom/polyline2";
-import { Polyline2 } from "../lib/geom/geomTypes";
-import { mat3Identity, mat3Translate, mat3Rotate } from "../lib/geom/mat3";
 import { DIST_EPSILON } from "../lib/geom/scalar";
 
 describe("polyline2Transform", () => {

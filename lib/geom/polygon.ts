@@ -1,5 +1,5 @@
 import { Polygon } from "./geomTypes";
-import { Mat3, mat3Translate, mat3Rotate } from "./mat3";
+import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
 import { polyline2Transform } from "./polyline2";
 
 export function polygonTransform(polygon: Polygon, mat: Mat3): Polygon {

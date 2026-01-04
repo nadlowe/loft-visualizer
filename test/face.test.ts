@@ -1,7 +1,7 @@
-import { describe, it, expect } from "@jest/globals";
-import { faceRotate, faceBarrelRoll } from "../lib/geom/face";
+import { describe, expect, it } from "@jest/globals";
+import { faceBarrelRoll, faceRotate } from "../lib/geom/face";
+import { Face, Polygon, Vec3 } from "../lib/geom/geomTypes";
 import { plane3New } from "../lib/geom/plane3";
-import { Face, Vec3, Polygon } from "../lib/geom/geomTypes";
 
 describe("faceRotate", () => {
   it("rotates face without altering polygon", () => {

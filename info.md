@@ -11,3 +11,10 @@ Coordinate system:
 1. Store polylines as arrays of numbers... odd and even for x and y.
 2. Store vectors as tuples for more compact serialized form.
 3. Don't use direct memory Float64Array representation for polylines, since perf/serialization complexity is not the focus of the code challenge.
+
+## Design Thoughts
+
+1. Workplanes should be a 1st class entity.
+2. A polyline should always require a workplane.
+   a. When drawing a polyline without having a work plane selected, it creates a workplane on globalXY at centroid of polyline2.
+3. A loft is created by taking any two polylines and "lofting" them.

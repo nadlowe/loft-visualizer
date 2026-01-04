@@ -1,12 +1,12 @@
-import { Vec3, Plane3 } from "./geomTypes";
-import { mat4RotateAxis, Mat4 } from "./mat4";
+import { Plane3, Vec3 } from "./geomTypes";
+import { Mat4, mat4RotateAxis } from "./mat4";
 import {
   computeDefaultU,
-  vec3Normalize,
-  vec3TransformDirection,
-  vec3Subtract,
-  vec3TransformPoint,
   vec3Add,
+  vec3Normalize,
+  vec3Subtract,
+  vec3TransformDirection,
+  vec3TransformPoint,
 } from "./vec3";
 
 export function plane3New(origin: Vec3, normal: Vec3, u?: Vec3): Plane3 {

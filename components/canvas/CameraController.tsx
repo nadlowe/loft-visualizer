@@ -1,6 +1,6 @@
 "use client";
 import { useThree } from "@react-three/fiber";
-import { useRef, useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
 export function CameraController({

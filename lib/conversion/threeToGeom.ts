@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { Vec3, Polygon, Plane3, Face, Polyline2 } from "../geom/geomTypes";
+import { Face, Plane3, Polygon, Polyline2, Vec3 } from "../geom/geomTypes";
 import { plane3New } from "../geom/plane3";
 import { vec3Normalize } from "../geom/vec3";
 import { WorkPlane } from "./geomToThree";

@@ -1,11 +1,10 @@
 import * as THREE from "three";
-import { Vec3, Polygon, Plane3, Face } from "../geom/geomTypes";
-import { Mat4 } from "../geom/mat4";
+import { Face, Plane3, Polygon, Vec3 } from "../geom/geomTypes";
 import {
-  vec3Cross,
-  vec3Normalize,
-  vec3Length,
   computeDefaultU,
+  vec3Cross,
+  vec3Length,
+  vec3Normalize,
 } from "../geom/vec3";
 
 export type WorkPlane = THREE.Group & {

@@ -1,8 +1,8 @@
 "use client";
 
-import { useThree, useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useState, useEffect, useRef } from "react";
 
 export function DraggableMesh({
   initialPosition = [0, 0, 0],

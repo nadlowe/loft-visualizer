@@ -1,7 +1,7 @@
-import { describe, it, expect } from "@jest/globals";
-import { vec2Transform, vec2Translate, vec2Rotate } from "../lib/geom/vec2";
+import { describe, expect, it } from "@jest/globals";
 import { Vec2 } from "../lib/geom/geomTypes";
-import { mat3Identity, mat3Translate, mat3Rotate } from "../lib/geom/mat3";
+import { mat3Identity, mat3Rotate, mat3Translate } from "../lib/geom/mat3";
+import { vec2Rotate, vec2Transform, vec2Translate } from "../lib/geom/vec2";
 
 describe("vec2Transform", () => {
   it("transforms vector with identity matrix", () => {

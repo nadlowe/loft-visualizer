@@ -1,7 +1,7 @@
-import { vec2Transform } from "./vec2";
 import { Polyline2 } from "./geomTypes";
-import { Mat3, mat3Translate, mat3Rotate } from "./mat3";
+import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
 import { DIST_EPSILON } from "./scalar";
+import { vec2Transform } from "./vec2";
 
 export function polyline2Transform(polyline: Polyline2, mat: Mat3): Polyline2 {
   const result: Polyline2 = [];

@@ -1,11 +1,11 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, expect, it } from "@jest/globals";
+import { Polygon } from "../lib/geom/geomTypes";
+import { mat3Identity, mat3Rotate, mat3Translate } from "../lib/geom/mat3";
 import {
+  polygonRotate,
   polygonTransform,
   polygonTranslate,
-  polygonRotate,
 } from "../lib/geom/polygon";
-import { Polygon } from "../lib/geom/geomTypes";
-import { mat3Identity, mat3Translate, mat3Rotate } from "../lib/geom/mat3";
 
 describe("polygonTransform", () => {
   it("transforms polygon with identity matrix", () => {

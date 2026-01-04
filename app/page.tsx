@@ -1,10 +1,10 @@
 "use client";
 
-import { Canvas } from "@react-three/fiber";
-import { useState, useRef } from "react";
-import { cn } from "../lib/utils";
-import { CameraController } from "../components/canvas/CameraController";
 import { Scene } from "@/components/canvas/Scene";
+import { Canvas } from "@react-three/fiber";
+import { useRef, useState } from "react";
+import { CameraController } from "../components/canvas/CameraController";
+import { cn } from "../lib/utils";
 
 export default function Home() {
   const [is2D, setIs2D] = useState(false);

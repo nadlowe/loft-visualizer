@@ -1,6 +1,6 @@
-import { Vec3, Face } from "./geomTypes";
-import { plane3Rotate, plane3BarrelRoll, plane3Transform } from "./plane3";
+import { Face, Vec3 } from "./geomTypes";
 import { Mat4 } from "./mat4";
+import { plane3BarrelRoll, plane3Rotate, plane3Transform } from "./plane3";
 
 export function faceRotate(
   face: Face,

@@ -1,15 +1,14 @@
 "use client";
+import { faceToThree } from "@/lib/conversion/geomToThree";
+import { threeToFace } from "@/lib/conversion/threeToGeom";
+import { Face } from "@/lib/geom/geomTypes";
 import { testPacManFaces } from "@/lib/testPacMan";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useState, useEffect, useMemo } from "react";
-import * as THREE from "three";
-import { Face } from "@/lib/geom/geomTypes";
-import { WorkPlaneWidget } from "./WorkPlaneWidget";
+import { useEffect, useMemo, useState } from "react";
 import { DraggableMesh } from "./DraggableMesh";
 import { Grid } from "./Grid";
-import { faceToThree, WorkPlane } from "@/lib/conversion/geomToThree";
-import { threeToFace } from "@/lib/conversion/threeToGeom";
+import { WorkPlaneWidget } from "./WorkPlaneWidget";
 
 export function Scene({
   is2D,

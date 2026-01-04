@@ -1,8 +1,8 @@
-import { describe, it, expect } from "@jest/globals";
-import { faceRotate, faceBarrelRoll } from "../lib/geom/face";
-import { plane3New, plane3Rotate, plane3BarrelRoll } from "../lib/geom/plane3";
+import { describe, expect, it } from "@jest/globals";
+import { faceBarrelRoll, faceRotate } from "../lib/geom/face";
+import { Face, Plane3, Polygon, Vec3 } from "../lib/geom/geomTypes";
+import { plane3BarrelRoll, plane3New, plane3Rotate } from "../lib/geom/plane3";
 import { computeDefaultU } from "../lib/geom/vec3";
-import { Plane3, Vec3, Face, Polygon } from "../lib/geom/geomTypes";
 
 describe("computeDefaultU", () => {
   it("computes u vector orthogonal to normal pointing in X direction", () => {

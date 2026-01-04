@@ -1,25 +1,25 @@
-import { describe, it, expect } from "@jest/globals";
-import {
-  computeDefaultU,
-  vec3TransformDirection,
-  vec3TransformPoint,
-  vec3Dot,
-  vec3Cross,
-  vec3Length,
-  vec3Normalize,
-  vec3Subtract,
-  vec3Add,
-  vec3Scale,
-  vec3Negate,
-  vec3Rotate,
-} from "../lib/geom/vec3";
+import { describe, expect, it } from "@jest/globals";
 import { Vec3 } from "../lib/geom/geomTypes";
 import {
   mat4Identity,
-  mat4Translate,
-  mat4RotateAxis,
   mat4Multiply,
+  mat4RotateAxis,
+  mat4Translate,
 } from "../lib/geom/mat4";
+import {
+  computeDefaultU,
+  vec3Add,
+  vec3Cross,
+  vec3Dot,
+  vec3Length,
+  vec3Negate,
+  vec3Normalize,
+  vec3Rotate,
+  vec3Scale,
+  vec3Subtract,
+  vec3TransformDirection,
+  vec3TransformPoint,
+} from "../lib/geom/vec3";
 
 describe("computeDefaultU", () => {
   it("computes u vector orthogonal to normal pointing in X direction", () => {

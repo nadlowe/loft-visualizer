@@ -9,7 +9,8 @@
   "prettier.requireConfig": false,
   "prettier.resolveGlobalModules": false,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
   },
   "files.trimFinalNewlines": true,
   "[json]": {
