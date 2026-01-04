@@ -5,6 +5,13 @@ import { WorkPlaneEntity } from "../entity/workPlaneEntity";
 import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
+import {
+  deleteDocFromStorage,
+  getAllDocsFromStorage,
+  loadDocFromStorage,
+  SavedDoc,
+  saveDocToStorage,
+} from "./persistence";
 
 export interface DocSlice {
   doc: Doc;
@@ -37,6 +44,13 @@ export interface DocSlice {
 
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
+
+  // Persistence
+  saveDoc: () => void;
+  loadDoc: (docId: string) => boolean;
+  newDoc: () => void;
+  deleteDoc: (docId: string) => void;
+  getSavedDocs: () => SavedDoc[];
 }
 
 export const createDocSlice: StateCreator<DocSlice> = (set, get) => ({
@@ -160,4 +174,29 @@ export const createDocSlice: StateCreator<DocSlice> = (set, get) => ({
     set((state) => ({
       doc: updater(state.doc),
     })),
+
+  // Persistence
+  saveDoc: () => {
+    const doc = get().doc;
+    saveDocToStorage(doc);
+  },
+  loadDoc: (docId: string) => {
+    const loaded = loadDocFromStorage(docId);
+    if (loaded) {
+      set({ doc: loaded });
+      return true;
+    }
+    return false;
+  },
+  newDoc: () => {
+    set({ doc: defaultDocInit() });
+  },
+  deleteDoc: (docId: string) => {
+    deleteDocFromStorage(docId);
+    const currentDoc = get().doc;
+    if (currentDoc.id === docId) {
+      set({ doc: defaultDocInit() });
+    }
+  },
+  getSavedDocs: () => getAllDocsFromStorage(),
 });
