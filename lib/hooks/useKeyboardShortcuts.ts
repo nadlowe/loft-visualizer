@@ -2,7 +2,7 @@ import { useStore } from "@/lib/state/useStore";
 import { useEffect } from "react";
 
 export function useKeyboardShortcuts() {
-  const { cmd, startDrawPolyline, cancelCmd, removeLastVertex } = useStore();
+  const { cmd, startDrawPolyline, cancelCmd, removeLastVertex, selectedHandles, deleteEntity, clearSelection } = useStore();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -22,6 +22,15 @@ export function useKeyboardShortcuts() {
       ) {
         e.preventDefault();
         removeLastVertex();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        const selectedArray = Array.from(selectedHandles);
+        if (selectedArray.length > 0) {
+          e.preventDefault();
+          selectedArray.forEach((handle) => {
+            deleteEntity(handle);
+          });
+          clearSelection();
+        }
       }
     };
 
@@ -29,5 +38,5 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [cmd, startDrawPolyline, cancelCmd, removeLastVertex]);
+  }, [cmd, startDrawPolyline, cancelCmd, removeLastVertex, selectedHandles, deleteEntity, clearSelection]);
 }

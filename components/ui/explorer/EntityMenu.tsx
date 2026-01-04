@@ -23,6 +23,8 @@ export function EntityMenu({ doc }: EntityMenuProps) {
     startDrawPolyline,
     addWorkPlane,
     startAddLoft,
+    duplicateEntity,
+    deleteEntity,
   } = useStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(["workPlanes", "polylines", "lofts"])
@@ -104,6 +106,17 @@ export function EntityMenu({ doc }: EntityMenuProps) {
     startAddLoft();
   };
 
+  const handleDuplicate = (handle: EntityHandle) => {
+    const newHandle = duplicateEntity(handle);
+    if (newHandle) {
+      selectOnly(newHandle);
+    }
+  };
+
+  const handleDelete = (handle: EntityHandle) => {
+    deleteEntity(handle);
+  };
+
   return (
     <div className="flex flex-col">
       <EntityCategory
@@ -117,6 +130,8 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         isSelected={isSelected}
         idCaster={(id) => id as WorkPlaneId}
         onAdd={handleAddWorkPlane}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
       />
       <EntityCategory
         title="Polylines"
@@ -129,6 +144,8 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         isSelected={isSelected}
         idCaster={(id) => id as PolylineId}
         onAdd={handleAddPolyline}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
       />
       <EntityCategory
         title="Lofts"
@@ -141,6 +158,8 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         isSelected={isSelected}
         idCaster={(id) => id as LoftId}
         onAdd={handleAddLoft}
+        onDuplicate={handleDuplicate}
+        onDelete={handleDelete}
       />
     </div>
   );

@@ -1,12 +1,12 @@
 import { StateCreator } from "zustand";
 import { BaseEntity } from "../entity/baseEntity";
 import { entityTypeToDocField } from "../entity/entityTypeToDocField";
-import { parseHandle } from "../entity/handle";
+import { handleNew, parseHandle } from "../entity/handle";
 import { EntityHandle } from "../entity/handleTypes";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { WorkPlaneEntity } from "../entity/workPlaneEntity";
-import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
+import { LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
 import {
@@ -45,6 +45,12 @@ export interface DocSlice {
   updateLoft: (id: LoftId, updater: (entity: LoftEntity) => LoftEntity) => void;
   removeLoft: (id: LoftId) => void;
   getLoft: (id: LoftId) => LoftEntity | undefined;
+
+  // Generic entity duplication
+  duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
+
+  // Generic entity deletion
+  deleteEntity: (handle: EntityHandle) => void;
 
   // Generic entity update
   updateEntity: (
@@ -178,6 +184,51 @@ export const createDocSlice: StateCreator<DocSlice> = (set, get) => ({
       };
     }),
   getLoft: (id) => get().doc.lofts[id],
+
+  // Generic entity duplication
+  duplicateEntity: (handle) => {
+    const { type, id } = parseHandle(handle);
+    const fieldName = entityTypeToDocField[type];
+    const entity = (get().doc[fieldName] as Record<string, BaseEntity<any>>)[
+      id as any
+    ];
+    if (!entity) return null;
+
+    const newId = uid() as any;
+    const duplicatedEntity = { ...entity, id: newId };
+
+    set((state) => ({
+      doc: {
+        ...state.doc,
+        [fieldName]: {
+          ...(state.doc[fieldName] as Record<string, BaseEntity<any>>),
+          [newId]: duplicatedEntity,
+        },
+      },
+    }));
+
+    return handleNew(type, newId);
+  },
+
+  // Generic entity deletion
+  deleteEntity: (handle) => {
+    const { type, id } = parseHandle(handle);
+    const fieldName = entityTypeToDocField[type];
+
+    set((state) => {
+      const currentTable = state.doc[fieldName] as Record<
+        string,
+        BaseEntity<any>
+      >;
+      const { [id as any]: removed, ...rest } = currentTable;
+      return {
+        doc: {
+          ...state.doc,
+          [fieldName]: rest,
+        },
+      };
+    });
+  },
 
   // Generic entity update
   updateEntity: (handle, updater) => {

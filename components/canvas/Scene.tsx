@@ -25,7 +25,8 @@ export function Scene({
   controlsRef: React.RefObject<any>;
 }) {
   const { camera, size } = useThree();
-  const { doc, isSelected, updateWorkPlane } = useStore();
+  const { doc, isSelected, updateWorkPlane, selectOnly, toggleSelection } =
+    useStore();
   const [isDragging, setIsDragging] = useState(false);
 
   const { workPlanes, polylines, lofts } = useMemo(() => renderDoc(doc), [doc]);
@@ -161,9 +162,24 @@ export function Scene({
 
       {/* Render lofts */}
       {lofts.map(({ geometry, id }) => {
+        const handle = handleNew("LOFT", id as any);
+        const selected = isSelected(handle);
+        const color = selected ? colors.selection.highlight : 0x888888;
         return (
-          <lineSegments key={id} geometry={geometry}>
-            <lineBasicMaterial color={0x888888} />
+          <lineSegments
+            key={id}
+            geometry={geometry}
+            userData={{ handle }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                toggleSelection(handle);
+              } else {
+                selectOnly(handle);
+              }
+            }}
+          >
+            <lineBasicMaterial color={color} />
           </lineSegments>
         );
       })}

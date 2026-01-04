@@ -6,6 +6,7 @@ import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
+import { DuplicateIcon, TrashIcon } from "../Icons";
 import { EditableEntityName } from "../EditableEntityName";
 
 interface EntityCategoryProps {
@@ -23,6 +24,8 @@ interface EntityCategoryProps {
   isSelected: (handle: EntityHandle) => boolean;
   idCaster: (id: string) => EntityId;
   onAdd?: () => void;
+  onDuplicate?: (handle: EntityHandle) => void;
+  onDelete?: (handle: EntityHandle) => void;
 }
 
 export function EntityCategory({
@@ -36,6 +39,8 @@ export function EntityCategory({
   isSelected,
   idCaster,
   onAdd,
+  onDuplicate,
+  onDelete,
 }: EntityCategoryProps) {
   return (
     <div>
@@ -105,19 +110,59 @@ export function EntityCategory({
             const handle = handleNew(entityType, idCaster(id));
             const selected = isSelected(handle);
             return (
-              <button
+              <div
                 key={id}
-                onClick={(e) => onEntityClick(e, entityType, id)}
                 className={cn(
-                  "w-full rounded px-2 py-1 text-left text-sm transition-colors",
+                  "flex items-center gap-2 rounded px-2 py-1 text-sm transition-colors",
                   selected ? colors.bg.selected : "",
-                  "hover:" + colors.text.primary,
-                  !selected && "hover:" + colors.bg.secondary,
-                  "cursor-pointer"
+                  !selected && "hover:" + colors.bg.secondary
                 )}
               >
-                <EditableEntityName handle={handle} />
-              </button>
+                <button
+                  onClick={(e) => onEntityClick(e, entityType, id)}
+                  className={cn(
+                    "flex-1 text-left transition-colors",
+                    "hover:" + colors.text.primary,
+                    "cursor-pointer"
+                  )}
+                >
+                  <EditableEntityName handle={handle} />
+                </button>
+                <div className="flex items-center gap-1">
+                  {onDuplicate && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDuplicate(handle);
+                      }}
+                      className={cn(
+                        "flex items-center justify-center rounded p-0.5 transition-colors",
+                        "hover:" + colors.bg.primary,
+                        colors.text.secondary
+                      )}
+                      title="Duplicate"
+                    >
+                      <DuplicateIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(handle);
+                      }}
+                      className={cn(
+                        "flex items-center justify-center rounded p-0.5 transition-colors",
+                        "hover:" + colors.bg.primary,
+                        colors.text.secondary
+                      )}
+                      title="Delete"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
             );
           })}
         </div>
