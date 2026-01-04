@@ -8,6 +8,15 @@ import {
   computeDefaultU,
 } from "../geom/vec3";
 
+/**
+ * WorkPlane type: A THREE.Group that encodes a plane's coordinate system
+ * and stores the THREE.Shape to preserve holes during conversion.
+ * Geometry can be generated from the shape when needed.
+ */
+export type WorkPlane = THREE.Group & {
+  shape: THREE.Shape; // Preserve original THREE.Shape structure (including holes)
+};
+
 function vec3GeomToThree(vec: Vec3): Vec3 {
   return [vec[0], vec[1], vec[2]];
 }
@@ -40,12 +49,17 @@ function polygonToShape(polygon: Polygon): THREE.Shape {
   return shape;
 }
 
-export function plane3ToWorkPlane(plane: Plane3): {
-  plane: THREE.Plane;
-  matrix: THREE.Matrix4;
-  matrixInverse: THREE.Matrix4;
-  position: [number, number, number];
-} {
+/**
+ * Converts a Plane3 to a THREE.Group workPlane entity.
+ *
+ * The Group encodes the plane's coordinate system:
+ * - position: plane origin
+ * - rotation: encodes normal (Z-axis) and u vector (X-axis)
+ * - matrix: automatically computed by THREE.js from position/rotation
+ *
+ * The Group can contain child meshes/geometries that will transform with it.
+ */
+export function plane3ToWorkPlane(plane: Plane3): THREE.Group {
   // Normalize the plane's normal (this will be the Z-axis of local space)
   const normalGeom = vec3Normalize(plane.normal);
   const normalThree = new THREE.Vector3(
@@ -85,81 +99,55 @@ export function plane3ToWorkPlane(plane: Plane3): {
   // Convert to THREE.js vectors
   const uThree = new THREE.Vector3(uGeom[0], uGeom[1], uGeom[2]);
   const vThree = new THREE.Vector3(vGeom[0], vGeom[1], vGeom[2]);
-  const originThree = new THREE.Vector3(
-    plane.origin[0],
-    plane.origin[1],
-    plane.origin[2]
-  );
 
-  // Build the local-to-world transformation matrix
-  // Columns are: [u, v, normal, origin]
-  // This transforms points from the plane's local XY space to world space
-  const matrix = new THREE.Matrix4();
-  matrix.makeBasis(uThree, vThree, normalThree);
-  matrix.setPosition(originThree);
+  // Build the rotation matrix from basis vectors
+  // Columns are: [u, v, normal]
+  const rotationMatrix = new THREE.Matrix4();
+  rotationMatrix.makeBasis(uThree, vThree, normalThree);
 
-  // Compute inverse for world-to-local transformation
-  const matrixInverse = matrix.clone().invert();
+  // Create the workPlane Group
+  const workPlane = new THREE.Group();
 
-  // Create THREE.Plane for ray intersection
-  // THREE.Plane is defined by normal and constant (distance from origin)
-  // The constant is -normal.dot(origin)
-  const planeConstant = -normalThree.dot(originThree);
-  const threePlane = new THREE.Plane(normalThree.clone(), planeConstant);
+  // Set position to plane origin
+  workPlane.position.set(plane.origin[0], plane.origin[1], plane.origin[2]);
 
-  // Extract position from plane origin
-  const position: [number, number, number] = [
-    plane.origin[0],
-    plane.origin[1],
-    plane.origin[2],
-  ];
+  // Set rotation from the rotation matrix
+  // Extract Euler angles from the rotation matrix (remove translation)
+  const rotation = new THREE.Euler().setFromRotationMatrix(rotationMatrix);
+  workPlane.rotation.copy(rotation);
 
-  return {
-    plane: threePlane,
-    matrix,
-    matrixInverse,
-    position,
-  };
+  // Update matrix (THREE.js will do this automatically, but we can force it)
+  workPlane.updateMatrixWorld(true);
+
+  return workPlane;
 }
 
 /**
- * Converts a Face to workPlane and shapeGeometry for rendering.
+ * Converts a Face to a THREE.Group workPlane entity.
  *
  * The Face is the persisted storage form (geom kernel).
- * This function generates:
- * - workPlane: THREE.js work plane entity from the Face's Plane3 (includes position)
- * - shapeGeometry: THREE.BufferGeometry from the Face's Polygon
+ * This function generates a THREE.Group that:
+ * - Has position and rotation encoding the Plane3
+ * - Stores the THREE.Shape as a property (preserves holes)
+ * - Automatically computes matrix/matrixWorld for transformations
  *
  * The polygon's 2D coordinates (x, y) are in the plane's local space.
- * The shapeGeometry is transformed with rotation only (position is in workPlane).
+ * Geometry can be generated from the shape when needed.
  *
- * Returns an object with workPlane and shapeGeometry.
+ * Returns a THREE.Group workPlane entity with shape stored as a property.
  */
-export function faceToThree(face: Face): {
-  workPlane: {
-    plane: THREE.Plane;
-    matrix: THREE.Matrix4;
-    matrixInverse: THREE.Matrix4;
-    position: [number, number, number];
-  };
-  shapeGeometry: THREE.BufferGeometry;
-} {
+export function faceToThree(face: Face): WorkPlane {
   const { plane, polygon } = face;
 
-  // Generate workPlane from Plane3 (includes position)
+  // Generate workPlane Group from Plane3
   const workPlane = plane3ToWorkPlane(plane);
 
   // Generate shape from Polygon
   const shape = polygonToShape(polygon);
 
-  // Create shapeGeometry and apply rotation transformation
-  const shapeGeometry = new THREE.ShapeGeometry(shape);
-  const rotationMatrix = workPlane.matrix.clone();
-  rotationMatrix.setPosition(0, 0, 0); // Remove translation, keep only rotation
-  shapeGeometry.applyMatrix4(rotationMatrix);
+  // Store the THREE.Shape as a property
+  // Geometry can be generated from the shape when needed
+  (workPlane as WorkPlane).shape = shape;
 
-  return {
-    workPlane,
-    shapeGeometry,
-  };
+  return workPlane as WorkPlane;
 }

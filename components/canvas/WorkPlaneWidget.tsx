@@ -3,13 +3,11 @@ import { useRef, useEffect, useState } from "react";
 import { TransformControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { Face } from "@/lib/geom/geomTypes";
-import { plane3ToWorkPlane, faceToThree } from "@/lib/conversion/geomToThree";
-import { plane3New } from "@/lib/geom/plane3";
+import { WorkPlane } from "@/lib/conversion/geomToThree";
 
 interface WorkPlaneWidgetProps {
-  shape: Face;
-  onShapeChange: (shape: Face) => void;
+  workPlane: WorkPlane;
+  onWorkPlaneChange: (workPlane: WorkPlane) => void;
   onDraggingChange?: (isDragging: boolean) => void;
   enabled?: boolean;
   showHelpers?: boolean;
@@ -17,9 +15,34 @@ interface WorkPlaneWidgetProps {
   showRotate?: boolean;
 }
 
+/**
+ * Extracts normal and u vectors from a WorkPlane's rotation matrix.
+ */
+function extractNormalAndU(workPlane: WorkPlane): {
+  normal: THREE.Vector3;
+  u: THREE.Vector3 | null;
+} {
+  workPlane.updateMatrixWorld(true);
+  const rotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
+    workPlane.rotation
+  );
+
+  const uThree = new THREE.Vector3();
+  const normalThree = new THREE.Vector3();
+
+  // Extract basis vectors from rotation matrix
+  uThree.setFromMatrixColumn(rotationMatrix, 0); // X-axis (u)
+  normalThree.setFromMatrixColumn(rotationMatrix, 2); // Z-axis (normal)
+
+  return {
+    normal: normalThree.normalize(),
+    u: uThree.normalize(),
+  };
+}
+
 export function WorkPlaneWidget({
-  shape,
-  onShapeChange,
+  workPlane,
+  onWorkPlaneChange,
   onDraggingChange,
   enabled = true,
   showHelpers = true,
@@ -41,9 +64,6 @@ export function WorkPlaneWidget({
   const initialNormalRef = useRef<THREE.Vector3 | null>(null);
   const initialURef = useRef<THREE.Vector3 | null>(null);
   const { camera } = useThree();
-
-  const workPlane = plane3ToWorkPlane(shape.plane);
-  const { shapeGeometry } = faceToThree(shape);
 
   // Track Shift key state
   useEffect(() => {
@@ -68,21 +88,17 @@ export function WorkPlaneWidget({
     };
   }, []);
 
-  // Initialize translation group position from workPlane origin
+  // Initialize translation group position from workPlane
   useEffect(() => {
     if (!translationGroupRef.current) return;
-    translationGroupRef.current.position.set(
-      workPlane.position[0],
-      workPlane.position[1],
-      workPlane.position[2]
-    );
+    translationGroupRef.current.position.copy(workPlane.position);
     // Ensure rotation group stays at origin relative to translation group
     if (rotationGroupRef.current) {
       rotationGroupRef.current.position.set(0, 0, 0);
     }
   }, [workPlane.position]);
 
-  // Initialize rotation group orientation from workPlane matrix
+  // Initialize rotation group orientation from workPlane
   useEffect(() => {
     if (!rotationGroupRef.current || !rotationControlsAnchorRef.current) return;
     // Don't update if actively dragging
@@ -90,16 +106,12 @@ export function WorkPlaneWidget({
     // Ensure rotation group and anchor are at origin relative to translation group
     rotationGroupRef.current.position.set(0, 0, 0);
     rotationControlsAnchorRef.current.position.set(0, 0, 0);
-    // Extract rotation from workPlane matrix (remove translation)
-    const rotationMatrix = workPlane.matrix.clone();
-    rotationMatrix.setPosition(0, 0, 0);
-    const rotation = new THREE.Euler().setFromRotationMatrix(rotationMatrix);
-    // Set rotation on both groups so they stay in sync
-    rotationControlsAnchorRef.current.rotation.copy(rotation);
-    rotationGroupRef.current.rotation.copy(rotation);
-  }, [workPlane.matrix]);
+    // Copy rotation from workPlane
+    rotationControlsAnchorRef.current.rotation.copy(workPlane.rotation);
+    rotationGroupRef.current.rotation.copy(workPlane.rotation);
+  }, [workPlane.rotation]);
 
-  // Handle translation changes - updates plane.origin in world space
+  // Handle translation changes - updates workPlane position
   const handleTranslationChange = () => {
     if (!translationGroupRef.current || !isTranslatingRef.current) return;
 
@@ -110,64 +122,33 @@ export function WorkPlaneWidget({
       rotationGroupRef.current.position.set(0, 0, 0);
     }
 
-    // Translation directly updates the plane's origin in world coordinates
-    // Normal and u remain unchanged
-    const newPlane = plane3New(
-      [position.x, position.y, position.z],
-      shape.plane.normal,
-      shape.plane.u
-    );
+    // Create updated workPlane with new position
+    // Clone doesn't preserve custom properties, so we copy manually
+    const updatedWorkPlane = new THREE.Group() as WorkPlane;
+    updatedWorkPlane.position.copy(position);
+    updatedWorkPlane.rotation.copy(workPlane.rotation);
+    updatedWorkPlane.shape = workPlane.shape; // Preserve THREE.Shape (holes)
 
-    onShapeChange({
-      plane: newPlane,
-      polygon: shape.polygon,
-    });
+    onWorkPlaneChange(updatedWorkPlane);
   };
 
-  // Handle rotation changes - updates plane.normal and plane.u
+  // Handle rotation changes - updates workPlane rotation
   const handleRotationChange = () => {
     if (!rotationControlsAnchorRef.current || !isRotatingRef.current) return;
-    if (!initialRotationRef.current || !initialNormalRef.current) return;
+    if (!initialRotationRef.current) return;
 
     // Get current rotation from the anchor group
     const currentRotation = rotationControlsAnchorRef.current.rotation;
 
-    // Calculate delta rotation (current - initial)
-    const deltaRotation = new THREE.Euler();
-    deltaRotation.set(
-      currentRotation.x - initialRotationRef.current.x,
-      currentRotation.y - initialRotationRef.current.y,
-      currentRotation.z - initialRotationRef.current.z
-    );
+    // Create updated workPlane with new rotation
+    // Clone doesn't preserve custom properties, so we copy manually
+    const updatedWorkPlane = new THREE.Group() as WorkPlane;
+    updatedWorkPlane.position.copy(workPlane.position);
+    updatedWorkPlane.rotation.copy(currentRotation);
+    updatedWorkPlane.shape = workPlane.shape; // Preserve THREE.Shape (holes)
+    updatedWorkPlane.updateMatrixWorld(true);
 
-    // Convert delta rotation to rotation matrix
-    const deltaRotationMatrix = new THREE.Matrix4().makeRotationFromEuler(
-      deltaRotation
-    );
-
-    // Apply delta rotation to the initial vectors
-    const newNormal = initialNormalRef.current
-      .clone()
-      .applyMatrix4(deltaRotationMatrix)
-      .normalize();
-    const newU = initialURef.current
-      ? initialURef.current
-          .clone()
-          .applyMatrix4(deltaRotationMatrix)
-          .normalize()
-      : undefined;
-
-    // Origin remains unchanged during rotation
-    const newPlane = plane3New(
-      shape.plane.origin,
-      [newNormal.x, newNormal.y, newNormal.z],
-      newU ? [newU.x, newU.y, newU.z] : undefined
-    );
-
-    onShapeChange({
-      plane: newPlane,
-      polygon: shape.polygon,
-    });
+    onWorkPlaneChange(updatedWorkPlane);
 
     // Update rotation group to match
     if (rotationGroupRef.current) {
@@ -181,15 +162,17 @@ export function WorkPlaneWidget({
       <group ref={translationGroupRef}>
         {/* Rotation group - contains the visual representation */}
         <group ref={rotationGroupRef}>
-          {/* Visual representation of the workPlane */}
-          <mesh geometry={shapeGeometry}>
-            <meshStandardMaterial
-              side={THREE.DoubleSide}
-              color="#FFD700"
-              opacity={0.3}
-              transparent
-            />
-          </mesh>
+          {/* Visual representation of the workPlane - generate geometry from shape */}
+          {workPlane.shape && (
+            <mesh geometry={new THREE.ShapeGeometry(workPlane.shape)}>
+              <meshStandardMaterial
+                side={THREE.DoubleSide}
+                color="#FFD700"
+                opacity={0.75}
+                transparent
+              />
+            </mesh>
+          )}
 
           {/* Helpers - shown in plane's local space */}
           {showHelpers && (
@@ -253,18 +236,10 @@ export function WorkPlaneWidget({
                 // Store initial state when dragging starts
                 initialRotationRef.current =
                   rotationControlsAnchorRef.current.rotation.clone();
-                initialNormalRef.current = new THREE.Vector3(
-                  shape.plane.normal[0],
-                  shape.plane.normal[1],
-                  shape.plane.normal[2]
-                );
-                initialURef.current = shape.plane.u
-                  ? new THREE.Vector3(
-                      shape.plane.u[0],
-                      shape.plane.u[1],
-                      shape.plane.u[2]
-                    )
-                  : null;
+                // Extract normal and u from current workPlane
+                const { normal, u } = extractNormalAndU(workPlane);
+                initialNormalRef.current = normal;
+                initialURef.current = u;
               }
               isRotatingRef.current = true;
               onDraggingChange?.(true);

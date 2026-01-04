@@ -2,12 +2,14 @@
 import { testPacManFaces } from "@/lib/testPacMan";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { Face } from "@/lib/geom/geomTypes";
 import { WorkPlaneWidget } from "./WorkPlaneWidget";
 import { DraggableMesh } from "./DraggableMesh";
 import { Grid } from "./Grid";
+import { faceToThree, WorkPlane } from "@/lib/conversion/geomToThree";
+import { threeToFace } from "@/lib/conversion/threeToGeom";
 
 export function Scene({
   is2D,
@@ -19,7 +21,11 @@ export function Scene({
   const { camera } = useThree();
   const [isDragging, setIsDragging] = useState(false);
   const [faces, setFaces] = useState<Face[]>(testPacManFaces);
-  const [selectedFaceIndex, setSelectedFaceIndex] = useState<number | null>(0);
+
+  // Convert faces to workPlanes (conversion happens outside widget)
+  const workPlanes = useMemo(() => {
+    return faces.map((face) => faceToThree(face));
+  }, [faces]);
 
   useEffect(() => {
     // Reset controls target when camera changes
@@ -41,13 +47,15 @@ export function Scene({
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
       {/* Render workPlane widgets for Pac-Man faces */}
-      {faces.map((face, index) => (
+      {workPlanes.map((workPlane, index) => (
         <WorkPlaneWidget
           key={index}
-          shape={face}
-          onShapeChange={(newShape) => {
+          workPlane={workPlane}
+          onWorkPlaneChange={(updatedWorkPlane) => {
+            // Convert workPlane back to Face
+            const updatedFace = threeToFace(updatedWorkPlane);
             const newFaces = [...faces];
-            newFaces[index] = newShape;
+            newFaces[index] = updatedFace;
             setFaces(newFaces);
           }}
           onDraggingChange={setIsDragging}
