@@ -1,13 +1,18 @@
 "use client";
-import { faceToThree } from "@/lib/conversion/geomToThree";
-import { threeToFace } from "@/lib/conversion/threeToGeom";
-import { Face } from "@/lib/geom/geomTypes";
-import { testPacManFaces } from "@/lib/testPacMan";
+import { colors } from "@/components/ui/colors";
+import { renderDoc } from "@/lib/conversion/geomToThree";
+import { handleNew } from "@/lib/entity/handle";
+import { useStore } from "@/lib/state/useStore";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
-import { DraggableMesh } from "./DraggableMesh";
+import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { Grid } from "./Grid";
+import { PolylineDrawing } from "./PolylineDrawing";
+import { PolylineSelection } from "./PolylineSelection";
 import { WorkPlaneWidget } from "./WorkPlaneWidget";
 
 export function Scene({
@@ -17,26 +22,20 @@ export function Scene({
   is2D: boolean;
   controlsRef: React.RefObject<any>;
 }) {
-  const { camera } = useThree();
+  const { camera, size } = useThree();
+  const { doc, isSelected } = useStore();
   const [isDragging, setIsDragging] = useState(false);
-  const [faces, setFaces] = useState<Face[]>(testPacManFaces);
 
-  // Convert faces to workPlanes (conversion happens outside widget)
-  const workPlanes = useMemo(() => {
-    return faces.map((face) => faceToThree(face));
-  }, [faces]);
+  const { workPlanes, polylines } = useMemo(() => renderDoc(doc), [doc]);
 
   useEffect(() => {
-    // Reset controls target when camera changes
     if (controlsRef.current) {
       controlsRef.current.target.set(0, 0, 0);
-      // Don't call update() in 2D mode as it resets camera rotation
-      // Only update in 3D mode
       if (!is2D) {
         controlsRef.current.update();
       }
     }
-  }, [is2D, camera]);
+  }, [is2D, camera, controlsRef]);
 
   return (
     <>
@@ -45,18 +44,12 @@ export function Scene({
       <directionalLight position={[5, 5, 5]} intensity={1} />
       <pointLight position={[-5, -5, -5]} intensity={0.5} />
 
-      {/* Render workPlane widgets for Pac-Man faces */}
+      {/* Render work planes from doc */}
       {workPlanes.map((workPlane, index) => (
         <WorkPlaneWidget
           key={index}
-          workPlane={workPlane}
-          onWorkPlaneChange={(updatedWorkPlane) => {
-            // Convert workPlane back to Face
-            const updatedFace = threeToFace(updatedWorkPlane);
-            const newFaces = [...faces];
-            newFaces[index] = updatedFace;
-            setFaces(newFaces);
-          }}
+          workPlane={workPlane as any}
+          onWorkPlaneChange={() => {}}
           onDraggingChange={setIsDragging}
           enabled={true}
           showTranslate={true}
@@ -65,31 +58,40 @@ export function Scene({
         />
       ))}
 
-      {/* Draggable cube */}
-      <DraggableMesh
-        initialPosition={[0, 0, 0]}
-        onDraggingChange={setIsDragging}
-        defaultColor="orange"
-        dragColor="hotpink"
-      >
-        <boxGeometry args={[1, 1, 1]} />
-      </DraggableMesh>
+      {/* Render polylines from doc */}
+      {polylines.map(({ path, id }, index) => {
+        const pathPoints = path
+          .getPoints(50)
+          .map((p) => new THREE.Vector3(p.x, p.y, 0));
+        const positions: number[] = [];
+        pathPoints.forEach((p) => {
+          positions.push(p.x, p.y, p.z);
+        });
 
-      {/* Draggable pyramid */}
-      <DraggableMesh
-        initialPosition={[2, 0, 0]}
-        onDraggingChange={setIsDragging}
-        defaultColor="blue"
-        dragColor="cyan"
-      >
-        <meshStandardMaterial />
-        {/* Rotate cone to point along Z axis instead of Y */}
-        <group rotation={[Math.PI / 2, 0, 0]}>
-          <mesh>
-            <coneGeometry args={[0.7, 1, 4]} />
-          </mesh>
-        </group>
-      </DraggableMesh>
+        const geometry = new LineGeometry();
+        geometry.setPositions(positions);
+
+        const handle = handleNew("POLYLINE", id as any);
+        const selected = isSelected(handle);
+        const color = selected ? colors.selection.highlight : 0xffffff;
+
+        const material = new LineMaterial({
+          color,
+          linewidth: 1.5,
+          resolution: new THREE.Vector2(size.width, size.height),
+        });
+
+        const line = new Line2(geometry, material);
+        line.userData.handle = handle;
+        line.userData.pathPoints = pathPoints;
+        return <primitive key={index} object={line} />;
+      })}
+
+      {/* Polyline drawing interaction and preview */}
+      <PolylineDrawing />
+
+      {/* Polyline selection */}
+      <PolylineSelection is2D={is2D} />
 
       <OrbitControls
         ref={controlsRef}
@@ -97,17 +99,13 @@ export function Scene({
         minDistance={1}
         maxDistance={is2D ? 2000 : 5000}
         rotateSpeed={0.5}
-        //panSpeed={1.0}
         zoomSpeed={1.2}
         screenSpacePanning={true}
         enablePan={!isDragging || is2D}
         enableZoom={true}
         enableRotate={!is2D && !isDragging}
-        // Lock polar angle to top-down (90 degrees = Math.PI / 2)
         minPolarAngle={is2D ? Math.PI / 2 : 0}
         maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
-        // Allow azimuth rotation in 2D to match camera rotation
-        // Don't lock it to 0, allow the 90° rotation
         minAzimuthAngle={is2D ? -Infinity : -Infinity}
         maxAzimuthAngle={is2D ? Infinity : Infinity}
       />

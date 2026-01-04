@@ -1,11 +1,12 @@
 import * as THREE from "three";
-import { Face, Plane3, Polygon, Vec3 } from "../geom/geomTypes";
+import { Face, Plane3, Polygon, Polyline2, Vec3 } from "../geom/geomTypes";
 import {
   computeDefaultU,
   vec3Cross,
   vec3Length,
   vec3Normalize,
 } from "../geom/vec3";
+import { Doc } from "../state/doc";
 
 export type WorkPlane = THREE.Group & {
   shape: THREE.Shape;
@@ -94,4 +95,36 @@ export function faceToThree(face: Face): WorkPlane {
   (workPlane as WorkPlane).shape = shape;
 
   return workPlane as WorkPlane;
+}
+
+export function polyline2ToPath(polyline: Polyline2): THREE.Path {
+  const path = new THREE.Path();
+  if (polyline.length < 2) {
+    return path;
+  }
+  path.moveTo(polyline[0], polyline[1]);
+  for (let i = 2; i < polyline.length; i += 2) {
+    path.lineTo(polyline[i], polyline[i + 1]);
+  }
+  return path;
+}
+
+export function renderDoc(doc: Doc): {
+  workPlanes: THREE.Group[];
+  polylines: Array<{ path: THREE.Path; id: string }>;
+} {
+  const workPlanes: THREE.Group[] = [];
+  const polylines: Array<{ path: THREE.Path; id: string }> = [];
+
+  for (const workPlaneEntity of Object.values(doc.workPlanes)) {
+    const workPlane = plane3ToWorkPlane(workPlaneEntity.plane3);
+    workPlanes.push(workPlane);
+  }
+
+  for (const [id, polylineEntity] of Object.entries(doc.polylines)) {
+    const path = polyline2ToPath(polylineEntity.polyline);
+    polylines.push({ path, id });
+  }
+
+  return { workPlanes, polylines };
 }

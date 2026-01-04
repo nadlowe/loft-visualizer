@@ -1,10 +1,12 @@
 "use client";
 
 import { Scene } from "@/components/canvas/Scene";
+import { EditingBanner } from "@/components/ui/EditingBanner";
 import { Explorer } from "@/components/ui/explorer/Explorer";
 import { Inspector } from "@/components/ui/inspector/Inspector";
 import { ModeToggleButton } from "@/components/ui/ModeToggleButton";
 import { TopBar } from "@/components/ui/TopBar";
+import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { getCurrentDocId } from "@/lib/state/persistence";
 import { useStore } from "@/lib/state/useStore";
 import { Canvas } from "@react-three/fiber";
@@ -20,6 +22,8 @@ export default function Home() {
   const [inspectorWidth, setInspectorWidth] = useState(250);
   const [isExplorerCollapsed, setIsExplorerCollapsed] = useState(false);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
+
+  useKeyboardShortcuts();
 
   useEffect(() => {
     const currentDocId = getCurrentDocId();
@@ -59,12 +63,16 @@ export default function Home() {
 
         {/* Canvas - flexible middle area */}
         <div className="relative flex-1 overflow-hidden">
-          <ModeToggleButton is2D={is2D} onToggle={() => setIs2D(!is2D)} />
+          <EditingBanner />
 
           <Canvas gl={{ antialias: true, alpha: false }}>
             <CameraController is2D={is2D} controlsRef={controlsRef} />
             <Scene is2D={is2D} controlsRef={controlsRef} />
           </Canvas>
+
+          <div className="absolute right-4 bottom-4">
+            <ModeToggleButton is2D={is2D} onToggle={() => setIs2D(!is2D)} />
+          </div>
         </div>
 
         <Inspector

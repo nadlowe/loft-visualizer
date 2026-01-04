@@ -13,14 +13,11 @@ export function ModeToggleButton({ is2D, onToggle }: ModeToggleButtonProps) {
     <button
       onClick={onToggle}
       className={cn(
-        "absolute top-4 z-10 rounded-md px-4 py-2 text-sm font-medium transition-all",
+        "z-10 rounded-md px-4 py-2 text-sm font-medium transition-all",
         colors.bg.secondary,
         colors.text.primary,
         "hover:" + colors.bg.secondary
       )}
-      style={{
-        right: "18px",
-      }}
     >
       {is2D ? "Switch to 3D" : "Switch to 2D"}
     </button>

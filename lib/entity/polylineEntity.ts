@@ -5,5 +5,5 @@ import { BaseEntity } from "./baseEntity";
 export interface PolylineEntity extends BaseEntity<PolylineId> {
   readonly type: "POLYLINE";
   readonly polyline: Polyline2;
-  readonly workPlaneId: WorkPlaneId;
+  readonly workPlaneId?: WorkPlaneId;
 }
