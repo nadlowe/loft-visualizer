@@ -5,6 +5,7 @@ export const colors = {
     secondary: "bg-[#3A3A3A]",
     tertiary: "bg-[#1E1E1E]",
     input: "bg-[#3A3A3A]",
+    selected: "bg-[#3A4A5A]",
     deleteHover: "bg-[#4A2A2A]",
     deleteSelected: "bg-[#4A2A2A]",
     red: "bg-red-600",

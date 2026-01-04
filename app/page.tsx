@@ -1,8 +1,8 @@
 "use client";
 
 import { Scene } from "@/components/canvas/Scene";
-import { Explorer } from "@/components/ui/Explorer";
-import { Inspector } from "@/components/ui/Inspector";
+import { Explorer } from "@/components/ui/explorer/Explorer";
+import { Inspector } from "@/components/ui/inspector/Inspector";
 import { ModeToggleButton } from "@/components/ui/ModeToggleButton";
 import { TopBar } from "@/components/ui/TopBar";
 import { getCurrentDocId } from "@/lib/state/persistence";

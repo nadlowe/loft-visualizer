@@ -1,21 +1,24 @@
 "use client";
 
+import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "../colors";
+import { colors } from "../../colors";
+import { EntityMenu } from "./EntityMenu";
 
-interface InspectorProps {
+interface ExplorerProps {
   width: number;
   isCollapsed: boolean;
   onResize: (width: number) => void;
   onCollapse: (collapsed: boolean) => void;
 }
 
-export function Inspector({
+export function Explorer({
   width,
   isCollapsed,
   onResize,
   onCollapse,
-}: InspectorProps) {
+}: ExplorerProps) {
+  const { doc } = useStore();
   const minWidth = 200;
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -25,7 +28,7 @@ export function Inspector({
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - startX;
-      const newWidth = startWidth - deltaX;
+      const newWidth = startWidth + deltaX;
 
       if (wasCollapsed) {
         if (newWidth >= minWidth) {
@@ -54,18 +57,18 @@ export function Inspector({
     return (
       <div
         className={cn(
-          "relative flex h-full border-l transition-all",
+          "relative flex h-full border-r transition-all",
           colors.border.primary,
           colors.bg.primary
         )}
         style={{ width: "32px" }}
       >
         <div className="flex-1 overflow-auto p-4">
-          {/* Empty for now */}
+          <EntityMenu doc={doc} />
         </div>
         <div
           onMouseDown={handleMouseDown}
-          className="absolute left-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+          className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
         />
       </div>
     );
@@ -74,18 +77,18 @@ export function Inspector({
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col border-l transition-all",
+        "relative flex h-full flex-col border-r transition-all",
         colors.border.primary,
         colors.bg.primary
       )}
       style={{ width: `${width}px` }}
     >
       <div className="flex-1 overflow-auto p-4">
-        {/* Empty for now */}
+        <EntityMenu doc={doc} />
       </div>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute left-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+        className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
       />
     </div>
   );

@@ -2,23 +2,27 @@
 
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "../colors";
-import { EntityMenu } from "./EntityMenu";
+import { colors } from "../../colors";
+import { MultiInspector } from "./MultiInspector";
+import { SingleInspector } from "./SingleInspector";
 
-interface ExplorerProps {
+interface InspectorProps {
   width: number;
   isCollapsed: boolean;
   onResize: (width: number) => void;
   onCollapse: (collapsed: boolean) => void;
 }
 
-export function Explorer({
+export function Inspector({
   width,
   isCollapsed,
   onResize,
   onCollapse,
-}: ExplorerProps) {
-  const { doc } = useStore();
+}: InspectorProps) {
+  const { doc, selectedHandles } = useStore();
+  const selectedArray = Array.from(selectedHandles);
+  const selectedCount = selectedArray.length;
+
   const minWidth = 200;
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -28,7 +32,7 @@ export function Explorer({
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - startX;
-      const newWidth = startWidth + deltaX;
+      const newWidth = startWidth - deltaX;
 
       if (wasCollapsed) {
         if (newWidth >= minWidth) {
@@ -57,39 +61,44 @@ export function Explorer({
     return (
       <div
         className={cn(
-          "relative flex h-full border-r transition-all",
+          "relative flex h-full border-l transition-all",
           colors.border.primary,
           colors.bg.primary
         )}
         style={{ width: "32px" }}
       >
-        <div className="flex-1 overflow-auto p-4">
-          <EntityMenu doc={doc} />
-        </div>
         <div
           onMouseDown={handleMouseDown}
-          className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+          className="absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
         />
+        <div className="flex-1 overflow-auto p-4"></div>
       </div>
     );
+  }
+
+  let content = null;
+  if (selectedCount === 0) {
+    content = null;
+  } else if (selectedCount === 1) {
+    content = <SingleInspector doc={doc} handle={selectedArray[0]} />;
+  } else {
+    content = <MultiInspector doc={doc} handles={selectedArray} />;
   }
 
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col border-r transition-all",
+        "relative flex h-full flex-col border-l transition-all",
         colors.border.primary,
         colors.bg.primary
       )}
       style={{ width: `${width}px` }}
     >
-      <div className="flex-1 overflow-auto p-4">
-        <EntityMenu doc={doc} />
-      </div>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+        className="absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
       />
+      <div className="flex-1 overflow-auto p-4">{content}</div>
     </div>
   );
 }

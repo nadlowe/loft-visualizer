@@ -1,6 +1,6 @@
-import { EntityType } from "../entity/entityTypes";
+import { EntityId } from "../util/uid";
+import { EntityType } from "./entityTypes";
 import { EntityHandle } from "./handleTypes";
-import { EntityId } from "./uid";
 
 export function handleNew(type: EntityType, id: EntityId): EntityHandle {
   const typeMap = {

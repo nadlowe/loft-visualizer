@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { EntityHandle } from "../util/handleTypes";
+import { EntityHandle } from "../entity/handleTypes";
 
 export function assignHandle(
   object: THREE.Object3D,

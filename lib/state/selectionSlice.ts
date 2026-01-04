@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { EntityHandle } from "../util/handleTypes";
+import { EntityHandle } from "../entity/handleTypes";
 
 export interface SelectionSlice {
   selectedHandles: Set<EntityHandle>;
