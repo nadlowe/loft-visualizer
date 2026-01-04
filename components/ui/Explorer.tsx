@@ -1,7 +1,9 @@
 "use client";
 
+import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { colors } from "../colors";
+import { EntityMenu } from "./EntityMenu";
 
 interface ExplorerProps {
   width: number;
@@ -16,6 +18,7 @@ export function Explorer({
   onResize,
   onCollapse,
 }: ExplorerProps) {
+  const { doc } = useStore();
   const minWidth = 200;
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -61,11 +64,11 @@ export function Explorer({
         style={{ width: "32px" }}
       >
         <div className="flex-1 overflow-auto p-4">
-          {/* Empty for now */}
+          <EntityMenu doc={doc} />
         </div>
         <div
           onMouseDown={handleMouseDown}
-          className="absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+          className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
         />
       </div>
     );
@@ -81,11 +84,11 @@ export function Explorer({
       style={{ width: `${width}px` }}
     >
       <div className="flex-1 overflow-auto p-4">
-        {/* Empty for now */}
+        <EntityMenu doc={doc} />
       </div>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute right-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+        className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
       />
     </div>
   );
