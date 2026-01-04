@@ -33,6 +33,8 @@ function pointToLineSegmentDistance(
 function findClosestPolyline(
   clickPoint: THREE.Vector3,
   polylines: Line2[],
+  is2D: boolean,
+  camera: THREE.Camera,
   threshold: number = 0.5
 ): { line: Line2; distance: number } | null {
   let closest: { line: Line2; distance: number } | null = null;
@@ -41,14 +43,49 @@ function findClosestPolyline(
     const pathPoints = line.userData.pathPoints as THREE.Vector3[];
     if (!pathPoints || pathPoints.length < 2) continue;
 
+    // Transform pathPoints to world space
+    line.updateMatrixWorld(true);
+    const worldMatrix = line.matrixWorld;
+
+    const worldPathPoints = pathPoints.map((pt) => {
+      return pt.clone().applyMatrix4(worldMatrix);
+    });
+
     let minDistance = Infinity;
-    for (let i = 0; i < pathPoints.length - 1; i++) {
-      const dist = pointToLineSegmentDistance(
-        clickPoint,
-        pathPoints[i],
-        pathPoints[i + 1]
+
+    if (is2D) {
+      // For 2D selection, project all points to XY plane (Z=0) for distance calculation
+      // This matches how window selection works (it only checks X and Y coordinates)
+      const projectedClickPoint = new THREE.Vector3(
+        clickPoint.x,
+        clickPoint.y,
+        0
       );
-      minDistance = Math.min(minDistance, dist);
+      const projectedPathPoints = worldPathPoints.map((pt) => {
+        return new THREE.Vector3(pt.x, pt.y, 0);
+      });
+
+      for (let i = 0; i < projectedPathPoints.length - 1; i++) {
+        const dist = pointToLineSegmentDistance(
+          projectedClickPoint,
+          projectedPathPoints[i],
+          projectedPathPoints[i + 1]
+        );
+        minDistance = Math.min(minDistance, dist);
+      }
+    } else {
+      // For 3D selection, use screen-space distances
+      const clickScreen = clickPoint.clone().project(camera);
+      for (let i = 0; i < worldPathPoints.length - 1; i++) {
+        const p1Screen = worldPathPoints[i].clone().project(camera);
+        const p2Screen = worldPathPoints[i + 1].clone().project(camera);
+        const dist = pointToLineSegmentDistance(
+          clickScreen,
+          p1Screen,
+          p2Screen
+        );
+        minDistance = Math.min(minDistance, dist);
+      }
     }
 
     if (minDistance < threshold) {
@@ -109,7 +146,15 @@ function findPolylinesInRectangle(
   for (const line of polylines) {
     const pathPoints = line.userData.pathPoints as THREE.Vector3[];
     if (!pathPoints || pathPoints.length < 2) continue;
-    if (polylineIntersectsRectangle(pathPoints, rectMin, rectMax)) {
+
+    // Transform pathPoints to world space
+    line.updateMatrixWorld(true);
+    const worldMatrix = line.matrixWorld;
+    const worldPathPoints = pathPoints.map((pt) => {
+      return pt.clone().applyMatrix4(worldMatrix);
+    });
+
+    if (polylineIntersectsRectangle(worldPathPoints, rectMin, rectMax)) {
       result.push(line);
     }
   }
@@ -248,12 +293,16 @@ export function PolylineSelection({ is2D }: PolylineSelectionProps) {
 
         setSelectionRect(null);
         mouseDownPosRef.current = null;
+        isDraggingRef.current = false;
         return;
       }
 
-      if (moved || isDraggingRef.current) {
+      // Skip click selection if we actually moved the mouse significantly
+      // (Window selection already handled above in 2D mode)
+      if (moved) {
         setSelectionRect(null);
         mouseDownPosRef.current = null;
+        isDraggingRef.current = false;
         return;
       }
 
@@ -278,7 +327,12 @@ export function PolylineSelection({ is2D }: PolylineSelectionProps) {
         }
       });
 
-      const closest = findClosestPolyline(intersection, polylines);
+      const closest = findClosestPolyline(
+        intersection,
+        polylines,
+        is2D,
+        camera
+      );
 
       if (closest) {
         e.preventDefault();
@@ -298,6 +352,7 @@ export function PolylineSelection({ is2D }: PolylineSelectionProps) {
 
       setSelectionRect(null);
       mouseDownPosRef.current = null;
+      isDraggingRef.current = false;
     };
 
     gl.domElement.addEventListener("mousedown", handleMouseDown);

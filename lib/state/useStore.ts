@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createCmdSlice, CmdSlice } from "./cmdSlice";
+import { CmdSlice, createCmdSlice } from "./cmdSlice";
 import { createDocSlice, DocSlice } from "./docSlice";
 import { createSelectionSlice, SelectionSlice } from "./selectionSlice";
 

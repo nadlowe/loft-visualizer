@@ -64,7 +64,11 @@ export function EntityCategory({
             stroke="currentColor"
             strokeWidth={2}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
           </svg>
         </button>
         {onAdd && (
@@ -105,7 +109,7 @@ export function EntityCategory({
                 key={id}
                 onClick={(e) => onEntityClick(e, entityType, id)}
                 className={cn(
-                  "rounded px-2 py-1 text-left text-sm transition-colors w-full",
+                  "w-full rounded px-2 py-1 text-left text-sm transition-colors",
                   selected ? colors.bg.selected : "",
                   "hover:" + colors.text.primary,
                   !selected && "hover:" + colors.bg.secondary,

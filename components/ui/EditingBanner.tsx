@@ -25,7 +25,9 @@ export function EditingBanner() {
         colors.bg.primary
       )}
     >
-      <span className={cn(fonts.size.sm, colors.text.secondary)}>{message}</span>
+      <span className={cn(fonts.size.sm, colors.text.secondary)}>
+        {message}
+      </span>
     </div>
   );
 }

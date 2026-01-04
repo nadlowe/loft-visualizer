@@ -1,6 +1,7 @@
 "use client";
 import { colors } from "@/components/ui/colors";
-import { renderDoc } from "@/lib/conversion/geomToThree";
+import { renderDoc, WorkPlane } from "@/lib/conversion/geomToThree";
+import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
 import { handleNew } from "@/lib/entity/handle";
 import { useStore } from "@/lib/state/useStore";
 import { WorkPlaneId } from "@/lib/util/uid";
@@ -24,7 +25,7 @@ export function Scene({
   controlsRef: React.RefObject<any>;
 }) {
   const { camera, size } = useThree();
-  const { doc, isSelected } = useStore();
+  const { doc, isSelected, updateWorkPlane } = useStore();
   const [isDragging, setIsDragging] = useState(false);
 
   const { workPlanes, polylines } = useMemo(() => renderDoc(doc), [doc]);
@@ -49,12 +50,75 @@ export function Scene({
       {workPlanes.map(({ workPlane, id }) => {
         const handle = handleNew("WORKPLANE", id as WorkPlaneId);
         const selected = isSelected(handle);
+        const workPlaneId = id as WorkPlaneId;
+
+        const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
+          const plane3 = workPlaneToPlane3(updatedWorkPlane);
+          updateWorkPlane(workPlaneId, (entity) => ({
+            ...entity,
+            plane3,
+          }));
+        };
+
+        const workPlanePolylines = polylines.filter(
+          (p) => p.workPlaneId === id
+        );
+
+        return (
+          <primitive key={id} object={workPlane}>
+            {workPlanePolylines.map(({ path, id: polylineId }) => {
+              const pathPoints = path
+                .getPoints(50)
+                .map((p) => new THREE.Vector3(p.x, p.y, 0));
+              const positions: number[] = [];
+              pathPoints.forEach((p) => {
+                positions.push(p.x, p.y, p.z);
+              });
+
+              const geometry = new LineGeometry();
+              geometry.setPositions(positions);
+
+              const polylineHandle = handleNew("POLYLINE", polylineId as any);
+              const polylineSelected = isSelected(polylineHandle);
+              const color = polylineSelected
+                ? colors.selection.highlight
+                : 0xffffff;
+
+              const material = new LineMaterial({
+                color,
+                linewidth: 1.5,
+                resolution: new THREE.Vector2(size.width, size.height),
+              });
+
+              const line = new Line2(geometry, material);
+              line.userData.handle = polylineHandle;
+              line.userData.pathPoints = pathPoints;
+              return <primitive key={polylineId} object={line} />;
+            })}
+          </primitive>
+        );
+      })}
+
+      {/* Render work plane widgets for selected work planes */}
+      {workPlanes.map(({ workPlane, id }) => {
+        const handle = handleNew("WORKPLANE", id as WorkPlaneId);
+        const selected = isSelected(handle);
         if (!selected) return null;
+        const workPlaneId = id as WorkPlaneId;
+
+        const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
+          const plane3 = workPlaneToPlane3(updatedWorkPlane);
+          updateWorkPlane(workPlaneId, (entity) => ({
+            ...entity,
+            plane3,
+          }));
+        };
+
         return (
           <WorkPlaneWidget
-            key={id}
+            key={`widget-${id}`}
             workPlane={workPlane as any}
-            onWorkPlaneChange={() => {}}
+            onWorkPlaneChange={handleWorkPlaneChange}
             onDraggingChange={setIsDragging}
             enabled={true}
             showTranslate={true}
@@ -64,34 +128,36 @@ export function Scene({
         );
       })}
 
-      {/* Render polylines from doc */}
-      {polylines.map(({ path, id }, index) => {
-        const pathPoints = path
-          .getPoints(50)
-          .map((p) => new THREE.Vector3(p.x, p.y, 0));
-        const positions: number[] = [];
-        pathPoints.forEach((p) => {
-          positions.push(p.x, p.y, p.z);
-        });
+      {/* Render polylines without work planes */}
+      {polylines
+        .filter((p) => !p.workPlaneId)
+        .map(({ path, id }) => {
+          const pathPoints = path
+            .getPoints(50)
+            .map((p) => new THREE.Vector3(p.x, p.y, 0));
+          const positions: number[] = [];
+          pathPoints.forEach((p) => {
+            positions.push(p.x, p.y, p.z);
+          });
 
-        const geometry = new LineGeometry();
-        geometry.setPositions(positions);
+          const geometry = new LineGeometry();
+          geometry.setPositions(positions);
 
-        const handle = handleNew("POLYLINE", id as any);
-        const selected = isSelected(handle);
-        const color = selected ? colors.selection.highlight : 0xffffff;
+          const handle = handleNew("POLYLINE", id as any);
+          const selected = isSelected(handle);
+          const color = selected ? colors.selection.highlight : 0xffffff;
 
-        const material = new LineMaterial({
-          color,
-          linewidth: 1.5,
-          resolution: new THREE.Vector2(size.width, size.height),
-        });
+          const material = new LineMaterial({
+            color,
+            linewidth: 1.5,
+            resolution: new THREE.Vector2(size.width, size.height),
+          });
 
-        const line = new Line2(geometry, material);
-        line.userData.handle = handle;
-        line.userData.pathPoints = pathPoints;
-        return <primitive key={index} object={line} />;
-      })}
+          const line = new Line2(geometry, material);
+          line.userData.handle = handle;
+          line.userData.pathPoints = pathPoints;
+          return <primitive key={id} object={line} />;
+        })}
 
       {/* Polyline drawing interaction and preview */}
       <PolylineDrawing />

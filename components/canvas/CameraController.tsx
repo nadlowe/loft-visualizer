@@ -68,7 +68,7 @@ export function CameraController({
           viewSize * aspect,
           viewSize,
           -viewSize,
-          0.1,
+          -40000,
           40000
         );
 

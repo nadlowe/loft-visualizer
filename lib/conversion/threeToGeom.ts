@@ -67,7 +67,7 @@ export function threeToFace(workPlane: WorkPlane): Face {
   };
 }
 
-function workPlaneToPlane3(workPlane: THREE.Group): Plane3 {
+export function workPlaneToPlane3(workPlane: THREE.Group): Plane3 {
   workPlane.updateMatrixWorld(true);
 
   const origin: Vec3 = [

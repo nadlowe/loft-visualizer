@@ -88,6 +88,8 @@ export function WorkPlaneWidget({
   // Initialize translation group position from workPlane
   useEffect(() => {
     if (!translationGroupRef.current) return;
+    // Don't update if actively dragging
+    if (isTranslatingRef.current) return;
     translationGroupRef.current.position.copy(workPlane.position);
     // Ensure rotation group stays at origin relative to translation group
     if (rotationGroupRef.current) {
