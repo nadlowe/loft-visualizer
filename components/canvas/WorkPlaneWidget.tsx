@@ -227,6 +227,7 @@ export function WorkPlaneWidget({
             ref={rotateControlsRef}
             object={rotationControlsAnchorRef.current}
             mode="rotate"
+            size={0.5}
             onChange={handleRotationChange}
             onMouseDown={() => {
               if (rotationControlsAnchorRef.current) {
@@ -268,6 +269,7 @@ export function WorkPlaneWidget({
             ref={translateControlsRef}
             object={translationGroupRef.current}
             mode="translate"
+            size={0.5}
             onChange={handleTranslationChange}
             onMouseDown={() => {
               isTranslatingRef.current = true;
