@@ -14,7 +14,7 @@ export const colors = {
 
   // Text colors
   text: {
-    primary: "text-white",
+    primary: "text-gray-200",
     secondary: "text-gray-400",
     hover: "text-gray-200",
     selected: "text-blue-400",

@@ -18,12 +18,12 @@ export const fonts = {
 
   // Common font combinations
   menu: "text-sm font-medium",
-  menuItem: "text-sm",
+  menuItem: "text-sm font-medium",
   menuLabel: "text-xs font-semibold tracking-wide uppercase",
   dialogTitle: "text-lg font-semibold",
-  dialogBody: "text-sm",
+  dialogBody: "text-sm font-medium",
   dialogEmpty: "text-sm text-gray-400",
   button: "text-sm font-medium",
   input: "text-sm font-medium",
-  documentName: "text-sm font-medium",
+  documentName: "text-sm font-semibold",
 } as const;

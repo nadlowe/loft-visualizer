@@ -1,6 +1,7 @@
 "use client";
 
 import { Scene } from "@/components/canvas/Scene";
+import { colors } from "@/components/colors";
 import { TopBar } from "@/components/ui/TopBar";
 import { getCurrentDocId } from "@/lib/state/persistence";
 import { useStore } from "@/lib/state/useStore";
@@ -30,9 +31,9 @@ export default function Home() {
         onClick={() => setIs2D(!is2D)}
         className={cn(
           "absolute top-16 right-4 z-10 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-          is2D
-            ? "bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-            : "bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+          colors.bg.secondary,
+          colors.text.primary,
+          "hover:" + colors.bg.secondary
         )}
       >
         {is2D ? "Switch to 3D" : "Switch to 2D"}
