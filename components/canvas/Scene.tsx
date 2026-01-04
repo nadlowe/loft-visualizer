@@ -91,7 +91,6 @@ export function Scene({
         </group>
       </DraggableMesh>
 
-      {/* Orbit Controls - locked orientation in 2D mode, disabled when dragging in 3D */}
       <OrbitControls
         ref={controlsRef}
         enableDamping={false}
@@ -99,11 +98,11 @@ export function Scene({
         maxDistance={is2D ? 2000 : 5000}
         rotateSpeed={0.5}
         //panSpeed={1.0}
-        zoomSpeed={1.2} // Slower zoom for orthographic
-        screenSpacePanning={true} // Makes panning feel like grabbing and dragging the canvas
-        enablePan={!isDragging || is2D} // Disable pan when dragging in 3D
-        enableZoom={true} // Disable zoom when dragging in 3D
-        enableRotate={!is2D && !isDragging} // Disable rotation when dragging in 3D or in 2D
+        zoomSpeed={1.2}
+        screenSpacePanning={true}
+        enablePan={!isDragging || is2D}
+        enableZoom={true}
+        enableRotate={!is2D && !isDragging}
         // Lock polar angle to top-down (90 degrees = Math.PI / 2)
         minPolarAngle={is2D ? Math.PI / 2 : 0}
         maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}

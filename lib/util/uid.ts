@@ -4,6 +4,8 @@ export function uid<T extends string = EntityId>(): T {
   return uuidv4() as T;
 }
 
+export type DocId = string & { readonly __brand: "DocId" };
+
 export type EntityId = PolylineId | WorkPlaneId | LoftId;
 
 export type WorkPlaneId = string & { readonly __brand: "WorkPlaneId" };
