@@ -1,6 +1,6 @@
 import { Doc } from "./doc";
 
-export function defaultDocNew(): Doc {
+export function defaultDocInit(): Doc {
   return {
     workPlanes: {},
     polylines: {},
