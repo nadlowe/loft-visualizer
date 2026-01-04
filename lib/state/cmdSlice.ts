@@ -6,7 +6,11 @@ export type DrawPolylineCmd = {
   vertices: Vec2[];
 };
 
-export type Cmd = DrawPolylineCmd;
+export type AddLoftCmd = {
+  type: "ADD_LOFT";
+};
+
+export type Cmd = DrawPolylineCmd | AddLoftCmd;
 
 export interface CmdSlice {
   cmd: Cmd | null;
@@ -14,6 +18,8 @@ export interface CmdSlice {
   addVertex: (vertex: Vec2) => void;
   removeLastVertex: () => void;
   finishDrawPolyline: () => void;
+  startAddLoft: () => void;
+  finishAddLoft: () => void;
   cancelCmd: () => void;
 }
 
@@ -54,5 +60,12 @@ export const createCmdSlice: StateCreator<CmdSlice> = (set, get) => ({
       return state;
     }),
   finishDrawPolyline: () => set({ cmd: null }),
+  startAddLoft: () =>
+    set({
+      cmd: {
+        type: "ADD_LOFT",
+      },
+    }),
+  finishAddLoft: () => set({ cmd: null }),
   cancelCmd: () => set({ cmd: null }),
 });

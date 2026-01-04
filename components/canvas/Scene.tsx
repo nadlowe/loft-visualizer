@@ -28,7 +28,7 @@ export function Scene({
   const { doc, isSelected, updateWorkPlane } = useStore();
   const [isDragging, setIsDragging] = useState(false);
 
-  const { workPlanes, polylines } = useMemo(() => renderDoc(doc), [doc]);
+  const { workPlanes, polylines, lofts } = useMemo(() => renderDoc(doc), [doc]);
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -158,6 +158,15 @@ export function Scene({
           line.userData.pathPoints = pathPoints;
           return <primitive key={id} object={line} />;
         })}
+
+      {/* Render lofts */}
+      {lofts.map(({ geometry, id }) => {
+        return (
+          <lineSegments key={id} geometry={geometry}>
+            <lineBasicMaterial color={0x888888} />
+          </lineSegments>
+        );
+      })}
 
       {/* Polyline drawing interaction and preview */}
       <PolylineDrawing />

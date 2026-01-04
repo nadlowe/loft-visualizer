@@ -22,6 +22,7 @@ export function EntityMenu({ doc }: EntityMenuProps) {
     selectMultiple,
     startDrawPolyline,
     addWorkPlane,
+    startAddLoft,
   } = useStore();
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(["workPlanes", "polylines", "lofts"])
@@ -99,6 +100,10 @@ export function EntityMenu({ doc }: EntityMenuProps) {
     startDrawPolyline();
   };
 
+  const handleAddLoft = () => {
+    startAddLoft();
+  };
+
   return (
     <div className="flex flex-col">
       <EntityCategory
@@ -135,6 +140,7 @@ export function EntityMenu({ doc }: EntityMenuProps) {
         onEntityClick={handleEntityClick}
         isSelected={isSelected}
         idCaster={(id) => id as LoftId}
+        onAdd={handleAddLoft}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { Scene } from "@/components/canvas/Scene";
 import { EditingBanner } from "@/components/ui/EditingBanner";
 import { Explorer } from "@/components/ui/explorer/Explorer";
 import { Inspector } from "@/components/ui/inspector/Inspector";
+import { LoftCommandHandler } from "@/components/ui/LoftCommandHandler";
 import { ModeToggleButton } from "@/components/ui/ModeToggleButton";
 import { TopBar } from "@/components/ui/TopBar";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
@@ -50,6 +51,7 @@ export default function Home() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-gray-800">
+      <LoftCommandHandler />
       <TopBar />
 
       {/* Main content area with panels */}

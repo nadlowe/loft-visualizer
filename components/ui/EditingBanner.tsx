@@ -15,6 +15,8 @@ export function EditingBanner() {
   let message = "";
   if (cmd.type === "DRAW_POLYLINE") {
     message = "Drawing polyline...";
+  } else if (cmd.type === "ADD_LOFT") {
+    message = "Select two polylines to create a loft";
   }
 
   return (
