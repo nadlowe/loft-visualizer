@@ -266,63 +266,43 @@ export function FileMenu() {
                   {savedDocs
                     .sort((a, b) => b.savedAt - a.savedAt)
                     .map((savedDoc) => (
-                      <div
+                      <button
                         key={savedDoc.id}
+                        onClick={() => handleLoad(savedDoc.id)}
                         className={cn(
-                          "flex items-center gap-3 rounded px-4 py-3 transition-colors",
+                          "flex w-full items-center gap-3 rounded px-4 py-3 text-left transition-colors",
                           savedDoc.id === doc.id
                             ? colors.bg.secondary
                             : "hover:" + colors.bg.secondary
                         )}
                       >
-                        <button
-                          onClick={() => handleLoad(savedDoc.id)}
-                          className="flex flex-1 items-center gap-3 text-left"
-                        >
-                          <DocumentIcon
+                        <DocumentIcon
+                          className={cn(
+                            "h-5 w-5 flex-shrink-0",
+                            savedDoc.id === doc.id
+                              ? colors.text.selected
+                              : colors.text.primary
+                          )}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div
                             className={cn(
-                              "h-5 w-5 flex-shrink-0",
+                              "truncate",
+                              fonts.weight.medium,
                               savedDoc.id === doc.id
                                 ? colors.text.selected
                                 : colors.text.primary
                             )}
-                          />
-                          <div className="min-w-0 flex-1">
-                            <div
-                              className={cn(
-                                "truncate",
-                                fonts.weight.medium,
-                                savedDoc.id === doc.id
-                                  ? colors.text.selected
-                                  : colors.text.primary
-                              )}
-                            >
-                              {savedDoc.name}
-                            </div>
-                            <div
-                              className={cn(
-                                fonts.size.xs,
-                                colors.text.secondary
-                              )}
-                            >
-                              {new Date(savedDoc.savedAt).toLocaleString()}
-                            </div>
+                          >
+                            {savedDoc.name}
                           </div>
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteClick(savedDoc.id, e)}
-                          className={cn(
-                            "rounded px-2 py-1 transition-colors",
-                            fonts.size.xs,
-                            colors.text.secondary,
-                            "hover:" + colors.bg.deleteHover,
-                            "hover:" + colors.text.delete
-                          )}
-                          title="Delete document"
-                        >
-                          ×
-                        </button>
-                      </div>
+                          <div
+                            className={cn(fonts.size.xs, colors.text.secondary)}
+                          >
+                            {new Date(savedDoc.savedAt).toLocaleString()}
+                          </div>
+                        </div>
+                      </button>
                     ))}
                 </div>
               )}

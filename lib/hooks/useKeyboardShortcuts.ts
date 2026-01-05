@@ -35,6 +35,16 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         redo();
       } else if (e.key === "Delete" || e.key === "Backspace") {
+        // Don't delete entities if user is editing text (e.g., entity name)
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return; // Let the browser handle delete/backspace for text editing
+        }
+
         const selectedArray = Array.from(selectedHandles);
         if (selectedArray.length > 0) {
           e.preventDefault();
