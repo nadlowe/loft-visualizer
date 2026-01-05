@@ -39,7 +39,13 @@ export function InspectorHeader({
   const typeLabel = typeLabels[entityType];
 
   return (
-    <div className={cn("flex flex-col gap-2 pb-2 -mx-4 px-4", "border-b", colors.border.primary)}>
+    <div
+      className={cn(
+        "-mx-4 flex flex-col gap-2 px-4 pb-2",
+        "border-b",
+        colors.border.primary
+      )}
+    >
       <div className="flex items-center gap-3">
         <Icon className={cn("h-5 w-5", colors.text.primary)} />
         <span

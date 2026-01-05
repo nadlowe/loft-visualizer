@@ -8,7 +8,10 @@ import * as THREE from "three";
 interface WorkPlaneWidgetProps {
   workPlane: WorkPlane;
   onWorkPlaneChange: (workPlane: WorkPlane) => void;
+  onWorkPlaneChangeTemporary?: (workPlane: WorkPlane) => void;
+  onWorkPlaneChangeFinal?: (workPlane: WorkPlane) => void;
   onDraggingChange?: (isDragging: boolean) => void;
+  onDragStart?: () => void;
   enabled?: boolean;
   showHelpers?: boolean;
   showTranslate?: boolean;
@@ -40,7 +43,10 @@ function extractNormalAndU(workPlane: WorkPlane): {
 export function WorkPlaneWidget({
   workPlane,
   onWorkPlaneChange,
+  onWorkPlaneChangeTemporary,
+  onWorkPlaneChangeFinal,
   onDraggingChange,
+  onDragStart,
   enabled = true,
   showHelpers = true,
   showTranslate = true,
@@ -128,7 +134,12 @@ export function WorkPlaneWidget({
     updatedWorkPlane.rotation.copy(workPlane.rotation);
     updatedWorkPlane.shape = workPlane.shape; // Preserve THREE.Shape (holes)
 
-    onWorkPlaneChange(updatedWorkPlane);
+    // Use temporary update during dragging to avoid saving every frame
+    if (onWorkPlaneChangeTemporary) {
+      onWorkPlaneChangeTemporary(updatedWorkPlane);
+    } else {
+      onWorkPlaneChange(updatedWorkPlane);
+    }
   };
 
   // Handle rotation changes - updates workPlane rotation
@@ -147,7 +158,12 @@ export function WorkPlaneWidget({
     updatedWorkPlane.shape = workPlane.shape; // Preserve THREE.Shape (holes)
     updatedWorkPlane.updateMatrixWorld(true);
 
-    onWorkPlaneChange(updatedWorkPlane);
+    // Use temporary update during dragging to avoid saving every frame
+    if (onWorkPlaneChangeTemporary) {
+      onWorkPlaneChangeTemporary(updatedWorkPlane);
+    } else {
+      onWorkPlaneChange(updatedWorkPlane);
+    }
 
     // Update rotation group to match
     if (rotationGroupRef.current) {
@@ -232,6 +248,7 @@ export function WorkPlaneWidget({
             size={0.5}
             onChange={handleRotationChange}
             onMouseDown={() => {
+              onDragStart?.();
               if (rotationControlsAnchorRef.current) {
                 // Store initial state when dragging starts
                 initialRotationRef.current =
@@ -246,6 +263,23 @@ export function WorkPlaneWidget({
             }}
             onMouseUp={() => {
               isRotatingRef.current = false;
+
+              // Final update on mouse up (no snapshot - already saved on drag start)
+              if (rotationControlsAnchorRef.current) {
+                const currentRotation =
+                  rotationControlsAnchorRef.current.rotation;
+                const updatedWorkPlane = new THREE.Group() as WorkPlane;
+                updatedWorkPlane.position.copy(workPlane.position);
+                updatedWorkPlane.rotation.copy(currentRotation);
+                updatedWorkPlane.shape = workPlane.shape;
+                updatedWorkPlane.updateMatrixWorld(true);
+                if (onWorkPlaneChangeFinal) {
+                  onWorkPlaneChangeFinal(updatedWorkPlane);
+                } else {
+                  onWorkPlaneChange(updatedWorkPlane);
+                }
+              }
+
               initialRotationRef.current = null;
               initialNormalRef.current = null;
               initialURef.current = null;
@@ -253,6 +287,23 @@ export function WorkPlaneWidget({
             }}
             onPointerUp={() => {
               isRotatingRef.current = false;
+
+              // Final update on pointer up (no snapshot - already saved on drag start)
+              if (rotationControlsAnchorRef.current) {
+                const currentRotation =
+                  rotationControlsAnchorRef.current.rotation;
+                const updatedWorkPlane = new THREE.Group() as WorkPlane;
+                updatedWorkPlane.position.copy(workPlane.position);
+                updatedWorkPlane.rotation.copy(currentRotation);
+                updatedWorkPlane.shape = workPlane.shape;
+                updatedWorkPlane.updateMatrixWorld(true);
+                if (onWorkPlaneChangeFinal) {
+                  onWorkPlaneChangeFinal(updatedWorkPlane);
+                } else {
+                  onWorkPlaneChange(updatedWorkPlane);
+                }
+              }
+
               initialRotationRef.current = null;
               initialNormalRef.current = null;
               initialURef.current = null;
@@ -274,15 +325,46 @@ export function WorkPlaneWidget({
             size={0.5}
             onChange={handleTranslationChange}
             onMouseDown={() => {
+              onDragStart?.();
               isTranslatingRef.current = true;
               onDraggingChange?.(true);
             }}
             onMouseUp={() => {
               isTranslatingRef.current = false;
+
+              // Final update on mouse up (no snapshot - already saved on drag start)
+              if (translationGroupRef.current) {
+                const position = translationGroupRef.current.position;
+                const updatedWorkPlane = new THREE.Group() as WorkPlane;
+                updatedWorkPlane.position.copy(position);
+                updatedWorkPlane.rotation.copy(workPlane.rotation);
+                updatedWorkPlane.shape = workPlane.shape;
+                if (onWorkPlaneChangeFinal) {
+                  onWorkPlaneChangeFinal(updatedWorkPlane);
+                } else {
+                  onWorkPlaneChange(updatedWorkPlane);
+                }
+              }
+
               onDraggingChange?.(false);
             }}
             onPointerUp={() => {
               isTranslatingRef.current = false;
+
+              // Final update on pointer up (no snapshot - already saved on drag start)
+              if (translationGroupRef.current) {
+                const position = translationGroupRef.current.position;
+                const updatedWorkPlane = new THREE.Group() as WorkPlane;
+                updatedWorkPlane.position.copy(position);
+                updatedWorkPlane.rotation.copy(workPlane.rotation);
+                updatedWorkPlane.shape = workPlane.shape;
+                if (onWorkPlaneChangeFinal) {
+                  onWorkPlaneChangeFinal(updatedWorkPlane);
+                } else {
+                  onWorkPlaneChange(updatedWorkPlane);
+                }
+              }
+
               onDraggingChange?.(false);
             }}
           />

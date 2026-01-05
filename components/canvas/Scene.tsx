@@ -115,12 +115,62 @@ export function Scene({
           }));
         };
 
+        const handleWorkPlaneChangeTemporary = (
+          updatedWorkPlane: WorkPlane
+        ) => {
+          // Update work plane without saving to history (for dragging)
+          const plane3 = workPlaneToPlane3(updatedWorkPlane);
+          const { doc, setDoc } = useStore.getState();
+          const entity = doc.workPlanes[workPlaneId];
+          if (!entity) return;
+
+          setDoc({
+            ...doc,
+            workPlanes: {
+              ...doc.workPlanes,
+              [workPlaneId]: {
+                ...entity,
+                plane3,
+              },
+            },
+          });
+        };
+
+        const handleWorkPlaneChangeFinal = (updatedWorkPlane: WorkPlane) => {
+          // Final update on mouse up - use setDoc to avoid saving another snapshot
+          // (snapshot was already saved on drag start)
+          const plane3 = workPlaneToPlane3(updatedWorkPlane);
+          const { doc, setDoc } = useStore.getState();
+          const entity = doc.workPlanes[workPlaneId];
+          if (!entity) return;
+
+          setDoc({
+            ...doc,
+            workPlanes: {
+              ...doc.workPlanes,
+              [workPlaneId]: {
+                ...entity,
+                plane3,
+              },
+            },
+          });
+        };
+
+        const handleDragStart = () => {
+          // Save snapshot when drag starts so undo restores to pre-drag state
+          const { saveSnapshot } = useStore.getState();
+          saveSnapshot();
+        };
+
         return (
           <WorkPlaneWidget
             key={`widget-${id}`}
             workPlane={workPlane as any}
             onWorkPlaneChange={handleWorkPlaneChange}
+            onWorkPlaneChangeTemporary={handleWorkPlaneChangeTemporary}
+            onWorkPlaneChangeFinal={handleWorkPlaneChangeFinal}
             onDraggingChange={setIsDragging}
+            onDragStart={handleDragStart}
             enabled={true}
             showTranslate={true}
             showRotate={true}

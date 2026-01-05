@@ -6,8 +6,8 @@ import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
-import { DuplicateIcon, TrashIcon } from "../Icons";
 import { EditableEntityName } from "../EditableEntityName";
+import { DuplicateIcon, TrashIcon } from "../Icons";
 
 interface EntityCategoryProps {
   title: string;

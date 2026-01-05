@@ -1,19 +1,19 @@
 "use client";
 
-import { parseHandle } from "@/lib/entity/handle";
+import { handleNew, parseHandle } from "@/lib/entity/handle";
 import { LoftEntity } from "@/lib/entity/loftEntity";
 import { useStore } from "@/lib/state/useStore";
-import { handleNew } from "@/lib/entity/handle";
 import { LoftId, PolylineId, uid } from "@/lib/util/uid";
 import { useEffect } from "react";
 
 export function LoftCommandHandler() {
-  const { cmd, selectedHandles, doc, addLoft, finishAddLoft, selectOnly } = useStore();
+  const { cmd, selectedHandles, doc, addLoft, finishAddLoft, selectOnly } =
+    useStore();
 
   useEffect(() => {
     if (cmd?.type === "ADD_LOFT") {
       const selectedArray = Array.from(selectedHandles);
-      
+
       // Filter to only POLYLINE handles
       const polylineHandles = selectedArray.filter((handle) => {
         const { type } = parseHandle(handle);
@@ -23,7 +23,7 @@ export function LoftCommandHandler() {
       if (polylineHandles.length === 2) {
         const { id: id1 } = parseHandle(polylineHandles[0]);
         const { id: id2 } = parseHandle(polylineHandles[1]);
-        
+
         const loftId = uid<LoftId>();
         const loftCount = Object.keys(doc.lofts).length;
         const newLoft: LoftEntity = {
@@ -44,4 +44,3 @@ export function LoftCommandHandler() {
 
   return null;
 }
-

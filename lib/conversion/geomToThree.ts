@@ -203,10 +203,12 @@ export function renderDoc(doc: Doc): {
     if (polyline1Entity && polyline2Entity) {
       // Get work planes for transformation
       const workPlane1 = polyline1Entity.workPlaneId
-        ? workPlanes.find((wp) => wp.id === polyline1Entity.workPlaneId)?.workPlane
+        ? workPlanes.find((wp) => wp.id === polyline1Entity.workPlaneId)
+            ?.workPlane
         : undefined;
       const workPlane2 = polyline2Entity.workPlaneId
-        ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)?.workPlane
+        ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)
+            ?.workPlane
         : undefined;
 
       // Transform polyline vertices to world space
