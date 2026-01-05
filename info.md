@@ -15,6 +15,9 @@ Coordinate system:
 
 ## Strategies
 
+1. Strict Nulls (strict mode) = AI efficiency
+2. Cycle Detection Watch
+
 ## Design Thoughts
 
 1. Workplanes should be a 1st class entity.
