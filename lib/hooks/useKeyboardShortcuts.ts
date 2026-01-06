@@ -22,9 +22,14 @@ export function useKeyboardShortcuts() {
         if (!cmd) {
           startDrawPolyline();
         }
-      } else if (e.key === "Escape" && cmd) {
-        e.preventDefault();
-        cancelCmd();
+      } else if (e.key === "Escape") {
+        if (cmd) {
+          e.preventDefault();
+          cancelCmd();
+        } else if (selectedHandles.size > 0) {
+          e.preventDefault();
+          clearSelection();
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
         if (cmd?.type === "DRAW_POLYLINE") {
