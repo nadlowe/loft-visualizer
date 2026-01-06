@@ -1,8 +1,8 @@
 "use client";
 
-import { colors } from "@/components/colors";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
+import { colors } from "./colors";
 
 export function SnapsToggleButton() {
   const { snapEnabled, toggleSnap } = useStore();
@@ -11,9 +11,10 @@ export function SnapsToggleButton() {
     <button
       onClick={toggleSnap}
       className={cn(
-        "z-10 rounded-md px-4 py-2 text-sm font-medium transition-all",
-        snapEnabled ? "bg-blue-600 text-white" : colors.bg.secondary,
-        !snapEnabled && colors.text.primary
+        "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        snapEnabled
+          ? "bg-blue-500 text-white"
+          : cn("bg-white/10 hover:bg-white/20", colors.text.primary)
       )}
     >
       Snaps

@@ -51,6 +51,10 @@ export interface DocSlice {
     id: PolylineId,
     updater: (entity: PolylineEntity) => PolylineEntity
   ) => void;
+  updatePolylineNoSnapshot: (
+    id: PolylineId,
+    updater: (entity: PolylineEntity) => PolylineEntity
+  ) => void;
   removePolyline: (id: PolylineId) => void;
   getPolyline: (id: PolylineId) => PolylineEntity | undefined;
 
@@ -233,6 +237,21 @@ export const createDocSlice: StateCreator<
     },
     updatePolyline: (id, updater) => {
       updateDoc((state) => {
+        const entity = state.doc.polylines[id];
+        if (!entity) return {};
+        return {
+          doc: {
+            ...state.doc,
+            polylines: {
+              ...state.doc.polylines,
+              [id]: updater(entity),
+            },
+          },
+        };
+      });
+    },
+    updatePolylineNoSnapshot: (id, updater) => {
+      set((state) => {
         const entity = state.doc.polylines[id];
         if (!entity) return {};
         return {

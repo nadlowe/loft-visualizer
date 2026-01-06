@@ -77,21 +77,6 @@ export function PolylineCmd() {
         return;
       }
 
-      // Apply snapping if enabled (no work plane for new polylines)
-      let finalX = hit.x;
-      let finalY = hit.y;
-      if (snapEnabled) {
-        const snapResult = snapToVertices(
-          { x: hit.x, y: hit.y },
-          null, // New polylines don't have a work plane yet
-          doc.polylines
-        );
-        if (snapResult.snapped) {
-          finalX = snapResult.point.x;
-          finalY = snapResult.point.y;
-        }
-      }
-
       const currentTime = Date.now();
       const timeSinceLastClick = currentTime - lastClickTimeRef.current;
       const isDoubleClick =
@@ -105,7 +90,24 @@ export function PolylineCmd() {
         return;
       }
 
-      addVertex([finalX, finalY]);
+      // Apply snapping if enabled (no workPlaneId for standalone polylines)
+      let x = hit.x;
+      let y = hit.y;
+      if (snapEnabled) {
+        const snapResult = snapToVertices(
+          { x, y },
+          undefined,
+          doc.polylines,
+          undefined,
+          undefined
+        );
+        if (snapResult.snapped) {
+          x = snapResult.point.x;
+          y = snapResult.point.y;
+        }
+      }
+
+      addVertex([x, y]);
       lastClickTimeRef.current = currentTime;
       lastClickPositionRef.current = hit.clone();
     },

@@ -7,6 +7,7 @@ import {
   EntityHandle,
   handleToHash,
   SelectableHandle,
+  vertexHandleToHash,
 } from "@/lib/entity/handleTypes";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
@@ -33,7 +34,7 @@ const typeIcons: Record<
 export function MultiInspector({ doc, handles }: MultiInspectorProps) {
   const { selectOnly } = useStore();
 
-  // Separate entities and vertices
+  // Separate entity handles and vertex handles
   const entityHandles = handles.filter(
     (h): h is EntityHandle => h.type !== "VERTEX"
   );
@@ -50,25 +51,6 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
         item !== null
     );
 
-  const vertices: {
-    handle: SelectableHandle;
-    polylineName: string;
-    vertexIndex: number;
-  }[] = [];
-  for (const handle of vertexHandles) {
-    if (handle.type !== "VERTEX") continue;
-    const polyline = doc.polylines[handle.polylineId];
-    if (polyline) {
-      vertices.push({
-        handle,
-        polylineName: polyline.name,
-        vertexIndex: handle.vertexIndex,
-      });
-    }
-  }
-
-  const totalCount = entities.length + vertices.length;
-
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -79,11 +61,11 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
             colors.text.primary
           )}
         >
-          {totalCount} Selected
+          {handles.length} Selected
         </span>
       </div>
       <div className="flex flex-col gap-2">
-        {entities.map(({ handle, type }) => {
+        {entities.map(({ handle, entity, type }) => {
           const Icon = typeIcons[type];
           return (
             <div
@@ -99,21 +81,26 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
             </div>
           );
         })}
-        {vertices.map(({ handle, polylineName, vertexIndex }) => (
-          <div
-            key={handleToHash(handle)}
-            onClick={() => selectOnly(handle)}
-            className={cn(
-              "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors",
-              "hover:" + colors.bg.secondary
-            )}
-          >
-            <PolylineIcon className={cn("h-4 w-4", colors.text.primary)} />
-            <span className={cn(fonts.size.sm, colors.text.primary)}>
-              {polylineName} · Vertex {vertexIndex + 1}
-            </span>
-          </div>
-        ))}
+        {vertexHandles.map((handle) => {
+          if (handle.type !== "VERTEX") return null;
+          const polyline = doc.polylines[handle.polylineId];
+          const polylineName = polyline?.name || "Unknown";
+          return (
+            <div
+              key={vertexHandleToHash(handle)}
+              onClick={() => selectOnly(handle)}
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors",
+                "hover:" + colors.bg.secondary
+              )}
+            >
+              <PolylineIcon className={cn("h-4 w-4", colors.text.primary)} />
+              <span className={cn("text-sm", colors.text.primary)}>
+                {polylineName} · Vertex {handle.vertexIndex + 1}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
