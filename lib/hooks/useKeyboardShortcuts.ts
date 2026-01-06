@@ -13,6 +13,8 @@ export function useKeyboardShortcuts() {
     undo,
     redo,
     editingPolylineId,
+    doc,
+    updatePolyline,
   } = useStore();
 
   useEffect(() => {
@@ -40,6 +42,53 @@ export function useKeyboardShortcuts() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
         e.preventDefault();
         redo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        // Cmd+J to toggle close/weld polyline - only when not in vertex editing mode
+        if (editingPolylineId) return; // Let vertex editing handle it
+
+        // Find selected polyline
+        const selectedPolyline = Array.from(selectedHandles).find(
+          (handle) => handle.type === "POLYLINE"
+        );
+        if (!selectedPolyline || selectedPolyline.type !== "POLYLINE") return;
+
+        const polylineId = selectedPolyline.id;
+        const polyline = doc.polylines[polylineId];
+        if (!polyline) return;
+
+        e.preventDefault();
+
+        const vertexCount = Math.floor(polyline.polyline.length / 2);
+        if (vertexCount < 2) return;
+
+        // If already closed, unjoin (toggle off)
+        if (polyline.closed) {
+          updatePolyline(polylineId, (entity) => ({
+            ...entity,
+            closed: false,
+          }));
+          return;
+        }
+
+        const firstX = polyline.polyline[0];
+        const firstY = polyline.polyline[1];
+        const lastX = polyline.polyline[(vertexCount - 1) * 2];
+        const lastY = polyline.polyline[(vertexCount - 1) * 2 + 1];
+        const alreadyOverlapping =
+          Math.abs(firstX - lastX) < 0.001 && Math.abs(firstY - lastY) < 0.001;
+
+        if (alreadyOverlapping) {
+          updatePolyline(polylineId, (entity) => ({
+            ...entity,
+            closed: true,
+          }));
+        } else {
+          updatePolyline(polylineId, (entity) => ({
+            ...entity,
+            polyline: [...entity.polyline, firstX, firstY],
+            closed: true,
+          }));
+        }
       } else if (e.key === "Delete" || e.key === "Backspace") {
         // Don't delete entities if user is editing text (e.g., entity name)
         const target = e.target as HTMLElement;
@@ -85,5 +134,7 @@ export function useKeyboardShortcuts() {
     undo,
     redo,
     editingPolylineId,
+    doc.polylines,
+    updatePolyline,
   ]);
 }

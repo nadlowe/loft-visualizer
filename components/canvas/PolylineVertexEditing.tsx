@@ -4,19 +4,24 @@ import { colors } from "@/components/ui/colors";
 import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
 import type { VertexHandle } from "@/lib/entity/handleTypes";
 import { vertexHandleToHash } from "@/lib/entity/handleTypes";
+import { snapToVertices } from "@/lib/snap/snapToVertices";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
 import * as THREE from "three";
+import { SelectionWindowOverlay } from "./SelectionWindowOverlay";
 
 interface PolylineVertexEditingProps {
   polylineId: PolylineId;
+  is2D: boolean;
   onDraggingChange?: (isDragging: boolean) => void;
 }
 
 export function PolylineVertexEditing({
   polylineId,
+  is2D,
   onDraggingChange,
 }: PolylineVertexEditingProps) {
   const { camera, raycaster, pointer, gl } = useThree();
@@ -30,13 +35,24 @@ export function PolylineVertexEditing({
     isSelected,
     clearSelection,
     selectedHandles,
+    snapEnabled,
   } = useStore();
   const polyline = doc.polylines[polylineId];
   const [draggingVertexIndex, setDraggingVertexIndex] = useState<number | null>(
     null
   );
+  const [selectionRect, setSelectionRect] = useState<{
+    start: { x: number; y: number };
+    current: { x: number; y: number };
+    canvasRect: DOMRect;
+  } | null>(null);
   const clickStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastLineClickTimeRef = useRef<number>(0);
+  const dragStartPositionsRef = useRef<Map<number, { x: number; y: number }>>(
+    new Map()
+  );
+  const windowSelectionStartRef = useRef<{ x: number; y: number } | null>(null);
+  const vertexClickedRef = useRef(false);
   const DRAG_THRESHOLD = 5;
 
   // Get all selected vertex indices from global selection
@@ -60,12 +76,25 @@ export function PolylineVertexEditing({
 
   const handleVertexPointerDown = useCallback(
     (vertexIndex: number, e: any) => {
+      // Mark that a vertex was clicked to prevent window selection
+      vertexClickedRef.current = true;
+
       // Store initial mouse position to detect click vs drag
       // R3F events have clientX/clientY and shiftKey directly on the event
       clickStartPosRef.current = {
         x: e.clientX ?? e.nativeEvent?.clientX,
         y: e.clientY ?? e.nativeEvent?.clientY,
       };
+
+      // Check if this is a joined vertex (first or last in a closed polyline)
+      const vertexCount = polyline
+        ? Math.floor(polyline.polyline.length / 2)
+        : 0;
+      const lastIdx = vertexCount - 1;
+      const isJoinedVertex =
+        polyline?.closed && (vertexIndex === 0 || vertexIndex === lastIdx);
+      const linkedIndex = vertexIndex === 0 ? lastIdx : 0;
+
       // Select vertex using global selection
       const vertexHandle: VertexHandle = {
         type: "VERTEX",
@@ -79,26 +108,72 @@ export function PolylineVertexEditing({
         // Shift-click: toggle selection (add/remove from multi-selection)
         if (isSelected(vertexHandle)) {
           deselect(vertexHandle);
+          // Also deselect linked vertex if joined
+          if (isJoinedVertex) {
+            deselect({ type: "VERTEX", polylineId, vertexIndex: linkedIndex });
+          }
         } else {
           select(vertexHandle);
+          // Also select linked vertex if joined
+          if (isJoinedVertex) {
+            select({ type: "VERTEX", polylineId, vertexIndex: linkedIndex });
+          }
         }
       } else {
-        // Regular click: select only this vertex
-        selectOnly(vertexHandle);
+        // Regular click: select only this vertex (and linked if joined)
+        if (isJoinedVertex) {
+          clearSelection();
+          select(vertexHandle);
+          select({ type: "VERTEX", polylineId, vertexIndex: linkedIndex });
+        } else {
+          selectOnly(vertexHandle);
+        }
       }
     },
-    [polylineId, selectOnly, select, deselect, isSelected]
+    [
+      polylineId,
+      polyline,
+      selectOnly,
+      select,
+      deselect,
+      isSelected,
+      clearSelection,
+    ]
   );
 
   const handleVertexDragStart = useCallback(
     (vertexIndex: number) => {
       setDraggingVertexIndex(vertexIndex);
-      // Selection is handled in handleVertexPointerDown, don't override here
+
+      // Store initial positions of all selected vertices for multi-drag
+      if (polyline) {
+        dragStartPositionsRef.current.clear();
+        const vertexCount = Math.floor(polyline.polyline.length / 2);
+        const lastIdx = vertexCount - 1;
+
+        // Include the dragged vertex and all selected vertices
+        const indicesToTrack = new Set([vertexIndex, ...selectedVertexIndices]);
+
+        // If closed, link first and last vertices
+        if (polyline.closed && vertexCount >= 2) {
+          if (indicesToTrack.has(0)) indicesToTrack.add(lastIdx);
+          if (indicesToTrack.has(lastIdx)) indicesToTrack.add(0);
+        }
+
+        for (const idx of indicesToTrack) {
+          const x = polyline.polyline[idx * 2];
+          const y = polyline.polyline[idx * 2 + 1];
+          if (x !== undefined && y !== undefined) {
+            dragStartPositionsRef.current.set(idx, { x, y });
+          }
+        }
+      }
+
       onDraggingChange?.(true);
       const { saveSnapshot } = useStore.getState();
       saveSnapshot();
     },
-    [onDraggingChange]
+    [onDraggingChange, polyline, selectedVertexIndices]
   );
 
   const handleVertexDrag = useCallback(
@@ -130,17 +205,66 @@ export function PolylineVertexEditing({
         y = intersection.y;
       }
 
-      // Update polyline vertex
-      const newPolyline = [...polyline.polyline];
-      newPolyline[vertexIndex * 2] = x;
-      newPolyline[vertexIndex * 2 + 1] = y;
+      // Apply snapping if enabled (only for the dragged vertex)
+      if (snapEnabled) {
+        const snapResult = snapToVertices(
+          { x, y },
+          polyline.workPlaneId,
+          doc.polylines,
+          polylineId,
+          vertexIndex
+        );
+        if (snapResult.snapped) {
+          x = snapResult.point.x;
+          y = snapResult.point.y;
+        }
+      }
 
-      updatePolyline(polylineId, (entity) => ({
-        ...entity,
-        polyline: newPolyline,
-      }));
+      // Calculate delta from drag start position
+      const dragStart = dragStartPositionsRef.current.get(vertexIndex);
+      if (!dragStart) return;
+
+      const deltaX = x - dragStart.x;
+      const deltaY = y - dragStart.y;
+
+      // Update all selected vertices by the same delta
+      updatePolyline(polylineId, (entity) => {
+        const newPolyline = [...entity.polyline];
+        const vertexCount = Math.floor(newPolyline.length / 2);
+        const lastIdx = vertexCount - 1;
+
+        // Get all vertices to move (dragged vertex + selected vertices)
+        const indicesToMove = new Set([vertexIndex, ...selectedVertexIndices]);
+
+        // If closed, link first and last vertices
+        if (entity.closed && vertexCount >= 2) {
+          if (indicesToMove.has(0)) indicesToMove.add(lastIdx);
+          if (indicesToMove.has(lastIdx)) indicesToMove.add(0);
+        }
+
+        for (const idx of indicesToMove) {
+          const startPos = dragStartPositionsRef.current.get(idx);
+          if (startPos) {
+            newPolyline[idx * 2] = startPos.x + deltaX;
+            newPolyline[idx * 2 + 1] = startPos.y + deltaY;
+          }
+        }
+
+        return {
+          ...entity,
+          polyline: newPolyline,
+        };
+      });
     },
-    [polyline, polylineId, workPlane, updatePolyline]
+    [
+      polyline,
+      polylineId,
+      workPlane,
+      updatePolyline,
+      snapEnabled,
+      doc.polylines,
+      selectedVertexIndices,
+    ]
   );
 
   const handleVertexDragEnd = useCallback(() => {
@@ -255,6 +379,72 @@ export function PolylineVertexEditing({
         return;
       }
 
+      // Cmd+J to toggle close/weld polyline
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        if (!polyline) return;
+
+        const vertexCount = Math.floor(polyline.polyline.length / 2);
+        if (vertexCount < 2) return;
+
+        // If already closed, unjoin (toggle off)
+        if (polyline.closed) {
+          updatePolyline(polylineId, (entity) => ({
+            ...entity,
+            closed: false,
+          }));
+          return;
+        }
+
+        // Get first vertex position
+        const firstX = polyline.polyline[0];
+        const firstY = polyline.polyline[1];
+
+        // Check if first and last vertices already overlap
+        const lastX = polyline.polyline[(vertexCount - 1) * 2];
+        const lastY = polyline.polyline[(vertexCount - 1) * 2 + 1];
+        const alreadyOverlapping =
+          Math.abs(firstX - lastX) < 0.001 && Math.abs(firstY - lastY) < 0.001;
+
+        let newLastIdx: number;
+
+        if (alreadyOverlapping) {
+          // Just mark as closed, don't add a new vertex
+          updatePolyline(polylineId, (entity) => ({
+            ...entity,
+            closed: true,
+          }));
+          newLastIdx = vertexCount - 1;
+        } else {
+          // Add a new vertex at the first vertex position to close the polyline
+          updatePolyline(polylineId, (entity) => {
+            const newPolyline = [...entity.polyline, firstX, firstY];
+            return {
+              ...entity,
+              polyline: newPolyline,
+              closed: true,
+            };
+          });
+          newLastIdx = vertexCount; // New vertex is at the end
+        }
+
+        // Select both first and last vertices
+        const firstHandle: VertexHandle = {
+          type: "VERTEX",
+          polylineId,
+          vertexIndex: 0,
+        };
+        const lastHandle: VertexHandle = {
+          type: "VERTEX",
+          polylineId,
+          vertexIndex: newLastIdx,
+        };
+        clearSelection();
+        select(firstHandle);
+        select(lastHandle);
+        return;
+      }
+
       if (e.key === "Delete" || e.key === "Backspace") {
         // If vertices are selected, delete them
         if (hasSelectedVertices && polyline) {
@@ -262,6 +452,7 @@ export function PolylineVertexEditing({
 
           const newPolyline = [...polyline.polyline];
           const vertexCount = Math.floor(newPolyline.length / 2);
+          const lastIdx = vertexCount - 1;
 
           // Sort indices in descending order to delete from end first (preserves earlier indices)
           const sortedIndices = [...selectedVertexIndices].sort(
@@ -270,6 +461,11 @@ export function PolylineVertexEditing({
 
           // Check if we'd have at least 2 vertices remaining
           if (vertexCount - sortedIndices.length >= 2) {
+            // Check if deleting first or last vertex of a closed polyline
+            const deletingJoinedVertex =
+              polyline.closed &&
+              (sortedIndices.includes(0) || sortedIndices.includes(lastIdx));
+
             // Remove vertices from highest index to lowest
             for (const idx of sortedIndices) {
               newPolyline.splice(idx * 2, 2);
@@ -277,6 +473,8 @@ export function PolylineVertexEditing({
             updatePolyline(polylineId, (entity) => ({
               ...entity,
               polyline: newPolyline,
+              // Clear closed property if deleting a joined vertex
+              closed: deletingJoinedVertex ? false : entity.closed,
             }));
             clearSelection();
           }
@@ -293,6 +491,7 @@ export function PolylineVertexEditing({
     updatePolyline,
     setEditingPolylineId,
     clearSelection,
+    select,
   ]);
 
   // Handle double-click on polyline to insert a new vertex
@@ -426,6 +625,185 @@ export function PolylineVertexEditing({
     ]
   );
 
+  // Window selection for vertices - directly on canvas (only in 2D mode)
+  useEffect(() => {
+    if (!is2D) return;
+
+    const handleCanvasPointerDown = (e: PointerEvent) => {
+      // Only handle left mouse button
+      if (e.button !== 0) return;
+
+      // Wait a frame to see if a vertex was clicked
+      // (vertex handlers set vertexClickedRef before this runs due to R3F event order)
+      requestAnimationFrame(() => {
+        if (vertexClickedRef.current) {
+          vertexClickedRef.current = false;
+          return;
+        }
+        windowSelectionStartRef.current = { x: e.clientX, y: e.clientY };
+      });
+    };
+
+    gl.domElement.addEventListener("pointerdown", handleCanvasPointerDown);
+    return () => {
+      gl.domElement.removeEventListener("pointerdown", handleCanvasPointerDown);
+    };
+  }, [gl, is2D]);
+
+  const handleWindowSelectionMove = useCallback(
+    (e: MouseEvent) => {
+      if (!windowSelectionStartRef.current || draggingVertexIndex !== null)
+        return;
+
+      const dx = Math.abs(e.clientX - windowSelectionStartRef.current.x);
+      const dy = Math.abs(e.clientY - windowSelectionStartRef.current.y);
+
+      if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
+        setSelectionRect({
+          start: windowSelectionStartRef.current,
+          current: { x: e.clientX, y: e.clientY },
+          canvasRect: gl.domElement.getBoundingClientRect(),
+        });
+      }
+    },
+    [gl, draggingVertexIndex]
+  );
+
+  const handleWindowSelectionEnd = useCallback(
+    (e: MouseEvent) => {
+      if (selectionRect && polyline) {
+        // Calculate selection rectangle in normalized device coordinates
+        const rect = gl.domElement.getBoundingClientRect();
+        const minX = Math.min(selectionRect.start.x, selectionRect.current.x);
+        const maxX = Math.max(selectionRect.start.x, selectionRect.current.x);
+        const minY = Math.min(selectionRect.start.y, selectionRect.current.y);
+        const maxY = Math.max(selectionRect.start.y, selectionRect.current.y);
+
+        // Find vertices in the selection rectangle
+        const vertexCount = Math.floor(polyline.polyline.length / 2);
+        const selectedIndices: number[] = [];
+
+        for (let i = 0; i < vertexCount; i++) {
+          const vx = polyline.polyline[i * 2];
+          const vy = polyline.polyline[i * 2 + 1];
+
+          // Convert vertex to world coordinates
+          let worldPos: THREE.Vector3;
+          if (workPlane) {
+            workPlane.updateMatrixWorld(true);
+            worldPos = new THREE.Vector3(vx, vy, 0).applyMatrix4(
+              workPlane.matrixWorld
+            );
+          } else {
+            worldPos = new THREE.Vector3(vx, vy, 0);
+          }
+
+          // Project to screen coordinates
+          const screenPos = worldPos.clone().project(camera);
+          const screenX = ((screenPos.x + 1) / 2) * rect.width + rect.left;
+          const screenY = ((-screenPos.y + 1) / 2) * rect.height + rect.top;
+
+          // Check if vertex is in selection rectangle
+          if (
+            screenX >= minX &&
+            screenX <= maxX &&
+            screenY >= minY &&
+            screenY <= maxY
+          ) {
+            selectedIndices.push(i);
+          }
+        }
+
+        // Select vertices
+        if (selectedIndices.length > 0) {
+          if (e.shiftKey) {
+            // Add to existing selection
+            for (const idx of selectedIndices) {
+              const handle: VertexHandle = {
+                type: "VERTEX",
+                polylineId,
+                vertexIndex: idx,
+              };
+              select(handle);
+            }
+          } else {
+            // Replace selection
+            clearSelection();
+            for (const idx of selectedIndices) {
+              const handle: VertexHandle = {
+                type: "VERTEX",
+                polylineId,
+                vertexIndex: idx,
+              };
+              select(handle);
+            }
+          }
+        } else if (!e.shiftKey) {
+          clearSelection();
+        }
+      }
+
+      windowSelectionStartRef.current = null;
+      setSelectionRect(null);
+    },
+    [
+      selectionRect,
+      polyline,
+      polylineId,
+      gl,
+      camera,
+      workPlane,
+      select,
+      clearSelection,
+    ]
+  );
+
+  // Window selection event listeners
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => handleWindowSelectionMove(e);
+    const handleMouseUp = (e: MouseEvent) => handleWindowSelectionEnd(e);
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleWindowSelectionMove, handleWindowSelectionEnd]);
+
+  // Render selection window overlay
+  useEffect(() => {
+    const containerElement = gl.domElement.parentElement;
+    if (!containerElement || !selectionRect) return;
+
+    const overlayContainer = document.createElement("div");
+    Object.assign(overlayContainer.style, {
+      position: "absolute",
+      pointerEvents: "none",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      zIndex: "10",
+    });
+    containerElement.appendChild(overlayContainer);
+
+    const root = createRoot(overlayContainer);
+    root.render(
+      <SelectionWindowOverlay
+        start={selectionRect.start}
+        current={selectionRect.current}
+        canvasRect={selectionRect.canvasRect}
+      />
+    );
+
+    return () => {
+      root.unmount();
+      overlayContainer.parentElement?.removeChild(overlayContainer);
+    };
+  }, [selectionRect, gl]);
+
   if (!polyline) return null;
 
   // Get vertices for rendering
@@ -458,7 +836,7 @@ export function PolylineVertexEditing({
     />
   ));
 
-  // Invisible mesh plane for click detection (covers the polyline area)
+  // Invisible mesh plane for double-click detection to insert vertices
   const clickPlane = (
     <mesh visible={false} onPointerDown={handleLineDoubleClick}>
       <planeGeometry args={[1000, 1000]} />

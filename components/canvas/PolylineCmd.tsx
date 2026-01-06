@@ -1,6 +1,7 @@
 "use client";
 
 import { handleNew } from "@/lib/entity/handle";
+import { snapToVertices } from "@/lib/snap/snapToVertices";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId, uid } from "@/lib/util/uid";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -10,8 +11,15 @@ import { PolylineCmdPreview } from "./PolylineCmdPreview";
 
 export function PolylineCmd() {
   const { camera, raycaster, pointer, gl } = useThree();
-  const { cmd, addVertex, finishDrawPolyline, addPolyline, doc, selectOnly } =
-    useStore();
+  const {
+    cmd,
+    addVertex,
+    finishDrawPolyline,
+    addPolyline,
+    doc,
+    selectOnly,
+    snapEnabled,
+  } = useStore();
   const [hoverPosition, setHoverPosition] = useState<THREE.Vector3 | null>(
     null
   );
@@ -69,6 +77,21 @@ export function PolylineCmd() {
         return;
       }
 
+      // Apply snapping if enabled (no work plane for new polylines)
+      let finalX = hit.x;
+      let finalY = hit.y;
+      if (snapEnabled) {
+        const snapResult = snapToVertices(
+          { x: hit.x, y: hit.y },
+          null, // New polylines don't have a work plane yet
+          doc.polylines
+        );
+        if (snapResult.snapped) {
+          finalX = snapResult.point.x;
+          finalY = snapResult.point.y;
+        }
+      }
+
       const currentTime = Date.now();
       const timeSinceLastClick = currentTime - lastClickTimeRef.current;
       const isDoubleClick =
@@ -82,11 +105,20 @@ export function PolylineCmd() {
         return;
       }
 
-      addVertex([hit.x, hit.y]);
+      addVertex([finalX, finalY]);
       lastClickTimeRef.current = currentTime;
       lastClickPositionRef.current = hit.clone();
     },
-    [cmd, gl.domElement, pointer, intersectPlane, handleDoubleClick, addVertex]
+    [
+      cmd,
+      gl.domElement,
+      pointer,
+      intersectPlane,
+      handleDoubleClick,
+      addVertex,
+      snapEnabled,
+      doc.polylines,
+    ]
   );
 
   useFrame(() => {

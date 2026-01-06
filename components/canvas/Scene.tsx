@@ -40,6 +40,7 @@ export function Scene({
       {editingPolylineId && (
         <PolylineVertexEditing
           polylineId={editingPolylineId}
+          is2D={is2D}
           onDraggingChange={setIsDraggingVertex}
         />
       )}
@@ -61,7 +62,7 @@ export function Scene({
         rotateSpeed={0.5}
         zoomSpeed={1.2}
         screenSpacePanning={true}
-        enablePan={(!isDragging && !isDraggingVertex) || is2D}
+        enablePan={!isDragging && !isDraggingVertex}
         enableZoom={true}
         enableRotate={!is2D && !isDragging && !isDraggingVertex}
         minPolarAngle={is2D ? Math.PI / 2 : 0}

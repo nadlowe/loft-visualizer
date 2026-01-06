@@ -411,50 +411,79 @@ function findClosestPolyline(
   is2D: boolean,
   camera: THREE.Camera
 ): { line: SelectableLine; distance: number } | null {
-  let closest: { line: SelectableLine; distance: number } | null = null;
+  // Separate polylines and lofts - polylines get priority
+  const polylines: SelectableLine[] = [];
+  const lofts: SelectableLine[] = [];
 
   for (const line of lines) {
-    const worldPathPoints = getWorldPathPoints(line);
-    if (worldPathPoints.length < 2) continue;
-
-    let minDistance = Infinity;
-
-    if (is2D) {
-      const projectedClick = new THREE.Vector3(clickPoint.x, clickPoint.y, 0);
-      const projected = worldPathPoints.map(
-        (pt) => new THREE.Vector3(pt.x, pt.y, 0)
-      );
-      for (let i = 0; i < projected.length - 1; i++) {
-        minDistance = Math.min(
-          minDistance,
-          pointToLineSegmentDistance(
-            projectedClick,
-            projected[i],
-            projected[i + 1]
-          )
-        );
-      }
+    const handleHash = line.userData.handleHash as string;
+    if (handleHash?.startsWith("loft.")) {
+      lofts.push(line);
     } else {
-      const clickScreen = clickPoint.clone().project(camera);
-      for (let i = 0; i < worldPathPoints.length - 1; i++) {
-        const p1Screen = worldPathPoints[i].clone().project(camera);
-        const p2Screen = worldPathPoints[i + 1].clone().project(camera);
-        minDistance = Math.min(
-          minDistance,
-          pointToLineSegmentDistance(clickScreen, p1Screen, p2Screen)
-        );
-      }
-    }
-
-    if (
-      minDistance < SELECTION_THRESHOLD &&
-      (!closest || minDistance < closest.distance)
-    ) {
-      closest = { line, distance: minDistance };
+      polylines.push(line);
     }
   }
 
-  return closest;
+  // Helper to find closest in a set of lines
+  const findClosestIn = (
+    linesToCheck: SelectableLine[],
+    threshold: number
+  ): { line: SelectableLine; distance: number } | null => {
+    let closest: { line: SelectableLine; distance: number } | null = null;
+
+    for (const line of linesToCheck) {
+      const worldPathPoints = getWorldPathPoints(line);
+      if (worldPathPoints.length < 2) continue;
+
+      let minDistance = Infinity;
+
+      if (is2D) {
+        const projectedClick = new THREE.Vector3(clickPoint.x, clickPoint.y, 0);
+        const projected = worldPathPoints.map(
+          (pt) => new THREE.Vector3(pt.x, pt.y, 0)
+        );
+        for (let i = 0; i < projected.length - 1; i++) {
+          minDistance = Math.min(
+            minDistance,
+            pointToLineSegmentDistance(
+              projectedClick,
+              projected[i],
+              projected[i + 1]
+            )
+          );
+        }
+      } else {
+        const clickScreen = clickPoint.clone().project(camera);
+        for (let i = 0; i < worldPathPoints.length - 1; i++) {
+          const p1Screen = worldPathPoints[i].clone().project(camera);
+          const p2Screen = worldPathPoints[i + 1].clone().project(camera);
+          minDistance = Math.min(
+            minDistance,
+            pointToLineSegmentDistance(clickScreen, p1Screen, p2Screen)
+          );
+        }
+      }
+
+      if (
+        minDistance < threshold &&
+        (!closest || minDistance < closest.distance)
+      ) {
+        closest = { line, distance: minDistance };
+      }
+    }
+
+    return closest;
+  };
+
+  // Check polylines first with standard threshold
+  const closestPolyline = findClosestIn(polylines, SELECTION_THRESHOLD);
+  if (closestPolyline) {
+    return closestPolyline;
+  }
+
+  // Only check lofts if no polyline was found (with tighter threshold)
+  const LOFT_SELECTION_THRESHOLD = 0.05;
+  return findClosestIn(lofts, LOFT_SELECTION_THRESHOLD);
 }
 
 function polylineIntersectsRectangle(

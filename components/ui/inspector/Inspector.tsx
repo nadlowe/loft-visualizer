@@ -99,10 +99,7 @@ export function Inspector({
           {selectedCount === 0 && <NoSelection />}
           {singleHandle && <SingleInspector handle={singleHandle} />}
           {selectedCount > 1 && (
-            <MultiInspector
-              doc={doc}
-              handles={selectedArray.filter((h) => h.type !== "VERTEX")}
-            />
+            <MultiInspector doc={doc} handles={selectedArray} />
           )}
         </div>
       </div>
