@@ -1,6 +1,6 @@
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
-import { PolylineId, WorkPlaneId } from "@/lib/util/uid";
 import { Table } from "@/lib/util/table";
+import { PolylineId, WorkPlaneId } from "@/lib/util/uid";
 
 const SNAP_THRESHOLD = 0.15;
 
