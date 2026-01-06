@@ -3,7 +3,8 @@ import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import { Grid } from "./Grid";
-import { PolylineDrawing } from "./PolylineDrawing";
+import { LoftCmd } from "./LoftCmd";
+import { PolylineCmd } from "./PolylineCmd";
 import { RenderEntities } from "./RenderEntities";
 import { Selection } from "./Selection";
 
@@ -29,8 +30,11 @@ export function Scene({
   return (
     <>
       <RenderEntities onDraggingChange={setIsDragging} />
-      <PolylineDrawing />
       <Selection is2D={is2D} />
+
+      {/* Commands */}
+      <PolylineCmd />
+      <LoftCmd />
 
       {/* Lighting */}
       <ambientLight intensity={0.5} />

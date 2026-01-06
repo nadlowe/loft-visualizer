@@ -1,6 +1,6 @@
 "use client";
 
-import { getEntityFromHandle } from "@/lib/entity/entityUtils";
+import { getEntityFromHandle } from "@/lib/entity/entityTools";
 import { EntityHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";

@@ -1,16 +1,16 @@
 "use client";
 
-interface WindowSelectionOverlayProps {
+interface SelectionWindowOverlayProps {
   start: { x: number; y: number } | null;
   current: { x: number; y: number } | null;
   canvasRect: DOMRect | null;
 }
 
-export function WindowSelectionOverlay({
+export function SelectionWindowOverlay({
   start,
   current,
   canvasRect,
-}: WindowSelectionOverlayProps) {
+}: SelectionWindowOverlayProps) {
   if (!start || !current || !canvasRect) {
     return null;
   }

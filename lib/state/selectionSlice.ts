@@ -35,25 +35,9 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
 ) => ({
   selectedHandles: new Set<EntityHandle>(),
   isSelected: (handle) => {
-    if (typeof handle === "string") {
-      console.error(
-        "isSelected received string (handleHash):",
-        handle,
-        new Error().stack
-      );
-      return false;
-    }
     return findHandleInSet(get().selectedHandles, handle) !== undefined;
   },
   select: (handle) => {
-    if (typeof handle === "string") {
-      console.error(
-        "select received string (handleHash):",
-        handle,
-        new Error().stack
-      );
-      return;
-    }
     set((state) => {
       const existing = findHandleInSet(state.selectedHandles, handle);
       if (existing) {
@@ -65,14 +49,6 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
     });
   },
   deselect: (handle) => {
-    if (typeof handle === "string") {
-      console.error(
-        "deselect received string (handleHash):",
-        handle,
-        new Error().stack
-      );
-      return;
-    }
     set((state) => {
       const newSet = new Set(state.selectedHandles);
       const existing = findHandleInSet(newSet, handle);
@@ -83,14 +59,6 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
     });
   },
   toggleSelection: (handle) => {
-    if (typeof handle === "string") {
-      console.error(
-        "toggleSelection received string (handleHash):",
-        handle,
-        new Error().stack
-      );
-      return;
-    }
     set((state) => {
       const newSet = new Set(state.selectedHandles);
       const existing = findHandleInSet(newSet, handle);
@@ -103,29 +71,10 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
     });
   },
   selectOnly: (handle) => {
-    if (typeof handle === "string") {
-      console.error(
-        "selectOnly received string (handleHash):",
-        handle,
-        new Error().stack
-      );
-      return;
-    }
     set({ selectedHandles: new Set([handle]) });
   },
   selectMultiple: (handles) => {
-    const stringHandles = handles.filter((h) => typeof h === "string");
-    if (stringHandles.length > 0) {
-      console.error(
-        "selectMultiple received strings (handleHashes):",
-        stringHandles,
-        new Error().stack
-      );
-    }
-    const validHandles = handles.filter(
-      (h): h is EntityHandle => typeof h !== "string"
-    );
-    set({ selectedHandles: new Set(validHandles) });
+    set({ selectedHandles: new Set(handles) });
   },
   clearSelection: () => set({ selectedHandles: new Set() }),
   getSelectedCount: () => get().selectedHandles.size,

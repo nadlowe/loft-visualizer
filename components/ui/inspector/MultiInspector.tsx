@@ -1,7 +1,7 @@
 "use client";
 
+import { getEntityFromHandle } from "@/lib/entity/entityTools";
 import { EntityType } from "@/lib/entity/entityTypes";
-import { getEntityFromHandle } from "@/lib/entity/entityUtils";
 import { parseHandle } from "@/lib/entity/handle";
 import { EntityHandle, handleToHash } from "@/lib/entity/handleTypes";
 import { Doc } from "@/lib/state/doc";

@@ -13,7 +13,7 @@ interface PreviewPolylineProps {
   hoverPosition: THREE.Vector3 | null;
 }
 
-export function PreviewPolyline({
+export function PolylineCmdPreview({
   vertices,
   hoverPosition,
 }: PreviewPolylineProps) {

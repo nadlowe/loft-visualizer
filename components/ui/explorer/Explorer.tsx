@@ -20,6 +20,7 @@ export function Explorer({
 }: ExplorerProps) {
   const { doc } = useStore();
   const minWidth = 200;
+
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     const startX = e.clientX;

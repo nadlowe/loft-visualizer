@@ -3,19 +3,23 @@
 import { EntityHandle, hashToHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { useThree } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
-import { WindowSelectionOverlay } from "./WindowSelectionOverlay";
+import { SelectionWindowOverlay } from "./SelectionWindowOverlay";
+
+const DRAG_THRESHOLD = 5;
+const SELECTION_THRESHOLD = 0.1;
+const PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
 type SelectableLine = Line2 | THREE.LineSegments;
 
-interface PolylineSelectionProps {
+interface SelectionProps {
   is2D: boolean;
 }
 
-export function Selection({ is2D }: PolylineSelectionProps) {
+export function Selection({ is2D }: SelectionProps) {
   const { raycaster, pointer, camera, gl, scene } = useThree();
   const {
     selectOnly,
@@ -25,60 +29,116 @@ export function Selection({ is2D }: PolylineSelectionProps) {
     selectedHandles,
     cmd,
   } = useStore();
-  const isDraggingRef = useRef(false);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
-  const currentMousePosRef = useRef<{ x: number; y: number } | null>(null);
   const [selectionRect, setSelectionRect] = useState<{
     start: { x: number; y: number };
     current: { x: number; y: number };
     canvasRect: DOMRect;
   } | null>(null);
-  const dragThreshold = 5;
 
-  useEffect(() => {
-    if (cmd?.type === "DRAW_POLYLINE") {
-      return;
-    }
+  const resetSelectionState = useCallback(() => {
+    setSelectionRect(null);
+    mouseDownPosRef.current = null;
+  }, []);
 
-    const handleMouseDown = (e: MouseEvent) => {
-      if (e.target !== gl.domElement) return;
-      isDraggingRef.current = false;
+  const handleWindowSelection = useCallback(
+    (e: MouseEvent, startWorld: THREE.Vector3, endWorld: THREE.Vector3) => {
+      const rectMin = new THREE.Vector3(
+        Math.min(startWorld.x, endWorld.x),
+        Math.min(startWorld.y, endWorld.y),
+        0
+      );
+      const rectMax = new THREE.Vector3(
+        Math.max(startWorld.x, endWorld.x),
+        Math.max(startWorld.y, endWorld.y),
+        0
+      );
+
+      const lines = getSelectableLines(scene);
+      const selectedLines = findPolylinesInRectangle(rectMin, rectMax, lines);
+
+      if (selectedLines.length > 0) {
+        const handles = selectedLines
+          .map((line) => hashToHandle(line.userData.handleHash as string))
+          .filter((handle): handle is EntityHandle => handle !== undefined);
+
+        if (e.shiftKey) {
+          selectMultiple([...selectedHandles, ...handles]);
+        } else {
+          selectMultiple(handles);
+        }
+      } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        clearSelection();
+      }
+    },
+    [scene, selectedHandles, selectMultiple, clearSelection]
+  );
+
+  const handleClickSelection = useCallback(
+    (e: MouseEvent, intersection: THREE.Vector3) => {
+      const lines = getSelectableLines(scene);
+      const closest = findClosestPolyline(intersection, lines, is2D, camera);
+
+      if (closest) {
+        e.preventDefault();
+        e.stopPropagation();
+        const handle = hashToHandle(closest.line.userData.handleHash as string);
+        if (!handle) return;
+
+        if (e.shiftKey) {
+          toggleSelection(handle);
+        } else {
+          selectOnly(handle);
+        }
+      } else if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
+        clearSelection();
+      }
+    },
+    [scene, is2D, camera, toggleSelection, selectOnly, clearSelection]
+  );
+
+  const handleMouseDown = useCallback(
+    (e: MouseEvent) => {
+      if (e.target !== gl.domElement || cmd?.type === "DRAW_POLYLINE") return;
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
-      currentMousePosRef.current = { x: e.clientX, y: e.clientY };
       if (is2D && e.button === 0) {
-        const rect = gl.domElement.getBoundingClientRect();
         setSelectionRect({
           start: { x: e.clientX, y: e.clientY },
           current: { x: e.clientX, y: e.clientY },
-          canvasRect: rect,
+          canvasRect: gl.domElement.getBoundingClientRect(),
         });
       }
-    };
+    },
+    [gl.domElement, cmd, is2D]
+  );
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (mouseDownPosRef.current) {
-        isDraggingRef.current = true;
-        if (is2D && selectionRect) {
-          currentMousePosRef.current = { x: e.clientX, y: e.clientY };
-          const rect = gl.domElement.getBoundingClientRect();
-          setSelectionRect({
-            ...selectionRect,
-            current: { x: e.clientX, y: e.clientY },
-            canvasRect: rect,
-          });
-        }
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (mouseDownPosRef.current && is2D && selectionRect) {
+        setSelectionRect({
+          ...selectionRect,
+          current: { x: e.clientX, y: e.clientY },
+          canvasRect: gl.domElement.getBoundingClientRect(),
+        });
       }
-    };
+    },
+    [gl.domElement, is2D, selectionRect]
+  );
 
-    const handleMouseUp = (e: MouseEvent) => {
-      if (e.target !== gl.domElement || !mouseDownPosRef.current) {
-        setSelectionRect(null);
+  const handleMouseUp = useCallback(
+    (e: MouseEvent) => {
+      if (
+        e.target !== gl.domElement ||
+        !mouseDownPosRef.current ||
+        cmd?.type === "DRAW_POLYLINE"
+      ) {
+        resetSelectionState();
         return;
       }
 
       const dx = Math.abs(e.clientX - mouseDownPosRef.current.x);
       const dy = Math.abs(e.clientY - mouseDownPosRef.current.y);
-      const moved = dx > dragThreshold || dy > dragThreshold;
+      const moved = dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD;
 
       if (is2D && selectionRect && moved) {
         const rect = gl.domElement.getBoundingClientRect();
@@ -96,117 +156,48 @@ export function Selection({ is2D }: PolylineSelectionProps) {
         );
 
         if (startWorld && endWorld) {
-          const rectMin = new THREE.Vector3(
-            Math.min(startWorld.x, endWorld.x),
-            Math.min(startWorld.y, endWorld.y),
-            0
-          );
-          const rectMax = new THREE.Vector3(
-            Math.max(startWorld.x, endWorld.x),
-            Math.max(startWorld.y, endWorld.y),
-            0
-          );
-
-          const lines: SelectableLine[] = [];
-          scene.traverse((object) => {
-            if (
-              (object instanceof Line2 ||
-                object instanceof THREE.LineSegments) &&
-              object.userData.handleHash
-            ) {
-              lines.push(object);
-            }
-          });
-
-          const selectedLines = findPolylinesInRectangle(
-            rectMin,
-            rectMax,
-            lines
-          );
-
-          if (selectedLines.length > 0) {
-            const handles = selectedLines
-              .map((line) => hashToHandle(line.userData.handleHash as string))
-              .filter((handle): handle is EntityHandle => handle !== undefined);
-
-            if (e.shiftKey) {
-              const combinedHandles = new Set(selectedHandles);
-              for (const handle of handles) {
-                combinedHandles.add(handle);
-              }
-              selectMultiple(Array.from(combinedHandles));
-            } else {
-              selectMultiple(handles);
-            }
-          } else {
-            if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-              clearSelection();
-            }
-          }
+          handleWindowSelection(e, startWorld, endWorld);
         }
-
-        setSelectionRect(null);
-        mouseDownPosRef.current = null;
-        isDraggingRef.current = false;
+        resetSelectionState();
         return;
       }
 
-      // Skip click selection if we actually moved the mouse significantly
-      // (Window selection already handled above in 2D mode)
       if (moved) {
-        setSelectionRect(null);
-        mouseDownPosRef.current = null;
-        isDraggingRef.current = false;
+        resetSelectionState();
         return;
       }
 
       const rect = gl.domElement.getBoundingClientRect();
-      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-
+      const pointerCoords = screenToPointer(e.clientX, e.clientY, rect);
+      pointer.x = pointerCoords.x;
+      pointer.y = pointerCoords.y;
       raycaster.setFromCamera(pointer, camera);
 
-      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
       const intersection = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(plane, intersection)) {
-        setSelectionRect(null);
-        mouseDownPosRef.current = null;
+      if (!raycaster.ray.intersectPlane(PLANE, intersection)) {
+        resetSelectionState();
         return;
       }
 
-      const lines: SelectableLine[] = [];
-      scene.traverse((object) => {
-        if (
-          (object instanceof Line2 || object instanceof THREE.LineSegments) &&
-          object.userData.handleHash
-        ) {
-          lines.push(object);
-        }
-      });
+      handleClickSelection(e, intersection);
+      resetSelectionState();
+    },
+    [
+      gl.domElement,
+      cmd,
+      is2D,
+      selectionRect,
+      camera,
+      pointer,
+      raycaster,
+      handleWindowSelection,
+      handleClickSelection,
+      resetSelectionState,
+    ]
+  );
 
-      const closest = findClosestPolyline(intersection, lines, is2D, camera);
-
-      if (closest) {
-        e.preventDefault();
-        e.stopPropagation();
-        const handle = hashToHandle(closest.line.userData.handleHash as string);
-        if (!handle) return;
-
-        if (e.shiftKey) {
-          toggleSelection(handle);
-        } else {
-          selectOnly(handle);
-        }
-      } else {
-        if (!e.shiftKey && !e.metaKey && !e.ctrlKey) {
-          clearSelection();
-        }
-      }
-
-      setSelectionRect(null);
-      mouseDownPosRef.current = null;
-      isDraggingRef.current = false;
-    };
+  useEffect(() => {
+    if (cmd?.type === "DRAW_POLYLINE") return;
 
     gl.domElement.addEventListener("mousedown", handleMouseDown);
     gl.domElement.addEventListener("mousemove", handleMouseMove);
@@ -217,61 +208,82 @@ export function Selection({ is2D }: PolylineSelectionProps) {
       gl.domElement.removeEventListener("mousemove", handleMouseMove);
       gl.domElement.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [
-    raycaster,
-    pointer,
-    camera,
-    gl,
-    scene,
-    selectOnly,
-    toggleSelection,
-    selectMultiple,
-    clearSelection,
-    selectedHandles,
-    cmd,
-    is2D,
-    selectionRect,
-  ]);
+  }, [gl.domElement, cmd, handleMouseDown, handleMouseMove, handleMouseUp]);
 
   useEffect(() => {
     const containerElement = gl.domElement.parentElement;
-    if (!containerElement) return;
+    if (!containerElement || !selectionRect) return;
 
-    let root: ReturnType<typeof createRoot> | null = null;
-    let overlayContainer: HTMLDivElement | null = null;
+    const overlayContainer = document.createElement("div");
+    Object.assign(overlayContainer.style, {
+      position: "absolute",
+      pointerEvents: "none",
+      top: "0",
+      left: "0",
+      width: "100%",
+      height: "100%",
+      zIndex: "10",
+    });
+    containerElement.appendChild(overlayContainer);
 
-    if (selectionRect) {
-      overlayContainer = document.createElement("div");
-      overlayContainer.style.position = "absolute";
-      overlayContainer.style.pointerEvents = "none";
-      overlayContainer.style.top = "0";
-      overlayContainer.style.left = "0";
-      overlayContainer.style.width = "100%";
-      overlayContainer.style.height = "100%";
-      overlayContainer.style.zIndex = "10";
-      containerElement.appendChild(overlayContainer);
-
-      root = createRoot(overlayContainer);
-      root.render(
-        <WindowSelectionOverlay
-          start={selectionRect.start}
-          current={selectionRect.current}
-          canvasRect={selectionRect.canvasRect}
-        />
-      );
-    }
+    const root = createRoot(overlayContainer);
+    root.render(
+      <SelectionWindowOverlay
+        start={selectionRect.start}
+        current={selectionRect.current}
+        canvasRect={selectionRect.canvasRect}
+      />
+    );
 
     return () => {
-      if (root) {
-        root.unmount();
-      }
-      if (overlayContainer && overlayContainer.parentElement) {
-        overlayContainer.parentElement.removeChild(overlayContainer);
-      }
+      root.unmount();
+      overlayContainer.parentElement?.removeChild(overlayContainer);
     };
-  }, [selectionRect, gl]);
+  }, [selectionRect, gl.domElement]);
 
   return null;
+}
+
+function getSelectableLines(scene: THREE.Scene): SelectableLine[] {
+  const lines: SelectableLine[] = [];
+  scene.traverse((object) => {
+    if (
+      (object instanceof Line2 || object instanceof THREE.LineSegments) &&
+      object.userData.handleHash
+    ) {
+      lines.push(object);
+    }
+  });
+  return lines;
+}
+
+function screenToPointer(clientX: number, clientY: number, rect: DOMRect) {
+  return {
+    x: ((clientX - rect.left) / rect.width) * 2 - 1,
+    y: -((clientY - rect.top) / rect.height) * 2 + 1,
+  };
+}
+
+function screenToWorld(
+  screenX: number,
+  screenY: number,
+  rect: DOMRect,
+  camera: THREE.Camera
+): THREE.Vector3 | null {
+  const pointer = screenToPointer(screenX, screenY, rect);
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(pointer.x, pointer.y), camera);
+  const intersection = new THREE.Vector3();
+  return raycaster.ray.intersectPlane(PLANE, intersection)
+    ? intersection
+    : null;
+}
+
+function getWorldPathPoints(line: SelectableLine): THREE.Vector3[] {
+  line.updateMatrixWorld(true);
+  const pathPoints = line.userData.pathPoints as THREE.Vector3[];
+  if (!pathPoints || pathPoints.length < 2) return [];
+  return pathPoints.map((pt) => pt.clone().applyMatrix4(line.matrixWorld));
 }
 
 function pointToLineSegmentDistance(
@@ -282,106 +294,63 @@ function pointToLineSegmentDistance(
   const v = new THREE.Vector3().subVectors(p2, p1);
   const w = new THREE.Vector3().subVectors(point, p1);
   const c1 = w.dot(v);
-  if (c1 <= 0) {
-    return point.distanceTo(p1);
-  }
+  if (c1 <= 0) return point.distanceTo(p1);
   const c2 = v.dot(v);
-  if (c2 <= c1) {
-    return point.distanceTo(p2);
-  }
+  if (c2 <= c1) return point.distanceTo(p2);
   const b = c1 / c2;
-  const vScaled = new THREE.Vector3().copy(v).multiplyScalar(b);
-  const pb = new THREE.Vector3().addVectors(p1, vScaled);
-  return point.distanceTo(pb);
+  return point.distanceTo(p1.clone().add(v.multiplyScalar(b)));
 }
 
 function findClosestPolyline(
   clickPoint: THREE.Vector3,
   lines: SelectableLine[],
   is2D: boolean,
-  camera: THREE.Camera,
-  threshold: number = 0.1
+  camera: THREE.Camera
 ): { line: SelectableLine; distance: number } | null {
   let closest: { line: SelectableLine; distance: number } | null = null;
 
   for (const line of lines) {
-    const pathPoints = line.userData.pathPoints as THREE.Vector3[];
-    if (!pathPoints || pathPoints.length < 2) continue;
-
-    // Transform pathPoints to world space
-    line.updateMatrixWorld(true);
-    const worldMatrix = line.matrixWorld;
-
-    const worldPathPoints = pathPoints.map((pt) => {
-      return pt.clone().applyMatrix4(worldMatrix);
-    });
+    const worldPathPoints = getWorldPathPoints(line);
+    if (worldPathPoints.length < 2) continue;
 
     let minDistance = Infinity;
 
     if (is2D) {
-      // For 2D selection, project all points to XY plane (Z=0) for distance calculation
-      // This matches how window selection works (it only checks X and Y coordinates)
-      const projectedClickPoint = new THREE.Vector3(
-        clickPoint.x,
-        clickPoint.y,
-        0
+      const projectedClick = new THREE.Vector3(clickPoint.x, clickPoint.y, 0);
+      const projected = worldPathPoints.map(
+        (pt) => new THREE.Vector3(pt.x, pt.y, 0)
       );
-      const projectedPathPoints = worldPathPoints.map((pt) => {
-        return new THREE.Vector3(pt.x, pt.y, 0);
-      });
-
-      for (let i = 0; i < projectedPathPoints.length - 1; i++) {
-        const dist = pointToLineSegmentDistance(
-          projectedClickPoint,
-          projectedPathPoints[i],
-          projectedPathPoints[i + 1]
+      for (let i = 0; i < projected.length - 1; i++) {
+        minDistance = Math.min(
+          minDistance,
+          pointToLineSegmentDistance(
+            projectedClick,
+            projected[i],
+            projected[i + 1]
+          )
         );
-        minDistance = Math.min(minDistance, dist);
       }
     } else {
-      // For 3D selection, use screen-space distances
       const clickScreen = clickPoint.clone().project(camera);
       for (let i = 0; i < worldPathPoints.length - 1; i++) {
         const p1Screen = worldPathPoints[i].clone().project(camera);
         const p2Screen = worldPathPoints[i + 1].clone().project(camera);
-        const dist = pointToLineSegmentDistance(
-          clickScreen,
-          p1Screen,
-          p2Screen
+        minDistance = Math.min(
+          minDistance,
+          pointToLineSegmentDistance(clickScreen, p1Screen, p2Screen)
         );
-        minDistance = Math.min(minDistance, dist);
       }
     }
 
-    if (minDistance < threshold) {
-      if (!closest || minDistance < closest.distance) {
-        closest = { line, distance: minDistance };
-      }
+    if (
+      minDistance < SELECTION_THRESHOLD &&
+      (!closest || minDistance < closest.distance)
+    ) {
+      closest = { line, distance: minDistance };
     }
   }
 
   return closest;
-}
-
-function screenToWorld(
-  screenX: number,
-  screenY: number,
-  rect: DOMRect,
-  camera: THREE.Camera
-): THREE.Vector3 | null {
-  const pointer = new THREE.Vector2();
-  pointer.x = ((screenX - rect.left) / rect.width) * 2 - 1;
-  pointer.y = -((screenY - rect.top) / rect.height) * 2 + 1;
-
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(pointer, camera);
-
-  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-  const intersection = new THREE.Vector3();
-  if (raycaster.ray.intersectPlane(plane, intersection)) {
-    return intersection;
-  }
-  return null;
 }
 
 function polylineIntersectsRectangle(
@@ -389,17 +358,13 @@ function polylineIntersectsRectangle(
   rectMin: THREE.Vector3,
   rectMax: THREE.Vector3
 ): boolean {
-  for (const point of pathPoints) {
-    if (
+  return pathPoints.some(
+    (point) =>
       point.x >= rectMin.x &&
       point.x <= rectMax.x &&
       point.y >= rectMin.y &&
       point.y <= rectMax.y
-    ) {
-      return true;
-    }
-  }
-  return false;
+  );
 }
 
 function findPolylinesInRectangle(
@@ -407,21 +372,11 @@ function findPolylinesInRectangle(
   rectMax: THREE.Vector3,
   lines: SelectableLine[]
 ): SelectableLine[] {
-  const result: SelectableLine[] = [];
-  for (const line of lines) {
-    const pathPoints = line.userData.pathPoints as THREE.Vector3[];
-    if (!pathPoints || pathPoints.length < 2) continue;
-
-    // Transform pathPoints to world space
-    line.updateMatrixWorld(true);
-    const worldMatrix = line.matrixWorld;
-    const worldPathPoints = pathPoints.map((pt) => {
-      return pt.clone().applyMatrix4(worldMatrix);
-    });
-
-    if (polylineIntersectsRectangle(worldPathPoints, rectMin, rectMax)) {
-      result.push(line);
-    }
-  }
-  return result;
+  return lines.filter((line) => {
+    const worldPathPoints = getWorldPathPoints(line);
+    return (
+      worldPathPoints.length >= 2 &&
+      polylineIntersectsRectangle(worldPathPoints, rectMin, rectMax)
+    );
+  });
 }

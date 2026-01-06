@@ -6,7 +6,7 @@ import { useStore } from "@/lib/state/useStore";
 import { LoftId, PolylineId, uid } from "@/lib/util/uid";
 import { useEffect } from "react";
 
-export function LoftCommandHandler() {
+export function LoftCmd() {
   const { cmd, selectedHandles, doc, addLoft, finishAddLoft, selectOnly } =
     useStore();
 

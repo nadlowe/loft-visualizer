@@ -10,7 +10,7 @@ export function CameraController({
   is2D: boolean;
   controlsRef: React.RefObject<any>;
 }) {
-  const { set, camera, size } = useThree();
+  const { set, size } = useThree();
   const orthoCameraRef = useRef<THREE.OrthographicCamera | null>(null);
   const perspCameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   // Store camera state in memory (clears on refresh)

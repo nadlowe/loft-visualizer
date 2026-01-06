@@ -21,7 +21,5 @@ export function SingleInspector({
       return <PolylineInspector handle={handle} />;
     case "LOFT":
       return <LoftInspector handle={handle} />;
-    default:
-      return null;
   }
 }
