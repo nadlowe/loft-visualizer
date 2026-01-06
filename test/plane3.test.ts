@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { faceBarrelRoll, faceRotate } from "../lib/geom/face";
-import { Face, Plane3, Polygon, Vec3 } from "../lib/geom/geomTypes";
+import { Plane3, Vec3 } from "../lib/geom/geomTypes";
 import { plane3BarrelRoll, plane3New, plane3Rotate } from "../lib/geom/plane3";
 import { computeDefaultU } from "../lib/geom/vec3";
 
@@ -209,61 +208,5 @@ describe("plane3BarrelRoll", () => {
         rolled.u![2] * rolled.u![2]
     );
     expect(rolledLength).toBeCloseTo(originalLength, 10);
-  });
-});
-
-describe("faceRotate", () => {
-  it("rotates face without altering polygon", () => {
-    const polygon: Polygon = [[0, 0, 1, 0, 1, 1, 0, 1, 0, 0]]; // Square
-    const plane = plane3New([0, 0, 0], [0, 0, 1]);
-    const face: Face = { plane, polygon };
-
-    const axis: Vec3 = [1, 0, 0]; // X-axis (will change normal)
-    const rotated = faceRotate(face, axis, Math.PI / 2);
-
-    // Polygon should be unchanged
-    expect(rotated.polygon).toEqual(polygon);
-
-    // Plane should be rotated (normal should change)
-    expect(rotated.plane.normal).not.toEqual(plane.normal);
-  });
-
-  it("rotates face around different pivot point", () => {
-    const polygon: Polygon = [[0, 0, 1, 0, 1, 1, 0, 1, 0, 0]];
-    const plane = plane3New([1, 2, 3], [0, 0, 1]);
-    const face: Face = { plane, polygon };
-
-    const axis: Vec3 = [0, 0, 1];
-    const pivot: Vec3 = [0, 0, 0];
-    const rotated = faceRotate(face, axis, Math.PI / 2, pivot);
-
-    // Polygon should be unchanged
-    expect(rotated.polygon).toEqual(polygon);
-
-    // Origin should be rotated
-    expect(rotated.plane.origin).not.toEqual(plane.origin);
-  });
-});
-
-describe("faceBarrelRoll", () => {
-  it("barrel rolls face without altering polygon", () => {
-    const polygon: Polygon = [[0, 0, 1, 0, 1, 1, 0, 1, 0, 0]];
-    const u: Vec3 = [1, 0, 0];
-    const plane = plane3New([0, 0, 0], [0, 0, 1], u);
-    const face: Face = { plane, polygon };
-
-    const rolled = faceBarrelRoll(face, Math.PI / 2);
-
-    // Polygon should be unchanged
-    expect(rolled.polygon).toEqual(polygon);
-
-    // Normal and origin should be unchanged
-    expect(rolled.plane.normal).toEqual(plane.normal);
-    expect(rolled.plane.origin).toEqual(plane.origin);
-
-    // u should be rotated
-    expect(rolled.plane.u).toBeDefined();
-    expect(rolled.plane.u![0]).toBeCloseTo(0, 5);
-    expect(rolled.plane.u![1]).toBeCloseTo(1, 5);
   });
 });
