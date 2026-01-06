@@ -1,7 +1,7 @@
 import * as THREE from "three";
-import { EntityHandle } from "../entity/handleTypes";
+import { EntityHandle, hashToHandle } from "../entity/handleTypes";
 
-export function assignHandle(
+export function assignHandleHash(
   object: THREE.Object3D,
   handle: EntityHandle
 ): void {
@@ -9,5 +9,5 @@ export function assignHandle(
 }
 
 export function getHandle(object: THREE.Object3D): EntityHandle | undefined {
-  return object.userData.entityHandle as EntityHandle | undefined;
+  return hashToHandle(object.userData.handleHash as string);
 }

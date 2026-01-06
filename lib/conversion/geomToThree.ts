@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LoftEntity } from "../entity/loftEntity";
+import { PolylineEntity } from "../entity/polylineEntity";
 import { Face, Plane3, Polygon, Polyline2, Vec3 } from "../geom/geomTypes";
 import {
   computeDefaultU,
@@ -7,14 +10,22 @@ import {
   vec3Normalize,
 } from "../geom/vec3";
 import { Doc } from "../state/doc";
+import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
+
+export interface RenderedPolyline {
+  id: string;
+  vertices: THREE.Vector3[]; // Local 2D coords if on work plane, world coords if standalone
+  workPlaneId?: WorkPlaneId; // If present, vertices are in local coords and should be child of work plane
+}
+
+export interface RenderedLoft {
+  id: string;
+  rungs: THREE.Vector3[][]; // Array of rungs, each rung is [v1, v2] connecting corresponding vertices
+}
 
 export type WorkPlane = THREE.Group & {
   shape: THREE.Shape;
 };
-
-function vec3GeomToThree(vec: Vec3): Vec3 {
-  return [vec[0], vec[1], vec[2]];
-}
 
 function polygonToShape(polygon: Polygon): THREE.Shape {
   const shape = new THREE.Shape();
@@ -88,28 +99,162 @@ export function plane3ToWorkPlane(plane: Plane3): THREE.Group {
   return workPlane;
 }
 
-export function faceToThree(face: Face): WorkPlane {
-  const { plane, polygon } = face;
-  const workPlane = plane3ToWorkPlane(plane);
-  const shape = polygonToShape(polygon);
-  (workPlane as WorkPlane).shape = shape;
+export function loftVerticesToLineGeometry(
+  vertices1: THREE.Vector3[],
+  vertices2: THREE.Vector3[]
+): LineGeometry {
+  const positions: number[] = [];
 
-  return workPlane as WorkPlane;
+  const maxCount = Math.max(vertices1.length, vertices2.length);
+
+  // Get the last vertex index for each polyline
+  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
+  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
+
+  for (let i = 0; i < maxCount; i++) {
+    // Determine which vertex indices to use
+    const idx1 = Math.min(i, lastIdx1);
+    const idx2 = Math.min(i, lastIdx2);
+
+    const v1 = vertices1[idx1];
+    const v2 = vertices2[idx2];
+
+    // Add line segment vertices (world space 3D positions)
+    // LineGeometry handles consecutive pairs as line segments automatically
+    positions.push(v1.x, v1.y, v1.z);
+    positions.push(v2.x, v2.y, v2.z);
+  }
+
+  const geometry = new LineGeometry();
+  geometry.setPositions(positions);
+
+  return geometry;
 }
 
-export function polyline2ToPath(polyline: Polyline2): THREE.Path {
-  const path = new THREE.Path();
-  if (polyline.length < 2) {
-    return path;
+export function workPlanesTableToThree(
+  workPlanes: Doc["workPlanes"]
+): Array<{ workPlane: THREE.Group; id: string }> {
+  const result: Array<{ workPlane: THREE.Group; id: string }> = [];
+  for (const [id, workPlaneEntity] of Object.entries(workPlanes)) {
+    const workPlane = plane3ToWorkPlane(workPlaneEntity.plane3);
+    result.push({ workPlane, id });
   }
-  path.moveTo(polyline[0], polyline[1]);
-  for (let i = 2; i < polyline.length; i += 2) {
-    path.lineTo(polyline[i], polyline[i + 1]);
-  }
-  return path;
+  return result;
 }
 
-function polyline2ToWorldVertices(
+export function polylineToThree(
+  id: PolylineId,
+  polylineEntity: PolylineEntity
+): RenderedPolyline {
+  const count = Math.floor(polylineEntity.polyline.length / 2);
+  const vertices: THREE.Vector3[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const x = polylineEntity.polyline[i * 2];
+    const y = polylineEntity.polyline[i * 2 + 1];
+    // For polylines on work planes, use local 2D coordinates (z=0)
+    // For standalone polylines, we'll transform to world space later
+    const vertex = new THREE.Vector3(x, y, 0);
+    vertices.push(vertex);
+  }
+
+  if (polylineEntity.workPlaneId) {
+    // Local coordinates - will be transformed by work plane Group
+    return {
+      id,
+      vertices,
+      workPlaneId: polylineEntity.workPlaneId,
+    };
+  } else {
+    // Standalone polyline - transform to world space now
+    const worldVertices = polyline2ToWorldVertices(
+      polylineEntity.polyline,
+      undefined
+    );
+    return {
+      id,
+      vertices: worldVertices,
+    };
+  }
+}
+
+export function polylineTableToThree(
+  polylines: Doc["polylines"]
+): RenderedPolyline[] {
+  const result: RenderedPolyline[] = [];
+  for (const [id, polylineEntity] of Object.entries(polylines)) {
+    result.push(polylineToThree(id as PolylineId, polylineEntity));
+  }
+  return result;
+}
+
+export function loftToThree(
+  id: LoftId,
+  loftEntity: LoftEntity,
+  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
+  polylines: Doc["polylines"]
+): RenderedLoft | null {
+  const polyline1Entity = polylines[loftEntity.polyline1];
+  const polyline2Entity = polylines[loftEntity.polyline2];
+  if (!polyline1Entity || !polyline2Entity) {
+    return null;
+  }
+
+  // Get work planes for transformation
+  const workPlane1 = polyline1Entity.workPlaneId
+    ? workPlanes.find((wp) => wp.id === polyline1Entity.workPlaneId)?.workPlane
+    : undefined;
+  const workPlane2 = polyline2Entity.workPlaneId
+    ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)?.workPlane
+    : undefined;
+
+  // Transform polyline vertices to world space
+  const vertices1 = polyline2ToWorldVertices(
+    polyline1Entity.polyline,
+    workPlane1
+  );
+  const vertices2 = polyline2ToWorldVertices(
+    polyline2Entity.polyline,
+    workPlane2
+  );
+
+  // Combine vertices into loft segments (ladder rungs: array of arrays)
+  const rungs: THREE.Vector3[][] = [];
+  const maxCount = Math.max(vertices1.length, vertices2.length);
+  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
+  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
+
+  for (let i = 0; i < maxCount; i++) {
+    const idx1 = Math.min(i, lastIdx1);
+    const idx2 = Math.min(i, lastIdx2);
+    // Each rung connects corresponding vertices (or last vertex if one is shorter)
+    rungs.push([vertices1[idx1], vertices2[idx2]]);
+  }
+
+  return { id, rungs };
+}
+
+export function loftTableToThree(
+  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
+  polylines: Doc["polylines"],
+  lofts: Doc["lofts"]
+): RenderedLoft[] {
+  const result: RenderedLoft[] = [];
+  for (const [id, loftEntity] of Object.entries(lofts)) {
+    const rendered = loftToThree(
+      id as LoftId,
+      loftEntity,
+      workPlanes,
+      polylines
+    );
+    if (rendered) {
+      result.push(rendered);
+    }
+  }
+  return result;
+}
+
+export function polyline2ToWorldVertices(
   polyline: Polyline2,
   workPlane?: THREE.Group
 ): THREE.Vector3[] {
@@ -133,98 +278,27 @@ function polyline2ToWorldVertices(
   return vertices;
 }
 
-export function loftToThree(
-  vertices1: THREE.Vector3[],
-  vertices2: THREE.Vector3[]
-): THREE.BufferGeometry {
-  const positions: number[] = [];
-  const indices: number[] = [];
+export function faceToThree(face: Face): WorkPlane {
+  const { plane, polygon } = face;
+  const workPlane = plane3ToWorkPlane(plane);
+  const shape = polygonToShape(polygon);
+  (workPlane as WorkPlane).shape = shape;
 
-  const maxCount = Math.max(vertices1.length, vertices2.length);
-
-  // Get the last vertex index for each polyline
-  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
-  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
-
-  let vertexIndex = 0;
-  for (let i = 0; i < maxCount; i++) {
-    // Determine which vertex indices to use
-    const idx1 = Math.min(i, lastIdx1);
-    const idx2 = Math.min(i, lastIdx2);
-
-    const v1 = vertices1[idx1];
-    const v2 = vertices2[idx2];
-
-    // Add line segment vertices (world space 3D positions)
-    positions.push(v1.x, v1.y, v1.z);
-    positions.push(v2.x, v2.y, v2.z);
-
-    // Add indices for line segment (connecting the two vertices)
-    indices.push(vertexIndex, vertexIndex + 1);
-    vertexIndex += 2;
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute(
-    "position",
-    new THREE.Float32BufferAttribute(positions, 3)
-  );
-  geometry.setIndex(indices);
-
-  return geometry;
+  return workPlane as WorkPlane;
 }
 
-export function renderDoc(doc: Doc): {
-  workPlanes: Array<{ workPlane: THREE.Group; id: string }>;
-  polylines: Array<{ path: THREE.Path; id: string; workPlaneId?: string }>;
-  lofts: Array<{ geometry: THREE.BufferGeometry; id: string }>;
-} {
-  const workPlanes: Array<{ workPlane: THREE.Group; id: string }> = [];
-  const polylines: Array<{
-    path: THREE.Path;
-    id: string;
-    workPlaneId?: string;
-  }> = [];
-  const lofts: Array<{ geometry: THREE.BufferGeometry; id: string }> = [];
-
-  for (const [id, workPlaneEntity] of Object.entries(doc.workPlanes)) {
-    const workPlane = plane3ToWorkPlane(workPlaneEntity.plane3);
-    workPlanes.push({ workPlane, id });
+export function polyline2ToPath(polyline: Polyline2): THREE.Path {
+  const path = new THREE.Path();
+  if (polyline.length < 2) {
+    return path;
   }
-
-  for (const [id, polylineEntity] of Object.entries(doc.polylines)) {
-    const path = polyline2ToPath(polylineEntity.polyline);
-    polylines.push({ path, id, workPlaneId: polylineEntity.workPlaneId });
+  path.moveTo(polyline[0], polyline[1]);
+  for (let i = 2; i < polyline.length; i += 2) {
+    path.lineTo(polyline[i], polyline[i + 1]);
   }
+  return path;
+}
 
-  for (const [id, loftEntity] of Object.entries(doc.lofts)) {
-    const polyline1Entity = doc.polylines[loftEntity.polyline1];
-    const polyline2Entity = doc.polylines[loftEntity.polyline2];
-    if (polyline1Entity && polyline2Entity) {
-      // Get work planes for transformation
-      const workPlane1 = polyline1Entity.workPlaneId
-        ? workPlanes.find((wp) => wp.id === polyline1Entity.workPlaneId)
-            ?.workPlane
-        : undefined;
-      const workPlane2 = polyline2Entity.workPlaneId
-        ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)
-            ?.workPlane
-        : undefined;
-
-      // Transform polyline vertices to world space
-      const vertices1 = polyline2ToWorldVertices(
-        polyline1Entity.polyline,
-        workPlane1
-      );
-      const vertices2 = polyline2ToWorldVertices(
-        polyline2Entity.polyline,
-        workPlane2
-      );
-
-      const geometry = loftToThree(vertices1, vertices2);
-      lofts.push({ geometry, id });
-    }
-  }
-
-  return { workPlanes, polylines, lofts };
+export function vec3GeomToThree(vec: Vec3): Vec3 {
+  return [vec[0], vec[1], vec[2]];
 }

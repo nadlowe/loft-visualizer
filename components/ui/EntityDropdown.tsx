@@ -1,44 +1,63 @@
 "use client";
 
+import { Entity } from "@/lib/entity/entity";
+import { getEntityFromHandle } from "@/lib/entity/entityTools";
 import { EntityType } from "@/lib/entity/entityTypes";
 import { entityTypeToDocField } from "@/lib/entity/entityTypeToDocField";
-import { Doc } from "@/lib/state/doc";
+import { EntityHandle } from "@/lib/entity/handleTypes";
+import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
+import { useShallow } from "zustand/shallow";
 import { colors } from "./colors";
 
-interface EntityDropdownProps {
-  doc: Doc;
-  entityType: EntityType;
-  value: EntityId | undefined;
-  onChange: (id: EntityId | undefined) => void;
-  label?: string;
+type HandleToEntityMap = {
+  [K in EntityType]: Extract<Entity, { type: K }>;
+};
+
+type EntityIdKeys<T> = {
+  [K in keyof T]: T[K] extends EntityId | undefined ? K : never;
+}[keyof T];
+
+interface EntityDropdownProps<H extends EntityHandle> {
+  handle: H;
+  field: EntityIdKeys<HandleToEntityMap[H["type"]]>;
+  targetEntityType: EntityType;
   placeholder?: string;
 }
 
-export function EntityDropdown({
-  doc,
-  entityType,
-  value,
-  onChange,
-  label,
-  placeholder,
-}: EntityDropdownProps) {
-  const fieldName = entityTypeToDocField[entityType];
-  const entities = doc[fieldName] as Record<string, { name: string }>;
+export function EntityDropdown<H extends EntityHandle>({
+  handle,
+  field,
+  targetEntityType,
+  placeholder = "None",
+}: EntityDropdownProps<H>) {
+  const { currentValue, targetEntities, updateEntity } = useStore(
+    useShallow((state) => ({
+      currentValue: getEntityFromHandle(state.doc, handle)?.[field] as
+        | EntityId
+        | undefined,
+      targetEntities: state.doc[
+        entityTypeToDocField[targetEntityType]
+      ] as Record<string, { name: string }>,
+      updateEntity: state.updateEntity,
+    }))
+  );
 
-  const entityEntries = Object.entries(entities);
+  const entityEntries = Object.entries(targetEntities);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newValue = e.target.value || undefined;
-    onChange(newValue as EntityId | undefined);
+    updateEntity(handle, (entity) => ({
+      ...entity,
+      [field]: newValue,
+    }));
   };
 
   return (
     <div className="flex flex-col gap-1">
-      {label && <label className="text-sm text-gray-400">{label}</label>}
       <select
-        value={value || ""}
+        value={currentValue || ""}
         onChange={handleChange}
         className={cn(
           "w-full rounded border bg-gray-800 px-2 py-1.5 text-sm transition-colors outline-none",
@@ -48,7 +67,7 @@ export function EntityDropdown({
           "focus:" + colors.bg.secondary
         )}
       >
-        <option value="">{placeholder || "None"}</option>
+        <option value="">{placeholder}</option>
         {entityEntries.map(([id, entity]) => (
           <option key={id} value={id}>
             {entity.name}

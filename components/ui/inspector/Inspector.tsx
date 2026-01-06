@@ -3,6 +3,7 @@
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
+import { InspectorHeader } from "./InspectorHeader";
 import { MultiInspector } from "./MultiInspector";
 import { NoSelection } from "./NoSelection";
 import { SingleInspector } from "./SingleInspector";
@@ -77,14 +78,7 @@ export function Inspector({
     );
   }
 
-  let content = null;
-  if (selectedCount === 0) {
-    content = <NoSelection />;
-  } else if (selectedCount === 1) {
-    content = <SingleInspector doc={doc} handle={selectedArray[0]} />;
-  } else {
-    content = <MultiInspector doc={doc} handles={selectedArray} />;
-  }
+  const singleHandle = selectedCount === 1 ? selectedArray[0] : null;
 
   return (
     <div
@@ -99,7 +93,16 @@ export function Inspector({
         onMouseDown={handleMouseDown}
         className="absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
       />
-      <div className="flex-1 overflow-auto p-4">{content}</div>
+      <div className="flex-1 overflow-auto p-4">
+        {singleHandle && <InspectorHeader handle={singleHandle} />}
+        <div className={cn(singleHandle && "mt-4")}>
+          {selectedCount === 0 && <NoSelection />}
+          {singleHandle && <SingleInspector handle={singleHandle} />}
+          {selectedCount > 1 && (
+            <MultiInspector doc={doc} handles={selectedArray} />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

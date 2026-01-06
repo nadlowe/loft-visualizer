@@ -1,21 +1,10 @@
 "use client";
 
-import { EntityHandle } from "@/lib/entity/handleTypes";
-import { WorkPlaneEntity } from "@/lib/entity/workPlaneEntity";
-import { InspectorHeader } from "./InspectorHeader";
+import { WorkPlaneHandle } from "@/lib/entity/handleTypes";
 
-interface WorkPlaneInspectorProps {
-  entity: WorkPlaneEntity;
-  handle: EntityHandle;
-}
-
-export function WorkPlaneInspector({
-  entity,
-  handle,
-}: WorkPlaneInspectorProps) {
+export function WorkPlaneInspector({ handle }: { handle: WorkPlaneHandle }) {
   return (
     <div className="flex flex-col gap-4">
-      <InspectorHeader entity={entity} entityType="WORKPLANE" handle={handle} />
       {/* Work plane specific properties can be added here */}
     </div>
   );

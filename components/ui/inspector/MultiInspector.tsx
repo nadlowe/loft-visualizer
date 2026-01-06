@@ -3,7 +3,7 @@
 import { EntityType } from "@/lib/entity/entityTypes";
 import { getEntityFromHandle } from "@/lib/entity/entityUtils";
 import { parseHandle } from "@/lib/entity/handle";
-import { EntityHandle } from "@/lib/entity/handleTypes";
+import { EntityHandle, handleToHash } from "@/lib/entity/handleTypes";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
           const Icon = typeIcons[type];
           return (
             <div
-              key={handle}
+              key={handleToHash(handle)}
               onClick={() => selectOnly(handle)}
               className={cn(
                 "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 transition-colors",

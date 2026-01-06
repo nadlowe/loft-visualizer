@@ -1,7 +1,7 @@
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 
 export function uid<T extends string = EntityId>(): T {
-  return uuidv4() as T;
+  return nanoid() as T;
 }
 
 export type DocId = string & { readonly __brand: "DocId" };

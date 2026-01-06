@@ -1,6 +1,6 @@
 "use client";
 
-import { handleNew, parseHandle } from "@/lib/entity/handle";
+import { handleNew } from "@/lib/entity/handle";
 import { LoftEntity } from "@/lib/entity/loftEntity";
 import { useStore } from "@/lib/state/useStore";
 import { LoftId, PolylineId, uid } from "@/lib/util/uid";
@@ -16,22 +16,18 @@ export function LoftCommandHandler() {
 
       // Filter to only POLYLINE handles
       const polylineHandles = selectedArray.filter((handle) => {
-        const { type } = parseHandle(handle);
-        return type === "POLYLINE";
+        return handle.type === "POLYLINE";
       });
 
       if (polylineHandles.length === 2) {
-        const { id: id1 } = parseHandle(polylineHandles[0]);
-        const { id: id2 } = parseHandle(polylineHandles[1]);
-
         const loftId = uid<LoftId>();
         const loftCount = Object.keys(doc.lofts).length;
         const newLoft: LoftEntity = {
           id: loftId,
           type: "LOFT",
           name: `Loft ${loftCount + 1}`,
-          polyline1: id1 as PolylineId,
-          polyline2: id2 as PolylineId,
+          polyline1: polylineHandles[0].id as PolylineId,
+          polyline2: polylineHandles[1].id as PolylineId,
         };
 
         addLoft(newLoft);
