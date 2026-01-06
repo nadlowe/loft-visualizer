@@ -35,7 +35,7 @@ function findClosestPolyline(
   polylines: Line2[],
   is2D: boolean,
   camera: THREE.Camera,
-  threshold: number = 0.5
+  threshold: number = 0.1
 ): { line: Line2; distance: number } | null {
   let closest: { line: Line2; distance: number } | null = null;
 
