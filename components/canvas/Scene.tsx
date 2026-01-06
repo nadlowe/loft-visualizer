@@ -1,10 +1,12 @@
 "use client";
+import { useStore } from "@/lib/state/useStore";
 import { OrbitControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import { Grid } from "./Grid";
 import { LoftCmd } from "./LoftCmd";
 import { PolylineCmd } from "./PolylineCmd";
+import { PolylineVertexEditing } from "./PolylineVertexEditing";
 import { RenderEntities } from "./RenderEntities";
 import { Selection } from "./Selection";
 
@@ -17,6 +19,8 @@ export function Scene({
 }) {
   const { camera } = useThree();
   const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingVertex, setIsDraggingVertex] = useState(false);
+  const editingPolylineId = useStore((state) => state.editingPolylineId);
 
   useEffect(() => {
     if (controlsRef.current) {
@@ -31,6 +35,14 @@ export function Scene({
     <>
       <RenderEntities onDraggingChange={setIsDragging} />
       <Selection is2D={is2D} />
+
+      {/* Vertex editing */}
+      {editingPolylineId && (
+        <PolylineVertexEditing
+          polylineId={editingPolylineId}
+          onDraggingChange={setIsDraggingVertex}
+        />
+      )}
 
       {/* Commands */}
       <PolylineCmd />
@@ -49,9 +61,9 @@ export function Scene({
         rotateSpeed={0.5}
         zoomSpeed={1.2}
         screenSpacePanning={true}
-        enablePan={!isDragging || is2D}
+        enablePan={(!isDragging && !isDraggingVertex) || is2D}
         enableZoom={true}
-        enableRotate={!is2D && !isDragging}
+        enableRotate={!is2D && !isDragging && !isDraggingVertex}
         minPolarAngle={is2D ? Math.PI / 2 : 0}
         maxPolarAngle={is2D ? Math.PI / 2 : Math.PI}
         minAzimuthAngle={is2D ? -Infinity : -Infinity}

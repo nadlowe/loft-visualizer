@@ -1,7 +1,30 @@
 import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
 
 export type EntityHandle = WorkPlaneHandle | PolylineHandle | LoftHandle;
-export type HandleHashType = "workplane" | "polyline" | "loft";
+export type SelectableHandle = EntityHandle | VertexHandle;
+export type HandleHashType = "workplane" | "polyline" | "loft" | "vertex";
+
+export interface VertexHandle {
+  readonly type: "VERTEX";
+  readonly polylineId: PolylineId;
+  readonly vertexIndex: number;
+}
+
+export function vertexHandleToHash(handle: VertexHandle): string {
+  return `polyline.${handle.polylineId}.${handle.vertexIndex}`;
+}
+
+export function hashToVertexHandle(hash: string): VertexHandle | undefined {
+  const parts = hash.split(".");
+  if (parts.length !== 3 || parts[0] !== "polyline") return undefined;
+  const vertexIndex = parseInt(parts[2], 10);
+  if (isNaN(vertexIndex)) return undefined;
+  return {
+    type: "VERTEX",
+    polylineId: parts[1] as PolylineId,
+    vertexIndex,
+  };
+}
 
 export interface WorkPlaneHandle {
   readonly type: "WORKPLANE";
@@ -18,7 +41,10 @@ export interface LoftHandle {
   readonly id: LoftId;
 }
 
-export function handleToHash(handle: EntityHandle): string {
+export function handleToHash(handle: SelectableHandle): string {
+  if (handle.type === "VERTEX") {
+    return vertexHandleToHash(handle);
+  }
   const typeMap: Record<EntityHandle["type"], HandleHashType> = {
     WORKPLANE: "workplane",
     POLYLINE: "polyline",
@@ -27,8 +53,15 @@ export function handleToHash(handle: EntityHandle): string {
   return `${typeMap[handle.type]}.${handle.id}`;
 }
 
-export function hashToHandle(hash: string): EntityHandle | undefined {
-  const [type, id] = hash.split(".");
+export function hashToHandle(hash: string): SelectableHandle | undefined {
+  const parts = hash.split(".");
+  // Check for vertex handle (format: polyline.{id}.{vertexIndex})
+  if (parts.length === 3 && parts[0] === "polyline") {
+    const vertexHandle = hashToVertexHandle(hash);
+    if (vertexHandle) return vertexHandle;
+  }
+
+  const [type, id] = parts;
   const handleType = type as HandleHashType;
   switch (handleType) {
     case "workplane":

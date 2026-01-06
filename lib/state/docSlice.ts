@@ -2,7 +2,7 @@ import { StateCreator } from "zustand";
 import { BaseEntity } from "../entity/baseEntity";
 import { entityTypeToDocField } from "../entity/entityTypeToDocField";
 import { handleNew, parseHandle } from "../entity/handle";
-import { EntityHandle } from "../entity/handleTypes";
+import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { WorkPlaneEntity } from "../entity/workPlaneEntity";
@@ -21,7 +21,7 @@ import { SelectionSlice } from "./selectionSlice";
 
 export interface HistoryState {
   doc: Doc;
-  selectedHandles: Set<EntityHandle>;
+  selectedHandles: Set<SelectableHandle>;
 }
 
 export interface DocSlice {

@@ -1,7 +1,8 @@
 "use client";
 
-import { EntityHandle, hashToHandle } from "@/lib/entity/handleTypes";
+import { hashToHandle, SelectableHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
+import { PolylineId } from "@/lib/util/uid";
 import { useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -28,8 +29,14 @@ export function Selection({ is2D }: SelectionProps) {
     clearSelection,
     selectedHandles,
     cmd,
+    setEditingPolylineId,
+    editingPolylineId,
   } = useStore();
+  const isPanningRef = useRef(false);
+  const spaceKeyPressedRef = useRef(false);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastClickTimeRef = useRef<number>(0);
+  const lastClickHandleRef = useRef<SelectableHandle | null>(null);
   const [selectionRect, setSelectionRect] = useState<{
     start: { x: number; y: number };
     current: { x: number; y: number };
@@ -60,7 +67,7 @@ export function Selection({ is2D }: SelectionProps) {
       if (selectedLines.length > 0) {
         const handles = selectedLines
           .map((line) => hashToHandle(line.userData.handleHash as string))
-          .filter((handle): handle is EntityHandle => handle !== undefined);
+          .filter((handle): handle is SelectableHandle => handle !== undefined);
 
         if (e.shiftKey) {
           selectMultiple([...selectedHandles, ...handles]);
@@ -85,6 +92,29 @@ export function Selection({ is2D }: SelectionProps) {
         const handle = hashToHandle(closest.line.userData.handleHash as string);
         if (!handle) return;
 
+        // Check for double-click (only for polylines, not vertices)
+        const currentTime = Date.now();
+        const timeSinceLastClick = currentTime - lastClickTimeRef.current;
+        const lastHandle = lastClickHandleRef.current;
+        const isDoubleClick =
+          timeSinceLastClick < 300 &&
+          lastHandle &&
+          handle.type === "POLYLINE" &&
+          lastHandle.type === "POLYLINE" &&
+          handle.id === lastHandle.id;
+
+        if (isDoubleClick) {
+          // Enter vertex editing mode and clear entity selection
+          clearSelection();
+          setEditingPolylineId(handle.id as PolylineId);
+          lastClickTimeRef.current = 0;
+          lastClickHandleRef.current = null;
+          return;
+        }
+
+        lastClickTimeRef.current = currentTime;
+        lastClickHandleRef.current = handle;
+
         if (e.shiftKey) {
           toggleSelection(handle);
         } else {
@@ -94,12 +124,37 @@ export function Selection({ is2D }: SelectionProps) {
         clearSelection();
       }
     },
-    [scene, is2D, camera, toggleSelection, selectOnly, clearSelection]
+    [
+      scene,
+      is2D,
+      camera,
+      toggleSelection,
+      selectOnly,
+      clearSelection,
+      setEditingPolylineId,
+    ]
   );
 
   const handleMouseDown = useCallback(
     (e: MouseEvent) => {
-      if (e.target !== gl.domElement || cmd?.type === "DRAW_POLYLINE") return;
+      if (
+        e.target !== gl.domElement ||
+        cmd?.type === "DRAW_POLYLINE" ||
+        editingPolylineId
+      )
+        return;
+
+      // Check if middle mouse button, right mouse button, or left button with space key (panning)
+      if (
+        e.button === 1 ||
+        e.button === 2 ||
+        (e.button === 0 && spaceKeyPressedRef.current)
+      ) {
+        isPanningRef.current = true;
+        setSelectionRect(null); // Clear selection rect if panning starts
+        return;
+      }
+
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
       if (is2D && e.button === 0) {
         setSelectionRect({
@@ -109,11 +164,16 @@ export function Selection({ is2D }: SelectionProps) {
         });
       }
     },
-    [gl.domElement, cmd, is2D]
+    [gl.domElement, cmd, is2D, editingPolylineId]
   );
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
+      // If panning, don't show selection rect
+      if (isPanningRef.current || editingPolylineId) {
+        return;
+      }
+
       if (mouseDownPosRef.current && is2D && selectionRect) {
         setSelectionRect({
           ...selectionRect,
@@ -122,7 +182,7 @@ export function Selection({ is2D }: SelectionProps) {
         });
       }
     },
-    [gl.domElement, is2D, selectionRect]
+    [gl.domElement, is2D, selectionRect, editingPolylineId]
   );
 
   const handleMouseUp = useCallback(
@@ -130,8 +190,17 @@ export function Selection({ is2D }: SelectionProps) {
       if (
         e.target !== gl.domElement ||
         !mouseDownPosRef.current ||
-        cmd?.type === "DRAW_POLYLINE"
+        cmd?.type === "DRAW_POLYLINE" ||
+        editingPolylineId
       ) {
+        isPanningRef.current = false;
+        resetSelectionState();
+        return;
+      }
+
+      // If we were panning, don't do selection
+      if (isPanningRef.current) {
+        isPanningRef.current = false;
         resetSelectionState();
         return;
       }
@@ -196,6 +265,28 @@ export function Selection({ is2D }: SelectionProps) {
     ]
   );
 
+  // Track space key for panning
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && e.target === gl.domElement) {
+        spaceKeyPressedRef.current = true;
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        spaceKeyPressedRef.current = false;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [gl.domElement]);
+
   useEffect(() => {
     if (cmd?.type === "DRAW_POLYLINE") return;
 
@@ -210,7 +301,20 @@ export function Selection({ is2D }: SelectionProps) {
     };
   }, [gl.domElement, cmd, handleMouseDown, handleMouseMove, handleMouseUp]);
 
+  // Clear selection rect when entering vertex editing mode
   useEffect(() => {
+    if (editingPolylineId) {
+      setSelectionRect(null);
+    }
+  }, [editingPolylineId]);
+
+  useEffect(() => {
+    // Don't show overlay if editing vertices or panning
+    if (editingPolylineId || isPanningRef.current) {
+      setSelectionRect(null);
+      return;
+    }
+
     const containerElement = gl.domElement.parentElement;
     if (!containerElement || !selectionRect) return;
 
@@ -239,7 +343,7 @@ export function Selection({ is2D }: SelectionProps) {
       root.unmount();
       overlayContainer.parentElement?.removeChild(overlayContainer);
     };
-  }, [selectionRect, gl.domElement]);
+  }, [selectionRect, gl.domElement, editingPolylineId]);
 
   return null;
 }

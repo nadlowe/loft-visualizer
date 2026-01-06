@@ -12,6 +12,7 @@ export function useKeyboardShortcuts() {
     clearSelection,
     undo,
     redo,
+    editingPolylineId,
   } = useStore();
 
   useEffect(() => {
@@ -45,7 +46,15 @@ export function useKeyboardShortcuts() {
           return; // Let the browser handle delete/backspace for text editing
         }
 
-        const selectedArray = Array.from(selectedHandles);
+        // Don't delete entities if user is editing polyline vertices
+        if (editingPolylineId) {
+          return; // Let the vertex editing component handle delete
+        }
+
+        // Filter out vertex handles - only delete actual entities
+        const selectedArray = Array.from(selectedHandles).filter(
+          (handle) => handle.type !== "VERTEX"
+        );
         if (selectedArray.length > 0) {
           e.preventDefault();
           selectedArray.forEach((handle) => {
@@ -70,5 +79,6 @@ export function useKeyboardShortcuts() {
     clearSelection,
     undo,
     redo,
+    editingPolylineId,
   ]);
 }

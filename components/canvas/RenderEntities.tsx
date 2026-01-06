@@ -52,21 +52,27 @@ export function RenderEntities({
 
       // Store line geometries in refs for smooth updates
       polylinesArray.forEach((p) => {
+        const positions: number[] = [];
+        p.vertices.forEach((v) => {
+          positions.push(v.x, v.y, v.z);
+        });
+
         const existingGeometry = lineRefs.current.get(p.id);
-        if (existingGeometry) {
-          // Update existing geometry positions
-          const positions: number[] = [];
-          p.vertices.forEach((v) => {
-            positions.push(v.x, v.y, v.z);
-          });
+        // LineGeometry doesn't handle buffer resize well, so recreate if vertex count changed
+        const existingVertexCount = existingGeometry
+          ? (existingGeometry.attributes.instanceStart?.count ?? 0) + 1
+          : 0;
+        const newVertexCount = p.vertices.length;
+
+        if (existingGeometry && existingVertexCount === newVertexCount) {
+          // Same vertex count - can update in place
           existingGeometry.setPositions(positions);
         } else {
-          // Create new geometry
+          // Vertex count changed or new geometry - recreate
+          if (existingGeometry) {
+            existingGeometry.dispose();
+          }
           const geometry = new LineGeometry();
-          const positions: number[] = [];
-          p.vertices.forEach((v) => {
-            positions.push(v.x, v.y, v.z);
-          });
           geometry.setPositions(positions);
           lineRefs.current.set(p.id, geometry);
         }
