@@ -18,7 +18,7 @@ import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
-import { useShallow } from "zustand/react/shallow";
+import { shallow } from "zustand/shallow";
 import { WorkPlaneWidget } from "./WorkPlaneWidget";
 
 export function RenderEntities({
@@ -28,11 +28,12 @@ export function RenderEntities({
 }) {
   const { size } = useThree();
   const { workPlanes, polylines, lofts } = useStore(
-    useShallow((state) => ({
+    (state) => ({
       workPlanes: state.doc.workPlanes,
       polylines: state.doc.polylines,
       lofts: state.doc.lofts,
-    }))
+    }),
+    shallow
   );
   const isSelected = useStore((state) => state.isSelected);
   const selectOnly = useStore((state) => state.selectOnly);

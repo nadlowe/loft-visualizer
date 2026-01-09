@@ -8,7 +8,7 @@ import { EntityHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
-import { useShallow } from "zustand/shallow";
+import { shallow } from "zustand/shallow";
 import { colors } from "./colors";
 
 type HandleToEntityMap = {
@@ -33,7 +33,7 @@ export function EntityDropdown<H extends EntityHandle>({
   placeholder = "None",
 }: EntityDropdownProps<H>) {
   const { currentValue, targetEntities, updateEntity } = useStore(
-    useShallow((state) => ({
+    (state) => ({
       currentValue: getEntityFromHandle(state.doc, handle)?.[field] as
         | EntityId
         | undefined,
@@ -41,7 +41,8 @@ export function EntityDropdown<H extends EntityHandle>({
         entityTypeToDocField[targetEntityType]
       ] as Record<string, { name: string }>,
       updateEntity: state.updateEntity,
-    }))
+    }),
+    shallow
   );
 
   const entityEntries = Object.entries(targetEntities);
