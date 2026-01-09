@@ -1,6 +1,9 @@
 "use client";
 
+import { handleNew } from "@/lib/entity/handle";
+import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
+import { uid, WorkPlaneId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { EntityMenu } from "./EntityMenu";
@@ -18,7 +21,9 @@ export function Explorer({
   onResize,
   onCollapse,
 }: ExplorerProps) {
-  const { doc } = useStore();
+  const { doc, addWorkPlane, startDrawPolyline, startAddLoft, selectOnly } =
+    useStore();
+
   const minWidth = 200;
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -54,26 +59,17 @@ export function Explorer({
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  if (isCollapsed) {
-    return (
-      <div
-        className={cn(
-          "relative flex h-full border-r transition-all",
-          colors.border.primary,
-          colors.bg.primary
-        )}
-        style={{ width: "32px" }}
-      >
-        <div className="flex-1 overflow-auto p-4">
-          <EntityMenu doc={doc} />
-        </div>
-        <div
-          onMouseDown={handleMouseDown}
-          className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
-        />
-      </div>
-    );
-  }
+  const handleAddWorkPlane = () => {
+    const workPlaneId = uid<WorkPlaneId>();
+    const workPlaneCount = Object.keys(doc.workPlanes).length;
+    addWorkPlane({
+      id: workPlaneId,
+      type: "WORKPLANE",
+      name: `Work Plane ${workPlaneCount + 1}`,
+      plane3: plane3New([0, 0, 0], [0, 0, 1]),
+    });
+    selectOnly(handleNew("WORKPLANE", workPlaneId));
+  };
 
   return (
     <div
@@ -82,10 +78,22 @@ export function Explorer({
         colors.border.primary,
         colors.bg.primary
       )}
-      style={{ width: `${width}px` }}
+      style={{ width: isCollapsed ? "32px" : `${width}px` }}
     >
       <div className="flex-1 overflow-auto p-4">
-        <EntityMenu doc={doc} />
+        <div className="flex flex-col">
+          <EntityMenu
+            doc={doc}
+            entityType="WORKPLANE"
+            onAdd={handleAddWorkPlane}
+          />
+          <EntityMenu
+            doc={doc}
+            entityType="POLYLINE"
+            onAdd={startDrawPolyline}
+          />
+          <EntityMenu doc={doc} entityType="LOFT" onAdd={startAddLoft} />
+        </div>
       </div>
       <div
         onMouseDown={handleMouseDown}

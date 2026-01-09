@@ -6,7 +6,7 @@ import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { WorkPlaneEntity } from "../entity/workPlaneEntity";
-import { LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
+import { EntityId, LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
 import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
@@ -319,15 +319,15 @@ export const createDocSlice: StateCreator<
     getLoft: (id) => get().doc.lofts[id],
 
     // Generic entity duplication
-    duplicateEntity: (handle) => {
+    duplicateEntity: (handle, selectNew = true) => {
       const { type, id } = parseHandle(handle);
       const fieldName = entityTypeToDocField[type];
       const entity = (get().doc[fieldName] as Record<string, BaseEntity<any>>)[
-        id as any
+        id as EntityId
       ];
       if (!entity) return null;
 
-      const newId = uid() as any;
+      const newId = uid();
       const duplicatedEntity = { ...entity, id: newId };
 
       updateDoc((state) => ({
@@ -340,7 +340,11 @@ export const createDocSlice: StateCreator<
         },
       }));
 
-      return handleNew(type, newId);
+      const newHandle = handleNew(type, newId);
+      if (selectNew) {
+        get().selectOnly(newHandle);
+      }
+      return newHandle;
     },
 
     // Generic entity deletion
