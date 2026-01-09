@@ -1,30 +1,25 @@
 import { StateCreator } from "zustand";
-import { Vec2 } from "../geom/geomTypes";
+import { Vec2 } from "../../geom/geomTypes";
+import { CmdSlice } from "./cmdSlice";
 
 export type DrawPolylineCmd = {
   type: "DRAW_POLYLINE";
   vertices: Vec2[];
 };
 
-export type AddLoftCmd = {
-  type: "ADD_LOFT";
-};
-
-export type Cmd = DrawPolylineCmd | AddLoftCmd;
-
-export interface CmdSlice {
-  cmd: Cmd | null;
+export interface PolylineCmdSlice {
   startDrawPolyline: () => void;
   addVertex: (vertex: Vec2) => void;
   removeLastVertex: () => void;
   finishDrawPolyline: () => void;
-  startAddLoft: () => void;
-  finishAddLoft: () => void;
-  cancelCmd: () => void;
 }
 
-export const createCmdSlice: StateCreator<CmdSlice> = (set, get) => ({
-  cmd: null,
+export const createPolylineCmdSlice: StateCreator<
+  CmdSlice,
+  [],
+  [],
+  PolylineCmdSlice
+> = (set) => ({
   startDrawPolyline: () =>
     set({
       cmd: {
@@ -60,12 +55,4 @@ export const createCmdSlice: StateCreator<CmdSlice> = (set, get) => ({
       return state;
     }),
   finishDrawPolyline: () => set({ cmd: null }),
-  startAddLoft: () =>
-    set({
-      cmd: {
-        type: "ADD_LOFT",
-      },
-    }),
-  finishAddLoft: () => set({ cmd: null }),
-  cancelCmd: () => set({ cmd: null }),
 });

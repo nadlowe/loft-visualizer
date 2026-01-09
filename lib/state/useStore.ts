@@ -1,5 +1,5 @@
 import { createWithEqualityFn } from "zustand/traditional";
-import { CmdSlice, createCmdSlice } from "./cmdSlice";
+import { CmdSlice, createCmdSlice } from "./cmd/cmdSlice";
 import { createDocSlice, DocSlice } from "./docSlice";
 import { createSelectionSlice, SelectionSlice } from "./selectionSlice";
 import { createSnapSlice, SnapSlice } from "./snapSlice";

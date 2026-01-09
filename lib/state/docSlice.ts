@@ -7,7 +7,7 @@ import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { WorkPlaneEntity } from "../entity/workPlaneEntity";
 import { LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
-import { CmdSlice } from "./cmdSlice";
+import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
 import {
