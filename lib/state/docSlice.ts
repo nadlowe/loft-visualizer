@@ -49,11 +49,8 @@ export interface DocSlice {
   addPolyline: (entity: PolylineEntity) => void;
   updatePolyline: (
     id: PolylineId,
-    updater: (entity: PolylineEntity) => PolylineEntity
-  ) => void;
-  updatePolylineNoSnapshot: (
-    id: PolylineId,
-    updater: (entity: PolylineEntity) => PolylineEntity
+    updater: (entity: PolylineEntity) => PolylineEntity,
+    snapshot?: boolean
   ) => void;
   removePolyline: (id: PolylineId) => void;
   getPolyline: (id: PolylineId) => PolylineEntity | undefined;
@@ -115,13 +112,15 @@ export const createDocSlice: StateCreator<
     }
   };
 
-  // Helper to update doc with automatic snapshot saving
-  const updateDoc = (
+  const transactDoc = (
     updater: (
       state: DocSlice & SelectionSlice & CmdSlice
-    ) => Partial<DocSlice & SelectionSlice & CmdSlice>
+    ) => Partial<DocSlice & SelectionSlice & CmdSlice>,
+    snapshot = true
   ) => {
-    saveSnapshot();
+    if (snapshot) {
+      saveSnapshot();
+    }
     set((state) => updater(state));
   };
 
@@ -185,7 +184,7 @@ export const createDocSlice: StateCreator<
 
     // WorkPlane transactions
     addWorkPlane: (entity) => {
-      updateDoc((state) => ({
+      transactDoc((state) => ({
         doc: {
           ...state.doc,
           workPlanes: {
@@ -196,7 +195,7 @@ export const createDocSlice: StateCreator<
       }));
     },
     updateWorkPlane: (id, updater) => {
-      updateDoc((state) => {
+      transactDoc((state) => {
         const entity = state.doc.workPlanes[id];
         if (!entity) return {};
         return {
@@ -211,7 +210,7 @@ export const createDocSlice: StateCreator<
       });
     },
     removeWorkPlane: (id) => {
-      updateDoc((state) => {
+      transactDoc((state) => {
         const { [id]: removed, ...workPlanes } = state.doc.workPlanes;
         return {
           doc: {
@@ -225,7 +224,7 @@ export const createDocSlice: StateCreator<
 
     // Polyline transactions
     addPolyline: (entity) => {
-      updateDoc((state) => ({
+      transactDoc((state) => ({
         doc: {
           ...state.doc,
           polylines: {
@@ -235,8 +234,8 @@ export const createDocSlice: StateCreator<
         },
       }));
     },
-    updatePolyline: (id, updater) => {
-      updateDoc((state) => {
+    updatePolyline: (id, updater, snapshot = true) => {
+      transactDoc((state) => {
         const entity = state.doc.polylines[id];
         if (!entity) return {};
         return {
@@ -248,25 +247,10 @@ export const createDocSlice: StateCreator<
             },
           },
         };
-      });
-    },
-    updatePolylineNoSnapshot: (id, updater) => {
-      set((state) => {
-        const entity = state.doc.polylines[id];
-        if (!entity) return {};
-        return {
-          doc: {
-            ...state.doc,
-            polylines: {
-              ...state.doc.polylines,
-              [id]: updater(entity),
-            },
-          },
-        };
-      });
+      }, snapshot);
     },
     removePolyline: (id) => {
-      updateDoc((state) => {
+      transactDoc((state) => {
         const { [id]: removed, ...polylines } = state.doc.polylines;
         return {
           doc: {
@@ -280,7 +264,7 @@ export const createDocSlice: StateCreator<
 
     // Loft transactions
     addLoft: (entity) => {
-      updateDoc((state) => ({
+      transactDoc((state) => ({
         doc: {
           ...state.doc,
           lofts: {
@@ -291,7 +275,7 @@ export const createDocSlice: StateCreator<
       }));
     },
     updateLoft: (id, updater) => {
-      updateDoc((state) => {
+      transactDoc((state) => {
         const entity = state.doc.lofts[id];
         if (!entity) return {};
         return {
@@ -306,7 +290,7 @@ export const createDocSlice: StateCreator<
       });
     },
     removeLoft: (id) => {
-      updateDoc((state) => {
+      transactDoc((state) => {
         const { [id]: removed, ...lofts } = state.doc.lofts;
         return {
           doc: {
@@ -330,7 +314,7 @@ export const createDocSlice: StateCreator<
       const newId = uid();
       const duplicatedEntity = { ...entity, id: newId };
 
-      updateDoc((state) => ({
+      transactDoc((state) => ({
         doc: {
           ...state.doc,
           [fieldName]: {
@@ -352,7 +336,7 @@ export const createDocSlice: StateCreator<
       const { type, id } = parseHandle(handle);
       const fieldName = entityTypeToDocField[type];
 
-      updateDoc((state) => {
+      transactDoc((state) => {
         const currentTable = state.doc[fieldName] as Record<
           string,
           BaseEntity<any>
@@ -372,7 +356,7 @@ export const createDocSlice: StateCreator<
       const { type, id } = parseHandle(handle);
       const fieldName = entityTypeToDocField[type];
 
-      updateDoc((state) => {
+      transactDoc((state) => {
         const entity = (
           state.doc[fieldName] as Record<string, BaseEntity<any>>
         )[id as any];
@@ -398,7 +382,7 @@ export const createDocSlice: StateCreator<
 
     // Generic transaction for complex operations
     transact: (updater) => {
-      updateDoc((state) => ({
+      transactDoc((state) => ({
         doc: updater(state.doc),
       }));
     },

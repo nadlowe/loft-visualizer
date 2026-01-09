@@ -208,10 +208,14 @@ export function PolylineVertexEditing({
         }
       }
 
-      updatePolyline(polylineId, (entity) => ({
-        ...entity,
-        polyline: newPolyline,
-      }));
+      updatePolyline(
+        polylineId,
+        (entity) => ({
+          ...entity,
+          polyline: newPolyline,
+        }),
+        false
+      );
     },
     [
       polyline,

@@ -34,7 +34,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
     setEditingPolylineId,
     editingPolylineId,
     doc,
-    updatePolylineNoSnapshot,
+    updatePolyline,
     saveSnapshot,
   } = useStore();
   const isPanningRef = useRef(false);
@@ -380,10 +380,14 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
           newVertices.push(startVertices[i + 1] + deltaY);
         }
 
-        updatePolylineNoSnapshot(draggingPolylineId, (entity) => ({
-          ...entity,
-          polyline: newVertices,
-        }));
+        updatePolyline(
+          draggingPolylineId,
+          (entity) => ({
+            ...entity,
+            polyline: newVertices,
+          }),
+          false
+        );
         return;
       }
 
@@ -406,7 +410,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       pointer,
       raycaster,
       camera,
-      updatePolylineNoSnapshot,
+      updatePolyline,
       saveSnapshot,
       onDraggingChange,
     ]
