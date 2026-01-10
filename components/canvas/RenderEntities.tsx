@@ -209,130 +209,135 @@ export function RenderEntities({
   return (
     <>
       {/* Render work planes from doc */}
-      {renderedWorkPlanes.map(({ workPlane, id }) => {
-        const workPlaneId = id as WorkPlaneId;
+      {renderedWorkPlanes
+        .filter(({ id }) => !workPlanes[id as WorkPlaneId]?.hidden)
+        .map(({ workPlane, id }) => {
+          const workPlaneId = id as WorkPlaneId;
 
-        const workPlanePolylines = renderedPolylines.filter(
-          (p) => p.workPlaneId === id
-        );
+          const workPlanePolylines = renderedPolylines.filter(
+            (p) =>
+              p.workPlaneId === id && !polylines[p.id as PolylineId]?.hidden
+          );
 
-        return (
-          <primitive key={id} object={workPlane}>
-            {workPlanePolylines.map((polyline) => {
-              const handle = handleNew("POLYLINE", polyline.id as PolylineId);
-              const geometry = lineRefs.current.get(polyline.id);
-              if (!geometry) return null;
-              const line = renderLine(
-                geometry,
-                handle,
-                size,
-                isSelected,
-                polyline.vertices
-              );
-              return <primitive key={polyline.id} object={line} />;
-            })}
-          </primitive>
-        );
-      })}
+          return (
+            <primitive key={id} object={workPlane}>
+              {workPlanePolylines.map((polyline) => {
+                const handle = handleNew("POLYLINE", polyline.id as PolylineId);
+                const geometry = lineRefs.current.get(polyline.id);
+                if (!geometry) return null;
+                const line = renderLine(
+                  geometry,
+                  handle,
+                  size,
+                  isSelected,
+                  polyline.vertices
+                );
+                return <primitive key={polyline.id} object={line} />;
+              })}
+            </primitive>
+          );
+        })}
 
       {/* Render work plane widgets for selected work planes */}
-      {renderedWorkPlanes.map(({ workPlane, id }) => {
-        const handle = handleNew("WORKPLANE", id as WorkPlaneId);
-        const selected = isSelected(handle);
-        if (!selected) return null;
-        const workPlaneId = id as WorkPlaneId;
+      {renderedWorkPlanes
+        .filter(({ id }) => !workPlanes[id as WorkPlaneId]?.hidden)
+        .map(({ workPlane, id }) => {
+          const handle = handleNew("WORKPLANE", id as WorkPlaneId);
+          const selected = isSelected(handle);
+          if (!selected) return null;
+          const workPlaneId = id as WorkPlaneId;
 
-        const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
-          const plane3 = workPlaneToPlane3(updatedWorkPlane);
-          updateEntity(handleNew("WORKPLANE", workPlaneId), (entity) => ({
-            ...entity,
-            plane3,
-          }));
-        };
+          const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
+            const plane3 = workPlaneToPlane3(updatedWorkPlane);
+            updateEntity(handleNew("WORKPLANE", workPlaneId), (entity) => ({
+              ...entity,
+              plane3,
+            }));
+          };
 
-        const handleWorkPlaneChangeTemporary = (
-          updatedWorkPlane: WorkPlane
-        ) => {
-          // Update Three.js object directly (for smooth dragging)
-          const currentWorkPlane = workPlaneRefs.current.get(id);
-          if (currentWorkPlane) {
-            currentWorkPlane.position.copy(updatedWorkPlane.position);
-            currentWorkPlane.rotation.copy(updatedWorkPlane.rotation);
-            currentWorkPlane.updateMatrixWorld(true);
-          }
-
-          // Update loft geometries that depend on polylines from this work plane
-          const { doc } = useStore.getState();
-          for (const [loftId, loftEntity] of Object.entries(doc.lofts)) {
-            const polyline1 = doc.polylines[loftEntity.polyline1];
-            const polyline2 = doc.polylines[loftEntity.polyline2];
-            if (!polyline1 || !polyline2) continue;
-
-            // Check if either polyline is on this work plane
-            if (
-              polyline1.workPlaneId === workPlaneId ||
-              polyline2.workPlaneId === workPlaneId
-            ) {
-              updateLineGeometry(
-                loftId,
-                loftEntity,
-                workPlaneId,
-                currentWorkPlane,
-                workPlaneRefs,
-                loftRefs,
-                loftSurfaceRefs,
-                loftWireframeRefs
-              );
+          const handleWorkPlaneChangeTemporary = (
+            updatedWorkPlane: WorkPlane
+          ) => {
+            // Update Three.js object directly (for smooth dragging)
+            const currentWorkPlane = workPlaneRefs.current.get(id);
+            if (currentWorkPlane) {
+              currentWorkPlane.position.copy(updatedWorkPlane.position);
+              currentWorkPlane.rotation.copy(updatedWorkPlane.rotation);
+              currentWorkPlane.updateMatrixWorld(true);
             }
-          }
-        };
 
-        const handleWorkPlaneChangeFinal = (updatedWorkPlane: WorkPlane) => {
-          // Final update on mouse up - use setDoc to avoid saving another snapshot
-          // (snapshot was already saved on drag start)
-          const plane3 = workPlaneToPlane3(updatedWorkPlane);
-          const { doc, setDoc } = useStore.getState();
-          const entity = doc.workPlanes[workPlaneId];
-          if (!entity) return;
+            // Update loft geometries that depend on polylines from this work plane
+            const { doc } = useStore.getState();
+            for (const [loftId, loftEntity] of Object.entries(doc.lofts)) {
+              const polyline1 = doc.polylines[loftEntity.polyline1];
+              const polyline2 = doc.polylines[loftEntity.polyline2];
+              if (!polyline1 || !polyline2) continue;
 
-          setDoc({
-            ...doc,
-            workPlanes: {
-              ...doc.workPlanes,
-              [workPlaneId]: {
-                ...entity,
-                plane3,
+              // Check if either polyline is on this work plane
+              if (
+                polyline1.workPlaneId === workPlaneId ||
+                polyline2.workPlaneId === workPlaneId
+              ) {
+                updateLineGeometry(
+                  loftId,
+                  loftEntity,
+                  workPlaneId,
+                  currentWorkPlane,
+                  workPlaneRefs,
+                  loftRefs,
+                  loftSurfaceRefs,
+                  loftWireframeRefs
+                );
+              }
+            }
+          };
+
+          const handleWorkPlaneChangeFinal = (updatedWorkPlane: WorkPlane) => {
+            // Final update on mouse up - use setDoc to avoid saving another snapshot
+            // (snapshot was already saved on drag start)
+            const plane3 = workPlaneToPlane3(updatedWorkPlane);
+            const { doc, setDoc } = useStore.getState();
+            const entity = doc.workPlanes[workPlaneId];
+            if (!entity) return;
+
+            setDoc({
+              ...doc,
+              workPlanes: {
+                ...doc.workPlanes,
+                [workPlaneId]: {
+                  ...entity,
+                  plane3,
+                },
               },
-            },
-          });
-        };
+            });
+          };
 
-        const handleDragStart = () => {
-          // Save snapshot when drag starts so undo restores to pre-drag state
-          const { saveSnapshot } = useStore.getState();
-          saveSnapshot();
-        };
+          const handleDragStart = () => {
+            // Save snapshot when drag starts so undo restores to pre-drag state
+            const { saveSnapshot } = useStore.getState();
+            saveSnapshot();
+          };
 
-        return (
-          <WorkPlaneWidget
-            key={`widget-${id}`}
-            workPlane={workPlane as any}
-            onWorkPlaneChange={handleWorkPlaneChange}
-            onWorkPlaneChangeTemporary={handleWorkPlaneChangeTemporary}
-            onWorkPlaneChangeFinal={handleWorkPlaneChangeFinal}
-            onDraggingChange={setIsDragging}
-            onDragStart={handleDragStart}
-            enabled={true}
-            showTranslate={true}
-            showRotate={true}
-            showHelpers={true}
-          />
-        );
-      })}
+          return (
+            <WorkPlaneWidget
+              key={`widget-${id}`}
+              workPlane={workPlane as any}
+              onWorkPlaneChange={handleWorkPlaneChange}
+              onWorkPlaneChangeTemporary={handleWorkPlaneChangeTemporary}
+              onWorkPlaneChangeFinal={handleWorkPlaneChangeFinal}
+              onDraggingChange={setIsDragging}
+              onDragStart={handleDragStart}
+              enabled={true}
+              showTranslate={true}
+              showRotate={true}
+              showHelpers={true}
+            />
+          );
+        })}
 
       {/* Render polylines without work planes */}
       {renderedPolylines
-        .filter((p) => !p.workPlaneId)
+        .filter((p) => !p.workPlaneId && !polylines[p.id as PolylineId]?.hidden)
         .map((polyline) => {
           const handle = handleNew("POLYLINE", polyline.id as PolylineId);
           const geometry = lineRefs.current.get(polyline.id);
@@ -348,48 +353,50 @@ export function RenderEntities({
         })}
 
       {/* Render lofts */}
-      {renderedLofts.map((loft) => {
-        const handle = handleNew("LOFT", loft.id as any);
-        const geometry = loftRefs.current.get(loft.id);
-        const surfaceGeometry = loftSurfaceRefs.current.get(loft.id);
-        const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
-        if (!geometry) return null;
-        const selected = isSelected(handle);
-        const color = selected ? colors.selection.highlight : 0x888888;
-        // Flatten rungs for pathPoints (used for selection)
-        const pathPoints = loft.rungs.flat();
-        return (
-          <group key={loft.id}>
-            {/* Surface mesh with 20% opacity */}
-            {surfaceGeometry && (
-              <mesh geometry={surfaceGeometry}>
-                <meshStandardMaterial
-                  color={color}
-                  transparent
-                  opacity={0.8}
-                  side={THREE.DoubleSide}
-                  depthWrite={true}
-                  roughness={1}
-                  metalness={0}
-                />
-              </mesh>
-            )}
-            {/* Wireframe showing subdivision edges */}
-            {wireframeGeometry && (
-              <lineSegments geometry={wireframeGeometry}>
+      {renderedLofts
+        .filter((l) => !lofts[l.id as any]?.hidden)
+        .map((loft) => {
+          const handle = handleNew("LOFT", loft.id as any);
+          const geometry = loftRefs.current.get(loft.id);
+          const surfaceGeometry = loftSurfaceRefs.current.get(loft.id);
+          const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
+          if (!geometry) return null;
+          const selected = isSelected(handle);
+          const color = selected ? colors.selection.highlight : 0x888888;
+          // Flatten rungs for pathPoints (used for selection)
+          const pathPoints = loft.rungs.flat();
+          return (
+            <group key={loft.id}>
+              {/* Surface mesh with 20% opacity */}
+              {surfaceGeometry && (
+                <mesh geometry={surfaceGeometry}>
+                  <meshStandardMaterial
+                    color={color}
+                    transparent
+                    opacity={0.8}
+                    side={THREE.DoubleSide}
+                    depthWrite={true}
+                    roughness={1}
+                    metalness={0}
+                  />
+                </mesh>
+              )}
+              {/* Wireframe showing subdivision edges */}
+              {wireframeGeometry && (
+                <lineSegments geometry={wireframeGeometry}>
+                  <lineBasicMaterial color={color} transparent opacity={0.75} />
+                </lineSegments>
+              )}
+              {/* Line segments (rungs) */}
+              <lineSegments
+                geometry={geometry}
+                userData={{ handleHash: handleToHash(handle), pathPoints }}
+              >
                 <lineBasicMaterial color={color} transparent opacity={0.75} />
               </lineSegments>
-            )}
-            {/* Line segments (rungs) */}
-            <lineSegments
-              geometry={geometry}
-              userData={{ handleHash: handleToHash(handle), pathPoints }}
-            >
-              <lineBasicMaterial color={color} transparent opacity={0.75} />
-            </lineSegments>
-          </group>
-        );
-      })}
+            </group>
+          );
+        })}
     </>
   );
 }

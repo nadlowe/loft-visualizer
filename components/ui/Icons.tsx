@@ -152,3 +152,47 @@ export function RotateRightIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function EyeIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      {/* Almond-shaped eye outline */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 12c2-4 5.5-6 9-6s7 2 9 6c-2 4-5.5 6-9 6s-7-2-9-6z"
+      />
+      {/* Smaller iris */}
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  );
+}
+
+export function EyeSlashIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      {/* Almond-shaped eye outline */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 12c2-4 5.5-6 9-6s7 2 9 6c-2 4-5.5 6-9 6s-7-2-9-6z"
+      />
+      {/* Smaller iris */}
+      <circle cx="12" cy="12" r="2" />
+      {/* Diagonal slash */}
+      <line x1="4" y1="20" x2="20" y2="4" strokeLinecap="round" />
+    </svg>
+  );
+}

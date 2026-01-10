@@ -13,7 +13,7 @@ import { useState } from "react";
 import { colors } from "../../colors";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
-import { DuplicateIcon, TrashIcon } from "../Icons";
+import { DuplicateIcon, EyeIcon, EyeSlashIcon, TrashIcon } from "../Icons";
 
 interface EntityMenuProps {
   doc: Doc;
@@ -28,13 +28,15 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
     toggleSelection,
     selectRange,
     lastSelectedHandle,
+    selectedHandles,
     duplicateEntity,
     deleteEntity,
+    setHidden,
   } = useStore();
   const [isExpanded, setIsExpanded] = useState(true);
   const entries = Object.entries(doc[entityTypeToDocField[entityType]]) as [
     string,
-    { name: string },
+    { name: string; hidden?: boolean },
   ][];
 
   const Icon = entityTypeToIcon[entityType];
@@ -144,6 +146,31 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
                   <EditableEntityName handle={handle} />
                 </button>
                 <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newHidden = !entity.hidden;
+                      // Apply to all selected handles plus this one
+                      const handlesToUpdate = isSelected(handle)
+                        ? Array.from(selectedHandles).filter(
+                            (h) => h.type !== "VERTEX"
+                          )
+                        : [handle];
+                      setHidden(handlesToUpdate as any[], newHidden);
+                    }}
+                    className={cn(
+                      "flex items-center justify-center rounded p-0.5 transition-colors",
+                      "hover:" + colors.bg.primary,
+                      colors.text.secondary
+                    )}
+                    title={entity.hidden ? "Show" : "Hide"}
+                  >
+                    {entity.hidden ? (
+                      <EyeSlashIcon className="h-3.5 w-3.5" />
+                    ) : (
+                      <EyeIcon className="h-3.5 w-3.5" />
+                    )}
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

@@ -46,6 +46,7 @@ export interface DocSlice {
     handle: H
   ) => EntityTypeMap[H["type"]] | undefined;
   duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
+  setHidden: (handles: EntityHandle[], hidden: boolean) => void;
 
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
@@ -238,6 +239,31 @@ export const createDocSlice: StateCreator<
         get().selectOnly(newHandle);
       }
       return newHandle;
+    },
+
+    setHidden: (handles, hidden) => {
+      transact((state) => {
+        let newDoc = { ...state.doc };
+
+        for (const handle of handles) {
+          const { type, id } = parseHandle(handle);
+          const fieldName = entityTypeToDocField[type];
+          const entity = (newDoc[fieldName] as Record<string, BaseEntity<any>>)[
+            id
+          ];
+          if (!entity) continue;
+
+          newDoc = {
+            ...newDoc,
+            [fieldName]: {
+              ...(newDoc[fieldName] as Record<string, BaseEntity<any>>),
+              [id]: { ...entity, hidden },
+            },
+          };
+        }
+
+        return { doc: newDoc };
+      });
     },
 
     // Generic transaction for complex operations

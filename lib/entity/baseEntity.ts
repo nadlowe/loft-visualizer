@@ -5,4 +5,5 @@ export interface BaseEntity<Id extends EntityId> {
   readonly type: EntityType;
   readonly id: Id;
   readonly name: string;
+  readonly hidden?: boolean;
 }
