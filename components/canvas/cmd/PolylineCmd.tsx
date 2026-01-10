@@ -18,15 +18,8 @@ const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
 export function PolylineCmd() {
   const { camera, raycaster, pointer, gl: renderer } = useThree();
-  const {
-    cmd,
-    addVertex,
-    finishCmd,
-    addEntity,
-    doc,
-    selectOnly,
-    snapEnabled,
-  } = useStore();
+  const { cmd, addVertex, finishCmd, addEntity, doc, selectOnly, snapEnabled } =
+    useStore();
 
   const lastClickTimeRef = useRef<number>(0);
   const lastClickPositionRef = useRef<THREE.Vector3 | null>(null);
