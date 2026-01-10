@@ -1,11 +1,8 @@
 "use client";
 
-import { entityName } from "@/lib/entity/entityNew";
-import { handleNew } from "@/lib/entity/handle";
-import { WorkPlaneEntity } from "@/lib/entity/workPlaneEntity";
+import { entityName, workPlaneNew } from "@/lib/entity/entityNew";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
-import { uid, WorkPlaneId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { colors } from "../../colors";
 import { EntityMenu } from "./EntityMenu";
@@ -23,8 +20,7 @@ export function Explorer({
   onResize,
   onCollapse,
 }: ExplorerProps) {
-  const { doc, addEntity, startDrawPolyline, startAddLoft, selectOnly } =
-    useStore();
+  const { doc, addEntity, startDrawPolyline, startAddLoft } = useStore();
 
   const minWidth = 200;
 
@@ -62,15 +58,11 @@ export function Explorer({
   };
 
   const handleAddWorkPlane = () => {
-    const workPlaneId = uid<WorkPlaneId>();
-    const newWorkPlane: WorkPlaneEntity = {
-      id: workPlaneId,
-      type: "WORKPLANE",
-      name: entityName(doc, "WORKPLANE"),
-      plane3: plane3New([0, 0, 0], [0, 0, 1]),
-    };
+    const newWorkPlane = workPlaneNew(
+      plane3New([0, 0, 0], [0, 0, 1]),
+      entityName(doc, "WORKPLANE")
+    );
     addEntity(newWorkPlane);
-    selectOnly(handleNew("WORKPLANE", workPlaneId));
   };
 
   return (

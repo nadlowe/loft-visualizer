@@ -167,6 +167,7 @@ export const createDocSlice: StateCreator<
             [entity.id]: entity,
           },
         },
+        selectedHandles: new Set([handleNew(entity.type, entity.id)]),
       }));
     },
     updateEntity: <H extends EntityHandle>(

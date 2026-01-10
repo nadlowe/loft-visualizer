@@ -2,7 +2,6 @@
 
 import { Entity } from "@/lib/entity/entity";
 import { entityName, polylineNew } from "@/lib/entity/entityNew";
-import { handleNew } from "@/lib/entity/handle";
 import { SelectableHandle } from "@/lib/entity/handleTypes";
 import { Vec2 } from "@/lib/geom/geomTypes";
 import { snapToVertices } from "@/lib/snap/snapToVertices";
@@ -65,7 +64,11 @@ export function PolylineCmd() {
   }
 
   return (
-    <PolylineCmdPreview vertices={cmd.vertices} hoverPosition={hoverPosition} />
+    <PolylineCmdPreview
+      vertices={cmd.vertices}
+      hoverPosition={hoverPosition}
+      closeLoop={cmd.closeLoop}
+    />
   );
 }
 
@@ -92,7 +95,6 @@ function handleDoubleClickFunc({
   cmd,
   doc,
   addEntity,
-  selectOnly,
   finishCmd,
   lastClickTimeRef,
   lastClickPositionRef,
@@ -110,24 +112,24 @@ function handleDoubleClickFunc({
       return;
     }
 
+    let polylineCoords = cmd.vertices.flat();
+
+    // If closing loop, add the first vertex at the end
+    if (cmd.closeLoop && cmd.vertices.length >= 3) {
+      const firstVertex = cmd.vertices[0];
+      polylineCoords = [...polylineCoords, firstVertex[0], firstVertex[1]];
+    }
+
     const newPolyline = polylineNew(
-      cmd.vertices.flat(),
-      entityName(doc, "POLYLINE")
+      polylineCoords,
+      entityName(doc, "POLYLINE"),
+      cmd.closeLoop && cmd.vertices.length >= 3
     );
     addEntity(newPolyline);
-    selectOnly(handleNew("POLYLINE", newPolyline.id));
     finishCmd();
     lastClickTimeRef.current = 0;
     lastClickPositionRef.current = null;
-  }, [
-    cmd,
-    doc,
-    addEntity,
-    selectOnly,
-    finishCmd,
-    lastClickTimeRef,
-    lastClickPositionRef,
-  ]);
+  }, [cmd, doc, addEntity, finishCmd, lastClickTimeRef, lastClickPositionRef]);
 }
 
 function handlePointerDownFunc({

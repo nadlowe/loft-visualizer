@@ -5,12 +5,14 @@ import { CmdSlice } from "./cmdSlice";
 export type DrawPolylineCmd = {
   type: "DRAW_POLYLINE";
   vertices: Vec2[];
+  closeLoop: boolean;
 };
 
 export interface PolylineCmdSlice {
   startDrawPolyline: () => void;
   addVertex: (vertex: Vec2) => void;
   removeLastVertex: () => void;
+  setCloseLoop: (closeLoop: boolean) => void;
 }
 
 export const createPolylineCmdSlice: StateCreator<
@@ -24,6 +26,7 @@ export const createPolylineCmdSlice: StateCreator<
       cmd: {
         type: "DRAW_POLYLINE",
         vertices: [],
+        closeLoop: false,
       },
     }),
   addVertex: (vertex) =>
@@ -48,6 +51,18 @@ export const createPolylineCmdSlice: StateCreator<
           cmd: {
             ...state.cmd,
             vertices: state.cmd.vertices.slice(0, -1),
+          },
+        };
+      }
+      return state;
+    }),
+  setCloseLoop: (closeLoop) =>
+    set((state) => {
+      if (state.cmd?.type === "DRAW_POLYLINE") {
+        return {
+          cmd: {
+            ...state.cmd,
+            closeLoop,
           },
         };
       }

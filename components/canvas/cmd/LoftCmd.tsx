@@ -1,13 +1,11 @@
 "use client";
 
 import { entityName, loftNew } from "@/lib/entity/entityNew";
-import { handleNew } from "@/lib/entity/handle";
 import { useStore } from "@/lib/state/useStore";
 import { useEffect } from "react";
 
 export function LoftCmd() {
-  const { cmd, selectedHandles, doc, addEntity, finishCmd, selectOnly } =
-    useStore();
+  const { cmd, selectedHandles, doc, addEntity, finishCmd } = useStore();
 
   useEffect(() => {
     if (cmd?.type === "ADD_LOFT") {
@@ -27,10 +25,9 @@ export function LoftCmd() {
 
         addEntity(newLoft);
         finishCmd();
-        selectOnly(handleNew("LOFT", newLoft.id));
       }
     }
-  }, [cmd, selectedHandles, doc, addEntity, finishCmd, selectOnly]);
+  }, [cmd, selectedHandles, doc, addEntity, finishCmd]);
 
   return null;
 }
