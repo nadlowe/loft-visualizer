@@ -1,5 +1,7 @@
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
+import { polyline2MergeOverlappingVertices } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
+import { PolylineId } from "@/lib/util/uid";
 import { useEffect } from "react";
 
 export function useKeyboardShortcuts() {
@@ -92,6 +94,48 @@ export function useKeyboardShortcuts() {
               closed: true,
             };
           });
+        }
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "m") {
+        // Cmd+M to merge overlapping vertices
+        // Collect polyline IDs from either vertex editing, vertex selection, or polyline selection
+        const polylineIds = new Set<string>();
+
+        // If in vertex editing mode, use that polyline
+        if (editingPolylineId) {
+          polylineIds.add(editingPolylineId);
+        }
+
+        // Check selected handles for polylines or vertices
+        for (const handle of selectedHandles) {
+          if (handle.type === "POLYLINE") {
+            polylineIds.add(handle.id);
+          } else if (handle.type === "VERTEX") {
+            polylineIds.add(handle.polylineId);
+          }
+        }
+
+        if (polylineIds.size === 0) return;
+
+        e.preventDefault();
+
+        for (const polylineId of polylineIds) {
+          const polyline = doc.polylines[polylineId];
+          if (!polyline) continue;
+
+          const mergedPolyline = polyline2MergeOverlappingVertices(
+            polyline.polyline
+          );
+
+          // Only update if vertices were actually merged
+          if (mergedPolyline.length !== polyline.polyline.length) {
+            updateEntity({ type: "POLYLINE", id: polylineId as PolylineId }, (e) => {
+              const entity = e as PolylineEntity;
+              return {
+                ...entity,
+                polyline: mergedPolyline,
+              };
+            });
+          }
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
         // Don't delete entities if user is editing text (e.g., entity name)

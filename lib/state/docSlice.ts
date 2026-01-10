@@ -57,6 +57,8 @@ export interface DocSlice {
   newDoc: () => void;
   deleteDoc: (docId: string) => void;
   getSavedDocs: () => SavedDoc[];
+  saveDocToFile: () => void;
+  loadDocFromFile: () => void;
 }
 
 export const createDocSlice: StateCreator<
@@ -297,5 +299,49 @@ export const createDocSlice: StateCreator<
       }
     },
     getSavedDocs: () => getAllDocsFromStorage(),
+
+    saveDocToFile: () => {
+      const doc = get().doc;
+      const dataStr = JSON.stringify(doc, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${doc.name || "document"}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+
+    loadDocFromFile: () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".json";
+      input.onchange = (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const loadedDoc = JSON.parse(event.target?.result as string);
+            if (
+              loadedDoc.id &&
+              loadedDoc.workPlanes &&
+              loadedDoc.polylines &&
+              loadedDoc.lofts
+            ) {
+              set({ doc: loadedDoc });
+              saveDocToStorage(loadedDoc);
+            }
+          } catch (err) {
+            console.error("Failed to parse document:", err);
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    },
   };
 };

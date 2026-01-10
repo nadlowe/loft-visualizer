@@ -25,7 +25,16 @@ function DocumentIcon({ className }: { className?: string }) {
 }
 
 export function FileMenu() {
-  const { doc, saveDoc, newDoc, loadDoc, deleteDoc, getSavedDocs } = useStore();
+  const {
+    doc,
+    saveDoc,
+    newDoc,
+    loadDoc,
+    deleteDoc,
+    getSavedDocs,
+    saveDocToFile,
+    loadDocFromFile,
+  } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -116,6 +125,17 @@ export function FileMenu() {
     setIsDeleteDialogOpen(false);
   };
 
+  const handleSaveToFile = () => {
+    saveDocToFile();
+    setIsMenuOpen(false);
+  };
+
+  const handleLoadFromFile = () => {
+    loadDocFromFile();
+    setSavedDocs(getSavedDocs());
+    setIsMenuOpen(false);
+  };
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -200,6 +220,32 @@ export function FileMenu() {
             )}
           >
             <span>Delete</span>
+          </button>
+
+          <div className={cn("my-1 border-t", colors.border.primary)} />
+
+          <button
+            onClick={handleSaveToFile}
+            className={cn(
+              "flex w-full items-center gap-2 px-4 py-2 text-left",
+              fonts.menuItem,
+              colors.text.primary,
+              "hover:" + colors.bg.secondary
+            )}
+          >
+            <span>Save to File</span>
+          </button>
+
+          <button
+            onClick={handleLoadFromFile}
+            className={cn(
+              "flex w-full items-center gap-2 px-4 py-2 text-left",
+              fonts.menuItem,
+              colors.text.primary,
+              "hover:" + colors.bg.secondary
+            )}
+          >
+            <span>Load from File</span>
           </button>
 
           <div className={cn("my-1 border-t", colors.border.primary)} />

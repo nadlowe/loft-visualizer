@@ -1,7 +1,58 @@
-import { Polyline2 } from "./geomTypes";
+import { Polyline2, Vec2 } from "./geomTypes";
 import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
 import { DIST_EPSILON } from "./scalar";
 import { vec2Transform } from "./vec2";
+
+export function vec2Distance(a: Vec2, b: Vec2): number {
+  const dx = a[0] - b[0];
+  const dy = a[1] - b[1];
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+// Merges any interior vertices that are within epsilon of each other.
+// Start and end vertices are always preserved.
+export function polyline2MergeOverlappingVertices(
+  polyline: Polyline2,
+  epsilon: number = DIST_EPSILON
+): Polyline2 {
+  const numVertices = polyline.length / 2;
+
+  // Need at least 3 vertices to have interior vertices to merge
+  if (numVertices < 3) return [...polyline];
+
+  const result: Polyline2 = [];
+
+  // End vertex coords - always preserved, used for comparison
+  const endX = polyline[polyline.length - 2];
+  const endY = polyline[polyline.length - 1];
+
+  // Always keep start vertex
+  result.push(polyline[0], polyline[1]);
+
+  // Process interior vertices (indices 1 to n-2)
+  for (let i = 1; i < numVertices - 1; i++) {
+    const x = polyline[i * 2];
+    const y = polyline[i * 2 + 1];
+
+    // Compare against last kept vertex
+    const lastX = result[result.length - 2];
+    const lastY = result[result.length - 1];
+    const distToLast = vec2Distance([x, y], [lastX, lastY]);
+
+    // Also compare against end vertex (which is always kept)
+    const distToEnd = vec2Distance([x, y], [endX, endY]);
+
+    // Keep only if far enough from both last kept AND end
+    if (distToLast >= epsilon && distToEnd >= epsilon) {
+      result.push(x, y);
+    }
+  }
+
+  // Always keep end vertex
+  result.push(endX, endY);
+
+  return result;
+}
 
 export function polyline2Transform(polyline: Polyline2, mat: Mat3): Polyline2 {
   const result: Polyline2 = [];
