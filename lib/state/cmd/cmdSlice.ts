@@ -4,7 +4,7 @@ import { Cmd } from "./cmdTypes";
 import { createLoftCmdSlice, LoftCmdSlice } from "./loftCmdSlice";
 import { createPolylineCmdSlice, PolylineCmdSlice } from "./polylineCmdSlice";
 
-export type { AddLoftCmd, Cmd, DrawPolylineCmd } from "./cmdTypes";
+export type { Cmd } from "./cmdTypes";
 
 interface SharedCmdSlice {
   cmd: Cmd | null;

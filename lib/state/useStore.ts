@@ -6,7 +6,7 @@ import { createSnapSlice, GridSnapMode, SnapSlice } from "./snapSlice";
 
 export type { GridSnapMode };
 
-export type AppState = DocSlice & SelectionSlice & CmdSlice & SnapSlice;
+type AppState = DocSlice & SelectionSlice & CmdSlice & SnapSlice;
 
 export const useStore = createWithEqualityFn<AppState>()((...a) => ({
   ...createDocSlice(...a),
