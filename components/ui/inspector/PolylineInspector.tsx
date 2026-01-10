@@ -9,13 +9,13 @@ import { EntityDropdown } from "../EntityDropdown";
 import { RotateLeftIcon, RotateRightIcon } from "../Icons";
 
 export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
-  const { doc, updatePolyline } = useStore();
+  const { doc, updateEntity } = useStore();
   const polyline = doc.polylines[handle.id];
   const vertexCount = polyline ? Math.floor(polyline.polyline.length / 2) : 0;
 
   const handleShift = (amount: number) => {
     if (!polyline) return;
-    updatePolyline(handle.id, (entity) => ({
+    updateEntity(handle, (entity) => ({
       ...entity,
       polyline: polyline2Shift(entity.polyline, amount),
     }));

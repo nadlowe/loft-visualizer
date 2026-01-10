@@ -11,6 +11,7 @@ export type Cmd = DrawPolylineCmd | AddLoftCmd;
 interface SharedCmdSlice {
   cmd: Cmd | null;
   cancelCmd: () => void;
+  finishCmd: () => void;
 }
 
 export type CmdSlice = SharedCmdSlice & PolylineCmdSlice & LoftCmdSlice;
@@ -18,6 +19,7 @@ export type CmdSlice = SharedCmdSlice & PolylineCmdSlice & LoftCmdSlice;
 export const createCmdSlice: StateCreator<CmdSlice> = (...a) => ({
   cmd: null,
   cancelCmd: () => a[0]({ cmd: null }),
+  finishCmd: () => a[0]({ cmd: null }),
   ...createPolylineCmdSlice(...a),
   ...createLoftCmdSlice(...a),
 });

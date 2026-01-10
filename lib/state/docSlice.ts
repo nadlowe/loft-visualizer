@@ -1,12 +1,10 @@
 import { StateCreator } from "zustand";
 import { BaseEntity } from "../entity/baseEntity";
+import { Entity, EntityTypeMap } from "../entity/entity";
 import { entityTypeToDocField } from "../entity/entityTypeToDocField";
 import { handleNew, parseHandle } from "../entity/handle";
 import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
-import { LoftEntity } from "../entity/loftEntity";
-import { PolylineEntity } from "../entity/polylineEntity";
-import { WorkPlaneEntity } from "../entity/workPlaneEntity";
-import { EntityId, LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
+import { uid } from "../util/uid";
 import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
@@ -36,42 +34,18 @@ export interface DocSlice {
   undo: () => void;
   redo: () => void;
 
-  // WorkPlane transactions
-  addWorkPlane: (entity: WorkPlaneEntity) => void;
-  updateWorkPlane: (
-    id: WorkPlaneId,
-    updater: (entity: WorkPlaneEntity) => WorkPlaneEntity
-  ) => void;
-  removeWorkPlane: (id: WorkPlaneId) => void;
-  getWorkPlane: (id: WorkPlaneId) => WorkPlaneEntity | undefined;
-
-  // Polyline transactions
-  addPolyline: (entity: PolylineEntity) => void;
-  updatePolyline: (
-    id: PolylineId,
-    updater: (entity: PolylineEntity) => PolylineEntity,
+  // Generic entity operations
+  addEntity: (entity: Entity) => void;
+  updateEntity: <H extends EntityHandle>(
+    handle: H,
+    updater: (entity: EntityTypeMap[H["type"]]) => EntityTypeMap[H["type"]],
     snapshot?: boolean
   ) => void;
-  removePolyline: (id: PolylineId) => void;
-  getPolyline: (id: PolylineId) => PolylineEntity | undefined;
-
-  // Loft transactions
-  addLoft: (entity: LoftEntity) => void;
-  updateLoft: (id: LoftId, updater: (entity: LoftEntity) => LoftEntity) => void;
-  removeLoft: (id: LoftId) => void;
-  getLoft: (id: LoftId) => LoftEntity | undefined;
-
-  // Generic entity duplication
-  duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
-
-  // Generic entity deletion
   deleteEntity: (handle: EntityHandle) => void;
-
-  // Generic entity update
-  updateEntity: (
-    handle: EntityHandle,
-    updater: (entity: BaseEntity<any>) => BaseEntity<any>
-  ) => void;
+  getEntity: <H extends EntityHandle>(
+    handle: H
+  ) => EntityTypeMap[H["type"]] | undefined;
+  duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
 
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
@@ -112,7 +86,7 @@ export const createDocSlice: StateCreator<
     }
   };
 
-  const transactDoc = (
+  const transact = (
     updater: (
       state: DocSlice & SelectionSlice & CmdSlice
     ) => Partial<DocSlice & SelectionSlice & CmdSlice>,
@@ -182,139 +156,73 @@ export const createDocSlice: StateCreator<
       }
     },
 
-    // WorkPlane transactions
-    addWorkPlane: (entity) => {
-      transactDoc((state) => ({
+    // Generic entity operations
+    addEntity: (entity) => {
+      const fieldName = entityTypeToDocField[entity.type];
+      transact((state) => ({
         doc: {
           ...state.doc,
-          workPlanes: {
-            ...state.doc.workPlanes,
+          [fieldName]: {
+            ...(state.doc[fieldName] as Record<string, Entity>),
             [entity.id]: entity,
           },
         },
       }));
     },
-    updateWorkPlane: (id, updater) => {
-      transactDoc((state) => {
-        const entity = state.doc.workPlanes[id];
+    updateEntity: <H extends EntityHandle>(
+      handle: H,
+      updater: (entity: EntityTypeMap[H["type"]]) => EntityTypeMap[H["type"]],
+      snapshot = true
+    ) => {
+      const { type, id } = parseHandle(handle);
+      const fieldName = entityTypeToDocField[type];
+      transact((state) => {
+        const entity = (state.doc[fieldName] as Record<string, Entity>)[id];
         if (!entity) return {};
         return {
           doc: {
             ...state.doc,
-            workPlanes: {
-              ...state.doc.workPlanes,
-              [id]: updater(entity),
-            },
-          },
-        };
-      });
-    },
-    removeWorkPlane: (id) => {
-      transactDoc((state) => {
-        const { [id]: removed, ...workPlanes } = state.doc.workPlanes;
-        return {
-          doc: {
-            ...state.doc,
-            workPlanes,
-          },
-        };
-      });
-    },
-    getWorkPlane: (id) => get().doc.workPlanes[id],
-
-    // Polyline transactions
-    addPolyline: (entity) => {
-      transactDoc((state) => ({
-        doc: {
-          ...state.doc,
-          polylines: {
-            ...state.doc.polylines,
-            [entity.id]: entity,
-          },
-        },
-      }));
-    },
-    updatePolyline: (id, updater, snapshot = true) => {
-      transactDoc((state) => {
-        const entity = state.doc.polylines[id];
-        if (!entity) return {};
-        return {
-          doc: {
-            ...state.doc,
-            polylines: {
-              ...state.doc.polylines,
-              [id]: updater(entity),
+            [fieldName]: {
+              ...(state.doc[fieldName] as Record<string, Entity>),
+              [id]: updater(entity as EntityTypeMap[H["type"]]),
             },
           },
         };
       }, snapshot);
     },
-    removePolyline: (id) => {
-      transactDoc((state) => {
-        const { [id]: removed, ...polylines } = state.doc.polylines;
+    deleteEntity: (handle) => {
+      const { type, id } = parseHandle(handle);
+      const fieldName = entityTypeToDocField[type];
+      transact((state) => {
+        const currentTable = state.doc[fieldName] as Record<string, Entity>;
+        const { [id]: removed, ...rest } = currentTable;
         return {
           doc: {
             ...state.doc,
-            polylines,
+            [fieldName]: rest,
           },
         };
       });
     },
-    getPolyline: (id) => get().doc.polylines[id],
-
-    // Loft transactions
-    addLoft: (entity) => {
-      transactDoc((state) => ({
-        doc: {
-          ...state.doc,
-          lofts: {
-            ...state.doc.lofts,
-            [entity.id]: entity,
-          },
-        },
-      }));
+    getEntity: <H extends EntityHandle>(handle: H) => {
+      const { type, id } = parseHandle(handle);
+      const fieldName = entityTypeToDocField[type];
+      return (get().doc[fieldName] as Record<string, Entity>)[id] as
+        | EntityTypeMap[H["type"]]
+        | undefined;
     },
-    updateLoft: (id, updater) => {
-      transactDoc((state) => {
-        const entity = state.doc.lofts[id];
-        if (!entity) return {};
-        return {
-          doc: {
-            ...state.doc,
-            lofts: {
-              ...state.doc.lofts,
-              [id]: updater(entity),
-            },
-          },
-        };
-      });
-    },
-    removeLoft: (id) => {
-      transactDoc((state) => {
-        const { [id]: removed, ...lofts } = state.doc.lofts;
-        return {
-          doc: {
-            ...state.doc,
-            lofts,
-          },
-        };
-      });
-    },
-    getLoft: (id) => get().doc.lofts[id],
-
-    // Generic entity duplication
     duplicateEntity: (handle, selectNew = true) => {
       const { type, id } = parseHandle(handle);
       const fieldName = entityTypeToDocField[type];
       const entity = (get().doc[fieldName] as Record<string, BaseEntity<any>>)[
-        id as EntityId
+        id
       ];
       if (!entity) return null;
 
       const newId = uid();
       const duplicatedEntity = { ...entity, id: newId };
 
-      transactDoc((state) => ({
+      transact((state) => ({
         doc: {
           ...state.doc,
           [fieldName]: {
@@ -331,58 +239,9 @@ export const createDocSlice: StateCreator<
       return newHandle;
     },
 
-    // Generic entity deletion
-    deleteEntity: (handle) => {
-      const { type, id } = parseHandle(handle);
-      const fieldName = entityTypeToDocField[type];
-
-      transactDoc((state) => {
-        const currentTable = state.doc[fieldName] as Record<
-          string,
-          BaseEntity<any>
-        >;
-        const { [id as any]: removed, ...rest } = currentTable;
-        return {
-          doc: {
-            ...state.doc,
-            [fieldName]: rest,
-          },
-        };
-      });
-    },
-
-    // Generic entity update
-    updateEntity: (handle, updater) => {
-      const { type, id } = parseHandle(handle);
-      const fieldName = entityTypeToDocField[type];
-
-      transactDoc((state) => {
-        const entity = (
-          state.doc[fieldName] as Record<string, BaseEntity<any>>
-        )[id as any];
-        if (!entity) return {};
-
-        const updated = updater(entity);
-
-        const currentTable = state.doc[fieldName] as Record<
-          string,
-          BaseEntity<any>
-        >;
-        return {
-          doc: {
-            ...state.doc,
-            [fieldName]: {
-              ...currentTable,
-              [id]: updated,
-            },
-          },
-        };
-      });
-    },
-
     // Generic transaction for complex operations
     transact: (updater) => {
-      transactDoc((state) => ({
+      transact((state) => ({
         doc: updater(state.doc),
       }));
     },

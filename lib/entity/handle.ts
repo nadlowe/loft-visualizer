@@ -7,14 +7,18 @@ import {
   WorkPlaneHandle,
 } from "./handleTypes";
 
+export function handleNew(type: "WORKPLANE", id: WorkPlaneId): WorkPlaneHandle;
+export function handleNew(type: "POLYLINE", id: PolylineId): PolylineHandle;
+export function handleNew(type: "LOFT", id: LoftId): LoftHandle;
+export function handleNew(type: EntityType, id: EntityId): EntityHandle;
 export function handleNew(type: EntityType, id: EntityId): EntityHandle {
   switch (type) {
     case "WORKPLANE":
-      return { type: "WORKPLANE", id: id as WorkPlaneId } as WorkPlaneHandle;
+      return { type: "WORKPLANE", id: id as WorkPlaneId };
     case "POLYLINE":
-      return { type: "POLYLINE", id: id as PolylineId } as PolylineHandle;
+      return { type: "POLYLINE", id: id as PolylineId };
     case "LOFT":
-      return { type: "LOFT", id: id as LoftId } as LoftHandle;
+      return { type: "LOFT", id: id as LoftId };
   }
 }
 

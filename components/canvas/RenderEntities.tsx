@@ -36,7 +36,7 @@ export function RenderEntities({
     shallow
   );
   const isSelected = useStore((state) => state.isSelected);
-  const updateWorkPlane = useStore((state) => state.updateWorkPlane);
+  const updateEntity = useStore((state) => state.updateEntity);
 
   const [isDragging, setIsDragging] = useState(false);
   const workPlaneRefs = useRef<Map<string, THREE.Group>>(new Map());
@@ -242,7 +242,7 @@ export function RenderEntities({
 
         const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
           const plane3 = workPlaneToPlane3(updatedWorkPlane);
-          updateWorkPlane(workPlaneId, (entity) => ({
+          updateEntity(handleNew("WORKPLANE", workPlaneId), (entity) => ({
             ...entity,
             plane3,
           }));

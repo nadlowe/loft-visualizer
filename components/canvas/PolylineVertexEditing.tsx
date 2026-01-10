@@ -2,6 +2,7 @@
 
 import { colors } from "@/components/ui/colors";
 import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
+import { handleNew } from "@/lib/entity/handle";
 import type { VertexHandle } from "@/lib/entity/handleTypes";
 import { vertexHandleToHash } from "@/lib/entity/handleTypes";
 import { snapToVertices } from "@/lib/snap/snapToVertices";
@@ -27,7 +28,7 @@ export function PolylineVertexEditing({
   const { camera, raycaster, pointer, gl } = useThree();
   const {
     doc,
-    updatePolyline,
+    updateEntity,
     setEditingPolylineId,
     selectOnly,
     select,
@@ -38,6 +39,7 @@ export function PolylineVertexEditing({
     snapEnabled,
   } = useStore();
   const polyline = doc.polylines[polylineId];
+  const polylineHandle = handleNew("POLYLINE", polylineId);
   const [draggingVertexIndex, setDraggingVertexIndex] = useState<number | null>(
     null
   );
@@ -208,8 +210,8 @@ export function PolylineVertexEditing({
         }
       }
 
-      updatePolyline(
-        polylineId,
+      updateEntity(
+        polylineHandle,
         (entity) => ({
           ...entity,
           polyline: newPolyline,
@@ -217,14 +219,7 @@ export function PolylineVertexEditing({
         false
       );
     },
-    [
-      polyline,
-      polylineId,
-      workPlane,
-      updatePolyline,
-      snapEnabled,
-      doc.polylines,
-    ]
+    [polyline, polylineId, workPlane, updateEntity, snapEnabled, doc.polylines]
   );
 
   const handleVertexDragEnd = useCallback(() => {
@@ -349,7 +344,7 @@ export function PolylineVertexEditing({
 
         // If already closed, unjoin (toggle off)
         if (polyline.closed) {
-          updatePolyline(polylineId, (entity) => ({
+          updateEntity(polylineHandle, (entity) => ({
             ...entity,
             closed: false,
           }));
@@ -370,14 +365,14 @@ export function PolylineVertexEditing({
 
         if (alreadyOverlapping) {
           // Just mark as closed, don't add a new vertex
-          updatePolyline(polylineId, (entity) => ({
+          updateEntity(polylineHandle, (entity) => ({
             ...entity,
             closed: true,
           }));
           newLastIdx = vertexCount - 1;
         } else {
           // Add a new vertex at the first vertex position to close the polyline
-          updatePolyline(polylineId, (entity) => {
+          updateEntity(polylineHandle, (entity) => {
             const newPolyline = [...entity.polyline, firstX, firstY];
             return {
               ...entity,
@@ -430,7 +425,7 @@ export function PolylineVertexEditing({
             for (const idx of sortedIndices) {
               newPolyline.splice(idx * 2, 2);
             }
-            updatePolyline(polylineId, (entity) => ({
+            updateEntity(polylineHandle, (entity) => ({
               ...entity,
               polyline: newPolyline,
               // Clear closed property if deleting a joined vertex
@@ -448,7 +443,7 @@ export function PolylineVertexEditing({
     selectedVertexIndices,
     polyline,
     polylineId,
-    updatePolyline,
+    updateEntity,
     setEditingPolylineId,
     clearSelection,
     select,
@@ -555,7 +550,7 @@ export function PolylineVertexEditing({
       // Insert new vertex after bestSegmentIndex
       const insertIndex = (bestSegmentIndex + 1) * 2;
 
-      updatePolyline(polylineId, (entity) => {
+      updateEntity(polylineHandle, (entity) => {
         const newPolyline = [...entity.polyline];
         newPolyline.splice(insertIndex, 0, localPoint.x, localPoint.y);
         return {
@@ -580,7 +575,7 @@ export function PolylineVertexEditing({
       raycaster,
       camera,
       workPlane,
-      updatePolyline,
+      updateEntity,
       selectOnly,
     ]
   );

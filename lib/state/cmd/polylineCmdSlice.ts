@@ -11,7 +11,6 @@ export interface PolylineCmdSlice {
   startDrawPolyline: () => void;
   addVertex: (vertex: Vec2) => void;
   removeLastVertex: () => void;
-  finishDrawPolyline: () => void;
 }
 
 export const createPolylineCmdSlice: StateCreator<
@@ -54,5 +53,4 @@ export const createPolylineCmdSlice: StateCreator<
       }
       return state;
     }),
-  finishDrawPolyline: () => set({ cmd: null }),
 });

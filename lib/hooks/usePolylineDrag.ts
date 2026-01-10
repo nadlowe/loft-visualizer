@@ -1,4 +1,5 @@
 import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
+import { handleNew } from "@/lib/entity/handle";
 import { hashToHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
@@ -37,7 +38,7 @@ export function usePolylineDrag({
   is2D,
   onDraggingChange,
 }: UsePolylineDragProps) {
-  const { doc, updatePolyline, saveSnapshot, selectedHandles } = useStore();
+  const { doc, updateEntity, saveSnapshot, selectedHandles } = useStore();
 
   const [draggingPolylineId, setDraggingPolylineId] =
     useState<PolylineId | null>(null);
@@ -205,8 +206,8 @@ export function usePolylineDrag({
         newVertices.push(startVertices[i + 1] + deltaY);
       }
 
-      updatePolyline(
-        draggingPolylineId,
+      updateEntity(
+        handleNew("POLYLINE", draggingPolylineId),
         (entity) => ({
           ...entity,
           polyline: newVertices,
@@ -224,7 +225,7 @@ export function usePolylineDrag({
       raycaster,
       camera,
       getLocalCoords,
-      updatePolyline,
+      updateEntity,
     ]
   );
 

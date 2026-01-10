@@ -7,7 +7,6 @@ export type AddLoftCmd = {
 
 export interface LoftCmdSlice {
   startAddLoft: () => void;
-  finishAddLoft: () => void;
 }
 
 export const createLoftCmdSlice: StateCreator<
@@ -22,5 +21,4 @@ export const createLoftCmdSlice: StateCreator<
         type: "ADD_LOFT",
       },
     }),
-  finishAddLoft: () => set({ cmd: null }),
 });

@@ -1,3 +1,4 @@
+import { PolylineEntity } from "@/lib/entity/polylineEntity";
 import { useStore } from "@/lib/state/useStore";
 import { useEffect } from "react";
 
@@ -8,13 +9,13 @@ export function useKeyboardShortcuts() {
     cancelCmd,
     removeLastVertex,
     selectedHandles,
-    deleteEntity,
+    deleteEntity: removeEntity,
     clearSelection,
     undo,
     redo,
     editingPolylineId,
     doc,
-    updatePolyline,
+    updateEntity,
   } = useStore();
 
   useEffect(() => {
@@ -63,7 +64,7 @@ export function useKeyboardShortcuts() {
 
         // If already closed, unjoin (toggle off)
         if (polyline.closed) {
-          updatePolyline(polylineId, (entity) => ({
+          updateEntity(selectedPolyline, (entity) => ({
             ...entity,
             closed: false,
           }));
@@ -78,16 +79,19 @@ export function useKeyboardShortcuts() {
           Math.abs(firstX - lastX) < 0.001 && Math.abs(firstY - lastY) < 0.001;
 
         if (alreadyOverlapping) {
-          updatePolyline(polylineId, (entity) => ({
+          updateEntity(selectedPolyline, (entity) => ({
             ...entity,
             closed: true,
           }));
         } else {
-          updatePolyline(polylineId, (entity) => ({
-            ...entity,
-            polyline: [...entity.polyline, firstX, firstY],
-            closed: true,
-          }));
+          updateEntity(selectedPolyline, (e) => {
+            const entity = e as PolylineEntity;
+            return {
+              ...entity,
+              polyline: [...entity.polyline, firstX, firstY],
+              closed: true,
+            };
+          });
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
         // Don't delete entities if user is editing text (e.g., entity name)
@@ -112,7 +116,7 @@ export function useKeyboardShortcuts() {
         if (selectedArray.length > 0) {
           e.preventDefault();
           selectedArray.forEach((handle) => {
-            deleteEntity(handle);
+            removeEntity(handle);
           });
           clearSelection();
         }
@@ -129,12 +133,12 @@ export function useKeyboardShortcuts() {
     cancelCmd,
     removeLastVertex,
     selectedHandles,
-    deleteEntity,
+    removeEntity,
     clearSelection,
     undo,
     redo,
     editingPolylineId,
     doc.polylines,
-    updatePolyline,
+    updateEntity,
   ]);
 }
