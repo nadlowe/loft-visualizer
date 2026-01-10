@@ -1,8 +1,8 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "@/components/colors";
 import { fonts } from "../fonts";
 
 export function EditingBanner() {

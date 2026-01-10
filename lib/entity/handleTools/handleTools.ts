@@ -16,20 +16,11 @@ export function parseHandle(handle: EntityHandle): {
     id: handle.id,
   };
 }
+
 export function vertexHandleToHash(handle: VertexHandle): string {
   return `polyline.${handle.polylineId}.${handle.vertexIndex}`;
 }
-export function hashToVertexHandle(hash: string): VertexHandle | undefined {
-  const parts = hash.split(".");
-  if (parts.length !== 3 || parts[0] !== "polyline") return undefined;
-  const vertexIndex = parseInt(parts[2], 10);
-  if (isNaN(vertexIndex)) return undefined;
-  return {
-    type: "VERTEX",
-    polylineId: parts[1] as PolylineId,
-    vertexIndex,
-  };
-}
+
 export function handleToHash(handle: SelectableHandle): string {
   if (handle.type === "VERTEX") {
     return vertexHandleToHash(handle);
@@ -60,4 +51,16 @@ export function hashToHandle(hash: string): SelectableHandle | undefined {
     case "loft":
       return { type: "LOFT", id: id as LoftId };
   }
+}
+
+function hashToVertexHandle(hash: string): VertexHandle | undefined {
+  const parts = hash.split(".");
+  if (parts.length !== 3 || parts[0] !== "polyline") return undefined;
+  const vertexIndex = parseInt(parts[2], 10);
+  if (isNaN(vertexIndex)) return undefined;
+  return {
+    type: "VERTEX",
+    polylineId: parts[1] as PolylineId,
+    vertexIndex,
+  };
 }

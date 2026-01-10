@@ -55,7 +55,7 @@ export interface SubdividedSurface {
   wireframeIndices: number[];
 }
 
-export function generateSubdividedSurface(
+function generateSubdividedSurface(
   sections: THREE.Vector3[][],
   sectionSubdivisions: number
 ): SubdividedSurface {

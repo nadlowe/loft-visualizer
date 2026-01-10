@@ -80,7 +80,9 @@ export function PolylineCmdPreview({
   // Snap indicator (plus/crosshair) - created once, position/scale updated in useFrame
   const snapIndicator = useMemo(() => {
     const group = new THREE.Group();
-    const material = new THREE.LineBasicMaterial({ color: colors.canvas.white });
+    const material = new THREE.LineBasicMaterial({
+      color: colors.canvas.white,
+    });
 
     // Create horizontal line (unit size, will be scaled in useFrame)
     const hGeometry = new THREE.BufferGeometry().setFromPoints([

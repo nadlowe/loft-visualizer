@@ -1,3 +1,5 @@
+import { LoftEntity } from "../entity/loftEntity";
+import { PolylineEntity } from "../entity/polylineEntity";
 import { Plane3, Polyline2, Vec3 } from "../geom/geomTypes";
 import { polyline2Reverse, polyline2Shift } from "../geom/polyline2";
 import { Section } from "../geom/section";
@@ -22,52 +24,59 @@ export function generateLoft(
   const loftEntity = doc.lofts[loftId];
   if (!loftEntity) return null;
 
-  const pl1 = doc.polylines[loftEntity.polyline1];
-  const pl2 = doc.polylines[loftEntity.polyline2];
-  if (!pl1 || !pl2) return null;
+  const docPl1 = doc.polylines[loftEntity.polyline1];
+  const docPl2 = doc.polylines[loftEntity.polyline2];
+  if (!docPl1 || !docPl2) return null;
+
+  // Apply shift and reverse transformations
+  const { pl1, pl2 } = mutatePolyline2s(loftEntity, docPl1, docPl2);
 
   // Use overrides if provided, otherwise look up from doc
   const plane1 =
     planeOverrides?.plane1 ??
-    (pl1.workPlaneId ? doc.workPlanes[pl1.workPlaneId]?.plane3 : undefined);
+    (docPl1.workPlaneId
+      ? doc.workPlanes[docPl1.workPlaneId]?.plane3
+      : undefined);
   const plane2 =
     planeOverrides?.plane2 ??
-    (pl2.workPlaneId ? doc.workPlanes[pl2.workPlaneId]?.plane3 : undefined);
+    (docPl2.workPlaneId
+      ? doc.workPlanes[docPl2.workPlaneId]?.plane3
+      : undefined);
 
-  // Apply shift and reverse transformations
-  let processedPolyline1 = polyline2Shift(
-    pl1.polyline,
-    loftEntity.polyline1Shift ?? 0
-  );
-  let processedPolyline2 = polyline2Shift(
-    pl2.polyline,
-    loftEntity.polyline2Shift ?? 0
-  );
+  const vertices1 = polylineToWorldVertices(pl1, plane1);
+  const vertices2 = polylineToWorldVertices(pl2, plane2);
 
-  if (loftEntity.polyline1Reverse) {
-    processedPolyline1 = polyline2Reverse(processedPolyline1);
-  }
-  if (loftEntity.polyline2Reverse) {
-    processedPolyline2 = polyline2Reverse(processedPolyline2);
-  }
-
-  const vertices1 = polylineToWorldVertices(processedPolyline1, plane1);
-  const vertices2 = polylineToWorldVertices(processedPolyline2, plane2);
-
-  // Create raw sections (pairs of corresponding vertices)
-  const rawSections: Section[] = [];
+  // Create sections (pairs of corresponding vertices)
+  const sections: Section[] = [];
   const maxCount = Math.max(vertices1.length, vertices2.length);
   const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
   const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
 
   for (let i = 0; i < maxCount; i++) {
-    rawSections.push([
+    sections.push([
       vertices1[Math.min(i, lastIdx1)],
       vertices2[Math.min(i, lastIdx2)],
     ]);
   }
 
-  return subdivideSections(rawSections, LOFT_SUBDIVISIONS);
+  return subdivideSections(sections, LOFT_SUBDIVISIONS);
+}
+
+function mutatePolyline2s(
+  loftEntity: LoftEntity,
+  docPl1: PolylineEntity,
+  docPl2: PolylineEntity
+) {
+  let pl1 = polyline2Shift(docPl1.polyline, loftEntity.polyline1Shift ?? 0);
+  let pl2 = polyline2Shift(docPl2.polyline, loftEntity.polyline2Shift ?? 0);
+
+  if (loftEntity.polyline1Reverse) {
+    pl1 = polyline2Reverse(pl1);
+  }
+  if (loftEntity.polyline2Reverse) {
+    pl2 = polyline2Reverse(pl2);
+  }
+  return { pl1, pl2 };
 }
 
 function polylineToWorldVertices(polyline: Polyline2, plane?: Plane3): Vec3[] {
