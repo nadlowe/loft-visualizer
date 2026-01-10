@@ -30,6 +30,7 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
     lastSelectedHandle,
     selectedHandles,
     duplicateEntity,
+    deepDuplicateEntity,
     deleteEntity,
     setHidden,
   } = useStore();
@@ -176,14 +177,18 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      duplicateEntity(handle);
+                      if (e.shiftKey) {
+                        deepDuplicateEntity(handle);
+                      } else {
+                        duplicateEntity(handle);
+                      }
                     }}
                     className={cn(
                       "flex items-center justify-center rounded p-0.5 transition-colors",
                       "hover:" + colors.bg.primary,
                       colors.text.secondary
                     )}
-                    title="Duplicate"
+                    title="Duplicate (Shift for deep)"
                   >
                     <DuplicateIcon className="h-3.5 w-3.5" />
                   </button>

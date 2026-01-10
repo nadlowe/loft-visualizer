@@ -8,6 +8,8 @@ import * as THREE from "three";
 
 interface WorkPlaneWidgetProps {
   workPlane: WorkPlane;
+  workPlaneId?: string;
+  widgetRefs?: Map<string, THREE.Group>;
   onWorkPlaneChange: (workPlane: WorkPlane) => void;
   onWorkPlaneChangeTemporary?: (workPlane: WorkPlane) => void;
   onWorkPlaneChangeFinal?: (workPlane: WorkPlane) => void;
@@ -43,6 +45,8 @@ function extractNormalAndU(workPlane: WorkPlane): {
 
 export function WorkPlaneWidget({
   workPlane,
+  workPlaneId,
+  widgetRefs,
   onWorkPlaneChange,
   onWorkPlaneChangeTemporary,
   onWorkPlaneChangeFinal,
@@ -68,6 +72,16 @@ export function WorkPlaneWidget({
   const initialNormalRef = useRef<THREE.Vector3 | null>(null);
   const initialURef = useRef<THREE.Vector3 | null>(null);
   const { camera } = useThree();
+
+  // Register translation group with parent's ref map
+  useEffect(() => {
+    if (workPlaneId && widgetRefs && translationGroupRef.current) {
+      widgetRefs.set(workPlaneId, translationGroupRef.current);
+      return () => {
+        widgetRefs.delete(workPlaneId);
+      };
+    }
+  }, [workPlaneId, widgetRefs]);
 
   // Track Shift key state
   useEffect(() => {

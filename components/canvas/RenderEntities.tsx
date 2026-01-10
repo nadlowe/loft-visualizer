@@ -53,6 +53,10 @@ export function RenderEntities({
   const loftWireframeRefs = useRef<Map<string, THREE.BufferGeometry>>(
     new Map()
   );
+  const selectedHandles = useStore((state) => state.selectedHandles);
+  const initialPositionsRef = useRef<Map<string, THREE.Vector3>>(new Map());
+  const dragSourceIdRef = useRef<string | null>(null);
+  const widgetGroupRefs = useRef<Map<string, THREE.Group>>(new Map());
 
   // ─────────────────────────────────────────────────────────────────
   // Geometry Memoization
@@ -157,6 +161,17 @@ export function RenderEntities({
           if (!selected) return null;
           const workPlaneId = id as WorkPlaneId;
 
+          // Get all selected work plane IDs
+          const getSelectedWorkPlaneIds = () => {
+            const ids: WorkPlaneId[] = [];
+            for (const h of selectedHandles) {
+              if (h.type === "WORKPLANE") {
+                ids.push(h.id as WorkPlaneId);
+              }
+            }
+            return ids;
+          };
+
           const handleWorkPlaneChange = (updatedWorkPlane: WorkPlane) => {
             const plane3 = workPlaneToPlane3(updatedWorkPlane);
             updateEntity(handleNew("WORKPLANE", workPlaneId), (entity) => ({
@@ -169,22 +184,69 @@ export function RenderEntities({
             updatedWorkPlane: WorkPlane
           ) => {
             const currentWorkPlane = workPlaneRefs.current.get(id);
-            if (currentWorkPlane) {
+            if (!currentWorkPlane) return;
+
+            // Always update rotation for the current work plane
+            currentWorkPlane.rotation.copy(updatedWorkPlane.rotation);
+
+            // Calculate delta from initial position
+            const initialPos = initialPositionsRef.current.get(id);
+            if (!initialPos || dragSourceIdRef.current !== id) {
+              // Not the drag source, skip (will be updated via delta)
               currentWorkPlane.position.copy(updatedWorkPlane.position);
-              currentWorkPlane.rotation.copy(updatedWorkPlane.rotation);
+              currentWorkPlane.updateMatrixWorld(true);
+            } else {
+              // This is the drag source - calculate and apply delta to all selected
+              const delta = new THREE.Vector3().subVectors(
+                updatedWorkPlane.position,
+                initialPos
+              );
+
+              // Apply delta to all selected work planes (both refs and widget groups)
+              const selectedIds = getSelectedWorkPlaneIds();
+              for (const wpId of selectedIds) {
+                const wpInitialPos = initialPositionsRef.current.get(wpId);
+                if (!wpInitialPos) continue;
+
+                const newPos = wpInitialPos.clone().add(delta);
+
+                // Update workPlaneRefs (for polyline rendering)
+                const wpRef = workPlaneRefs.current.get(wpId);
+                if (wpRef) {
+                  wpRef.position.copy(newPos);
+                  wpRef.updateMatrixWorld(true);
+                }
+
+                // Update widget groups (for visual widgets) - skip the drag source
+                if (wpId !== id) {
+                  const widgetGroup = widgetGroupRefs.current.get(wpId);
+                  if (widgetGroup) {
+                    widgetGroup.position.copy(newPos);
+                  }
+                }
+              }
+
+              // Update the drag source position too
+              currentWorkPlane.position.copy(updatedWorkPlane.position);
               currentWorkPlane.updateMatrixWorld(true);
             }
 
+            // Update loft geometry for affected lofts
             const { doc } = useStore.getState();
+            const selectedIds = getSelectedWorkPlaneIds();
             for (const [loftId, loftEntity] of Object.entries(doc.lofts)) {
               const polyline1 = doc.polylines[loftEntity.polyline1];
               const polyline2 = doc.polylines[loftEntity.polyline2];
               if (!polyline1 || !polyline2) continue;
 
-              if (
-                polyline1.workPlaneId === workPlaneId ||
-                polyline2.workPlaneId === workPlaneId
-              ) {
+              const wp1Affected =
+                polyline1.workPlaneId &&
+                selectedIds.includes(polyline1.workPlaneId);
+              const wp2Affected =
+                polyline2.workPlaneId &&
+                selectedIds.includes(polyline2.workPlaneId);
+
+              if (wp1Affected || wp2Affected) {
                 updateLoftGeometryDuringDrag(
                   loftId,
                   loftEntity,
@@ -200,32 +262,92 @@ export function RenderEntities({
           };
 
           const handleWorkPlaneChangeFinal = (updatedWorkPlane: WorkPlane) => {
-            const plane3 = workPlaneToPlane3(updatedWorkPlane);
             const { doc, setDoc } = useStore.getState();
-            const entity = doc.workPlanes[workPlaneId];
-            if (!entity) return;
+
+            // Always save the full plane3 for the drag source (handles both rotation and translation)
+            const plane3 = workPlaneToPlane3(updatedWorkPlane);
+
+            // Calculate final delta for multi-select translation
+            const initialPos = initialPositionsRef.current.get(id);
+            if (!initialPos) {
+              // Single update fallback (rotation or single selection)
+              const entity = doc.workPlanes[workPlaneId];
+              if (!entity) return;
+              setDoc({
+                ...doc,
+                workPlanes: {
+                  ...doc.workPlanes,
+                  [workPlaneId]: { ...entity, plane3 },
+                },
+              });
+              return;
+            }
+
+            const delta = new THREE.Vector3().subVectors(
+              updatedWorkPlane.position,
+              initialPos
+            );
+
+            // Update all selected work planes
+            const selectedIds = getSelectedWorkPlaneIds();
+            const updatedWorkPlanesMap = { ...doc.workPlanes };
+
+            for (const wpId of selectedIds) {
+              const entity = doc.workPlanes[wpId];
+              const wpInitialPos = initialPositionsRef.current.get(wpId);
+              if (entity && wpInitialPos) {
+                if (wpId === workPlaneId) {
+                  // For the drag source, use the full plane3 (includes rotation)
+                  updatedWorkPlanesMap[wpId] = {
+                    ...entity,
+                    plane3,
+                  };
+                } else {
+                  // For other selected, apply translation delta
+                  const newPosition = wpInitialPos.clone().add(delta);
+                  updatedWorkPlanesMap[wpId] = {
+                    ...entity,
+                    plane3: {
+                      ...entity.plane3,
+                      origin: [newPosition.x, newPosition.y, newPosition.z],
+                    },
+                  };
+                }
+              }
+            }
 
             setDoc({
               ...doc,
-              workPlanes: {
-                ...doc.workPlanes,
-                [workPlaneId]: {
-                  ...entity,
-                  plane3,
-                },
-              },
+              workPlanes: updatedWorkPlanesMap,
             });
+
+            // Clear refs
+            initialPositionsRef.current.clear();
+            dragSourceIdRef.current = null;
           };
 
           const handleDragStart = () => {
             const { saveSnapshot } = useStore.getState();
             saveSnapshot();
+
+            // Store initial positions of all selected work planes
+            dragSourceIdRef.current = id;
+            initialPositionsRef.current.clear();
+            const selectedIds = getSelectedWorkPlaneIds();
+            for (const wpId of selectedIds) {
+              const wpRef = workPlaneRefs.current.get(wpId);
+              if (wpRef) {
+                initialPositionsRef.current.set(wpId, wpRef.position.clone());
+              }
+            }
           };
 
           return (
             <WorkPlaneWidget
               key={`widget-${id}`}
               workPlane={workPlane as WorkPlane}
+              workPlaneId={id}
+              widgetRefs={widgetGroupRefs.current}
               onWorkPlaneChange={handleWorkPlaneChange}
               onWorkPlaneChangeTemporary={handleWorkPlaneChangeTemporary}
               onWorkPlaneChangeFinal={handleWorkPlaneChangeFinal}

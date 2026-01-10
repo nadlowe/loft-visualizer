@@ -1,12 +1,15 @@
 import { StateCreator } from "zustand";
 import { BaseEntity } from "../entity/baseEntity";
 import { Entity } from "../entity/entity";
+import {
+  deepDuplicateEntity as deepDuplicateEntityFn,
+  duplicateEntity as duplicateEntityFn,
+} from "../entity/entityTools/entityDuplicate";
 import { entityTypeToDocField } from "../entity/entityTools/entityTypeToDocField";
 import { EntityTypeToEntity } from "../entity/entityTools/entityTypeToEntity";
 import { handleNew } from "../entity/handleTools/handleNew";
 import { parseHandle } from "../entity/handleTools/handleTools";
 import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
-import { uid } from "../util/uid";
 import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
@@ -50,6 +53,7 @@ export interface DocSlice {
     handle: H
   ) => EntityTypeToEntity[H["type"]] | undefined;
   duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
+  deepDuplicateEntity: (handle: EntityHandle) => EntityHandle | null;
   setHidden: (handles: EntityHandle[], hidden: boolean) => void;
 
   // Batch transaction
@@ -222,31 +226,27 @@ export const createDocSlice: StateCreator<
         | undefined;
     },
     duplicateEntity: (handle, selectNew = true) => {
-      const { type, id } = parseHandle(handle);
-      const fieldName = entityTypeToDocField[type];
-      const entity = (get().doc[fieldName] as Record<string, BaseEntity<any>>)[
-        id
-      ];
-      if (!entity) return null;
+      const result = duplicateEntityFn(get().doc, handle);
+      if (!result) return null;
 
-      const newId = uid();
-      const duplicatedEntity = { ...entity, id: newId };
+      transact((state) => ({ doc: result.newDoc }));
 
-      transact((state) => ({
-        doc: {
-          ...state.doc,
-          [fieldName]: {
-            ...(state.doc[fieldName] as Record<string, BaseEntity<any>>),
-            [newId]: duplicatedEntity,
-          },
-        },
-      }));
-
-      const newHandle = handleNew(type, newId);
       if (selectNew) {
-        get().selectOnly(newHandle);
+        get().selectOnly(result.newHandle);
       }
-      return newHandle;
+      return result.newHandle;
+    },
+
+    deepDuplicateEntity: (handle, selectNew = true) => {
+      const result = deepDuplicateEntityFn(get().doc, handle);
+      if (!result) return null;
+
+      transact((state) => ({ doc: result.newDoc }));
+
+      if (selectNew) {
+        get().selectOnly(result.newHandle);
+      }
+      return result.newHandle;
     },
 
     setHidden: (handles, hidden) => {

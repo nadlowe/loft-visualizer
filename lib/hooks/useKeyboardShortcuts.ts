@@ -12,6 +12,8 @@ export function useKeyboardShortcuts() {
     removeLastVertex,
     selectedHandles,
     deleteEntity: removeEntity,
+    duplicateEntity,
+    deepDuplicateEntity,
     clearSelection,
     undo,
     redo,
@@ -45,6 +47,23 @@ export function useKeyboardShortcuts() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === "z" && e.shiftKey) {
         e.preventDefault();
         redo();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "d") {
+        // Cmd+D to duplicate, Cmd+Shift+D to deep duplicate
+        e.preventDefault();
+
+        // Filter out vertex handles - only duplicate actual entities
+        const selectedArray = Array.from(selectedHandles).filter(
+          (handle) => handle.type !== "VERTEX"
+        );
+        if (selectedArray.length === 0) return;
+
+        for (const handle of selectedArray) {
+          if (e.shiftKey) {
+            deepDuplicateEntity(handle);
+          } else {
+            duplicateEntity(handle);
+          }
+        }
       } else if ((e.metaKey || e.ctrlKey) && e.key === "j") {
         // Cmd+J to toggle close/weld polyline - only when not in vertex editing mode
         if (editingPolylineId) return; // Let vertex editing handle it
@@ -178,6 +197,8 @@ export function useKeyboardShortcuts() {
     removeLastVertex,
     selectedHandles,
     removeEntity,
+    duplicateEntity,
+    deepDuplicateEntity,
     clearSelection,
     undo,
     redo,
