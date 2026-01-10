@@ -1,8 +1,7 @@
 import * as THREE from "three";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
-import { Face, Plane3, Polygon, Polyline2, Vec3 } from "../geom/geomTypes";
+import { Plane3, Polyline2, Vec3 } from "../geom/geomTypes";
 import { polyline2Shift } from "../geom/polyline2";
 import {
   computeDefaultU,
@@ -13,13 +12,13 @@ import {
 import { Doc } from "../state/doc";
 import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
 
-export interface RenderedPolyline {
+interface RenderedPolyline {
   id: string;
   vertices: THREE.Vector3[]; // Local 2D coords if on work plane, world coords if standalone
   workPlaneId?: WorkPlaneId; // If present, vertices are in local coords and should be child of work plane
 }
 
-export interface RenderedLoft {
+interface RenderedLoft {
   id: string;
   rungs: THREE.Vector3[][]; // Array of rungs, each rung is [v1, v2] connecting corresponding vertices
   subdivisions: number; // Number of subdivisions between rungs
@@ -29,31 +28,7 @@ export type WorkPlane = THREE.Group & {
   shape: THREE.Shape;
 };
 
-function polygonToShape(polygon: Polygon): THREE.Shape {
-  const shape = new THREE.Shape();
-  const outer = polygon[0];
-
-  // Build outer boundary
-  shape.moveTo(outer[0], outer[1]);
-  for (let i = 2; i < outer.length; i += 2) {
-    shape.lineTo(outer[i], outer[i + 1]);
-  }
-
-  // Add holes
-  for (let h = 1; h < polygon.length; h++) {
-    const hole = polygon[h];
-    const holePath = new THREE.Path();
-    holePath.moveTo(hole[0], hole[1]);
-    for (let i = 2; i < hole.length; i += 2) {
-      holePath.lineTo(hole[i], hole[i + 1]);
-    }
-    shape.holes.push(holePath);
-  }
-
-  return shape;
-}
-
-export function plane3ToWorkPlane(plane: Plane3): THREE.Group {
+function plane3ToWorkPlane(plane: Plane3): THREE.Group {
   const normalGeom = vec3Normalize(plane.normal);
   const normalThree = new THREE.Vector3(
     normalGeom[0],
@@ -101,38 +76,6 @@ export function plane3ToWorkPlane(plane: Plane3): THREE.Group {
   return workPlane;
 }
 
-export function loftVerticesToLineGeometry(
-  vertices1: THREE.Vector3[],
-  vertices2: THREE.Vector3[]
-): LineGeometry {
-  const positions: number[] = [];
-
-  const maxCount = Math.max(vertices1.length, vertices2.length);
-
-  // Get the last vertex index for each polyline
-  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
-  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
-
-  for (let i = 0; i < maxCount; i++) {
-    // Determine which vertex indices to use
-    const idx1 = Math.min(i, lastIdx1);
-    const idx2 = Math.min(i, lastIdx2);
-
-    const v1 = vertices1[idx1];
-    const v2 = vertices2[idx2];
-
-    // Add line segment vertices (world space 3D positions)
-    // LineGeometry handles consecutive pairs as line segments automatically
-    positions.push(v1.x, v1.y, v1.z);
-    positions.push(v2.x, v2.y, v2.z);
-  }
-
-  const geometry = new LineGeometry();
-  geometry.setPositions(positions);
-
-  return geometry;
-}
-
 export function workPlanesTableToThree(
   workPlanes: Doc["workPlanes"]
 ): Array<{ workPlane: THREE.Group; id: string }> {
@@ -144,7 +87,7 @@ export function workPlanesTableToThree(
   return result;
 }
 
-export function polylineToThree(
+function polylineToThree(
   id: PolylineId,
   polylineEntity: PolylineEntity
 ): RenderedPolyline {
@@ -214,7 +157,7 @@ function subdivideVertices(
   return result;
 }
 
-export function loftToThree(
+function loftToThree(
   id: LoftId,
   loftEntity: LoftEntity,
   workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
@@ -314,29 +257,4 @@ export function polyline2ToWorldVertices(
   }
 
   return vertices;
-}
-
-export function faceToThree(face: Face): WorkPlane {
-  const { plane, polygon } = face;
-  const workPlane = plane3ToWorkPlane(plane);
-  const shape = polygonToShape(polygon);
-  (workPlane as WorkPlane).shape = shape;
-
-  return workPlane as WorkPlane;
-}
-
-export function polyline2ToPath(polyline: Polyline2): THREE.Path {
-  const path = new THREE.Path();
-  if (polyline.length < 2) {
-    return path;
-  }
-  path.moveTo(polyline[0], polyline[1]);
-  for (let i = 2; i < polyline.length; i += 2) {
-    path.lineTo(polyline[i], polyline[i + 1]);
-  }
-  return path;
-}
-
-export function vec3GeomToThree(vec: Vec3): Vec3 {
-  return [vec[0], vec[1], vec[2]];
 }

@@ -98,7 +98,7 @@ export function useKeyboardShortcuts() {
       } else if ((e.metaKey || e.ctrlKey) && e.key === "m") {
         // Cmd+M to merge overlapping vertices
         // Collect polyline IDs from either vertex editing, vertex selection, or polyline selection
-        const polylineIds = new Set<string>();
+        const polylineIds = new Set<PolylineId>();
 
         // If in vertex editing mode, use that polyline
         if (editingPolylineId) {
@@ -128,7 +128,7 @@ export function useKeyboardShortcuts() {
 
           // Only update if vertices were actually merged
           if (mergedPolyline.length !== polyline.polyline.length) {
-            updateEntity({ type: "POLYLINE", id: polylineId as PolylineId }, (e) => {
+            updateEntity({ type: "POLYLINE", id: polylineId }, (e) => {
               const entity = e as PolylineEntity;
               return {
                 ...entity,

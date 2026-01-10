@@ -1,5 +1,4 @@
 import { Vec3 } from "./geomTypes";
-import { Mat4 } from "./mat4";
 
 export function computeDefaultU(normal: Vec3): Vec3 {
   // Use geom X-axis [1, 0, 0] as reference
@@ -19,24 +18,6 @@ export function computeDefaultU(normal: Vec3): Vec3 {
 
   // Normalize
   return vec3Normalize(uVec);
-}
-
-export function vec3TransformDirection(vec: Vec3, mat: Mat4): Vec3 {
-  const [x, y, z] = vec;
-  return [
-    mat[0] * x + mat[1] * y + mat[2] * z,
-    mat[4] * x + mat[5] * y + mat[6] * z,
-    mat[8] * x + mat[9] * y + mat[10] * z,
-  ];
-}
-
-export function vec3TransformPoint(vec: Vec3, mat: Mat4): Vec3 {
-  const [x, y, z] = vec;
-  return [
-    mat[0] * x + mat[1] * y + mat[2] * z + mat[3],
-    mat[4] * x + mat[5] * y + mat[6] * z + mat[7],
-    mat[8] * x + mat[9] * y + mat[10] * z + mat[11],
-  ];
 }
 
 export function vec3Dot(a: Vec3, b: Vec3): number {
@@ -67,26 +48,6 @@ export function vec3Subtract(a: Vec3, b: Vec3): Vec3 {
   return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 }
 
-export function vec3Add(a: Vec3, b: Vec3): Vec3 {
-  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
-}
-
 export function vec3Scale(vec: Vec3, scalar: number): Vec3 {
   return [vec[0] * scalar, vec[1] * scalar, vec[2] * scalar];
-}
-
-export function vec3Negate(vec: Vec3): Vec3 {
-  return [-vec[0], -vec[1], -vec[2]];
-}
-
-export function vec3Rotate(vec: Vec3, angle: number): Vec3 {
-  const [x, y, z] = vec;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  // Rotate about Z axis (2D rotation in XY plane)
-  return [
-    x * cos - y * sin,
-    x * sin + y * cos,
-    z, // Z component unchanged
-  ];
 }

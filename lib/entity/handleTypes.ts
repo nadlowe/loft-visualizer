@@ -2,7 +2,7 @@ import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
 
 export type EntityHandle = WorkPlaneHandle | PolylineHandle | LoftHandle;
 export type SelectableHandle = EntityHandle | VertexHandle;
-export type HandleHashType = "workplane" | "polyline" | "loft" | "vertex";
+type HandleHashType = "workplane" | "polyline" | "loft" | "vertex";
 
 export interface VertexHandle {
   readonly type: "VERTEX";
@@ -14,7 +14,7 @@ export function vertexHandleToHash(handle: VertexHandle): string {
   return `polyline.${handle.polylineId}.${handle.vertexIndex}`;
 }
 
-export function hashToVertexHandle(hash: string): VertexHandle | undefined {
+function hashToVertexHandle(hash: string): VertexHandle | undefined {
   const parts = hash.split(".");
   if (parts.length !== 3 || parts[0] !== "polyline") return undefined;
   const vertexIndex = parseInt(parts[2], 10);

@@ -1,13 +1,10 @@
 import { StateCreator } from "zustand";
 import { SnapSlice } from "../snapSlice";
-import { AddLoftCmd, createLoftCmdSlice, LoftCmdSlice } from "./loftCmdSlice";
-import {
-  createPolylineCmdSlice,
-  DrawPolylineCmd,
-  PolylineCmdSlice,
-} from "./polylineCmdSlice";
+import { Cmd } from "./cmdTypes";
+import { createLoftCmdSlice, LoftCmdSlice } from "./loftCmdSlice";
+import { createPolylineCmdSlice, PolylineCmdSlice } from "./polylineCmdSlice";
 
-export type Cmd = DrawPolylineCmd | AddLoftCmd;
+export type { AddLoftCmd, Cmd, DrawPolylineCmd } from "./cmdTypes";
 
 interface SharedCmdSlice {
   cmd: Cmd | null;

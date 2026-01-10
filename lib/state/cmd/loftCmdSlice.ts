@@ -1,16 +1,12 @@
 import { StateCreator } from "zustand";
-import { CmdSlice } from "./cmdSlice";
-
-export type AddLoftCmd = {
-  type: "ADD_LOFT";
-};
+import { AddLoftCmd, Cmd } from "./cmdTypes";
 
 export interface LoftCmdSlice {
   startAddLoft: () => void;
 }
 
 export const createLoftCmdSlice: StateCreator<
-  CmdSlice,
+  { cmd: Cmd | null },
   [],
   [],
   LoftCmdSlice
@@ -19,6 +15,6 @@ export const createLoftCmdSlice: StateCreator<
     set({
       cmd: {
         type: "ADD_LOFT",
-      },
+      } satisfies AddLoftCmd,
     }),
 });

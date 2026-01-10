@@ -1,13 +1,6 @@
-import { Polyline2, Vec2 } from "./geomTypes";
-import { Mat3, mat3Rotate, mat3Translate } from "./mat3";
+import { Polyline2 } from "./geomTypes";
 import { DIST_EPSILON } from "./scalar";
-import { vec2Transform } from "./vec2";
-
-export function vec2Distance(a: Vec2, b: Vec2): number {
-  const dx = a[0] - b[0];
-  const dy = a[1] - b[1];
-  return Math.sqrt(dx * dx + dy * dy);
-}
+import { vec2Distance } from "./vec2";
 
 // Merges any interior vertices that are within epsilon of each other.
 // Start and end vertices are always preserved.
@@ -52,35 +45,6 @@ export function polyline2MergeOverlappingVertices(
   result.push(endX, endY);
 
   return result;
-}
-
-export function polyline2Transform(polyline: Polyline2, mat: Mat3): Polyline2 {
-  const result: Polyline2 = [];
-  for (let i = 0; i < polyline.length; i += 2) {
-    const [x, y] = vec2Transform([polyline[i], polyline[i + 1]], mat);
-    result.push(x, y);
-  }
-  return result;
-}
-
-export function polyline2Translate(
-  polyline: Polyline2,
-  translationX: number,
-  translationY: number
-): Polyline2 {
-  return polyline2Transform(
-    polyline,
-    mat3Translate(translationX, translationY)
-  );
-}
-
-export function polyline2Rotate(
-  polyline: Polyline2,
-  angleRad: number,
-  originX: number = 0,
-  originY: number = 0
-): Polyline2 {
-  return polyline2Transform(polyline, mat3Rotate(angleRad, originX, originY));
 }
 
 export function polyline2Shift(

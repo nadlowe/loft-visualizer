@@ -10,5 +10,3 @@ export function defaultDocInit(): Doc {
     lofts: {},
   };
 }
-
-export const defaultDoc: Doc = defaultDocInit();

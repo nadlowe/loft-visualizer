@@ -31,11 +31,3 @@ export function parseHandle(handle: EntityHandle): {
     id: handle.id,
   };
 }
-
-export function getHandleType(handle: EntityHandle): EntityType {
-  return handle.type;
-}
-
-export function getHandleId(handle: EntityHandle): EntityId {
-  return handle.id;
-}

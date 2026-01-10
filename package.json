@@ -16,7 +16,8 @@
     "check-cycles": "dpdm --no-warning --no-tree --circular lib/**/*.ts lib/**/*.tsx components/**/*.ts components/**/*.tsx app/**/*.ts app/**/*.tsx",
     "watch-cycles": "chokidar \"lib/**/*.{ts,tsx}\" \"components/**/*.{ts,tsx}\" \"app/**/*.{ts,tsx}\" -c \"yarn check-cycles\" --initial",
     "clean": "rm -rf .next node_modules",
-    "install:clean": "yarn clean && yarn install"
+    "install:clean": "yarn clean && yarn install",
+    "find-unused": "ts-prune -p tsconfig.ts-prune.json"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -56,6 +57,7 @@
     "prettier-plugin-organize-imports": "^4.3.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4",
+    "ts-prune": "^0.10.3",
     "typescript": "^5"
   }
 }

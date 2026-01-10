@@ -2,10 +2,10 @@ import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 
 export const DRAG_THRESHOLD = 5;
-export const SELECTION_THRESHOLD_PIXELS = 5; // Screen pixels for click detection
+const SELECTION_THRESHOLD_PIXELS = 5; // Screen pixels for click detection
 export const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
-export function getWorldUnitsPerPixel(
+function getWorldUnitsPerPixel(
   camera: THREE.Camera,
   canvasWidth: number,
   canvasHeight: number
@@ -25,7 +25,7 @@ export function getWorldUnitsPerPixel(
   }
 }
 
-export type SelectableLine = Line2 | THREE.LineSegments;
+type SelectableLine = Line2 | THREE.LineSegments;
 
 export function getSelectableLines(scene: THREE.Scene): SelectableLine[] {
   const lines: SelectableLine[] = [];
@@ -66,14 +66,14 @@ export function screenToWorld(
     : null;
 }
 
-export function getWorldPathPoints(line: SelectableLine): THREE.Vector3[] {
+function getWorldPathPoints(line: SelectableLine): THREE.Vector3[] {
   line.updateMatrixWorld(true);
   const pathPoints = line.userData.pathPoints as THREE.Vector3[];
   if (!pathPoints || pathPoints.length < 2) return [];
   return pathPoints.map((pt) => pt.clone().applyMatrix4(line.matrixWorld));
 }
 
-export function pointToSegmentDistance(
+function pointToSegmentDistance(
   point: THREE.Vector3,
   p1: THREE.Vector3,
   p2: THREE.Vector3
@@ -146,7 +146,7 @@ export function findClosestPolyline(
   return closest;
 }
 
-export function polylineIntersectsRect(
+function polylineIntersectsRect(
   pathPoints: THREE.Vector3[],
   rectMin: THREE.Vector3,
   rectMax: THREE.Vector3
