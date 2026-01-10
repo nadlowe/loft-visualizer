@@ -108,7 +108,14 @@ export function usePolylineDrag({
         return false;
 
       const lines = getSelectableLines(scene);
-      const closest = findClosestPolyline(intersection, lines, is2D, camera);
+      const closest = findClosestPolyline(
+        intersection,
+        lines,
+        is2D,
+        camera,
+        rect.width,
+        rect.height
+      );
 
       if (!closest) return false;
 

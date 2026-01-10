@@ -2,8 +2,28 @@ import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 
 export const DRAG_THRESHOLD = 5;
-export const SELECTION_THRESHOLD = 0.1;
+export const SELECTION_THRESHOLD_PIXELS = 5; // Screen pixels for click detection
 export const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+export function getWorldUnitsPerPixel(
+  camera: THREE.Camera,
+  canvasWidth: number,
+  canvasHeight: number
+): number {
+  if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+    const orthoCamera = camera as THREE.OrthographicCamera;
+    const visibleWidth =
+      (orthoCamera.right - orthoCamera.left) / orthoCamera.zoom;
+    return visibleWidth / canvasWidth;
+  } else {
+    // For perspective camera, use a reasonable default distance
+    const perspCamera = camera as THREE.PerspectiveCamera;
+    const distance = camera.position.length();
+    const vFov = (perspCamera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    return visibleHeight / canvasHeight;
+  }
+}
 
 export type SelectableLine = Line2 | THREE.LineSegments;
 
@@ -72,9 +92,19 @@ export function findClosestPolyline(
   clickPoint: THREE.Vector3,
   lines: SelectableLine[],
   is2D: boolean,
-  camera: THREE.Camera
+  camera: THREE.Camera,
+  canvasWidth: number,
+  canvasHeight: number
 ): { line: SelectableLine; distance: number } | null {
   let closest: { line: SelectableLine; distance: number } | null = null;
+
+  // Calculate threshold in world units based on camera zoom
+  const worldUnitsPerPixel = getWorldUnitsPerPixel(
+    camera,
+    canvasWidth,
+    canvasHeight
+  );
+  const selectionThreshold = SELECTION_THRESHOLD_PIXELS * worldUnitsPerPixel;
 
   for (const line of lines) {
     const worldPathPoints = getWorldPathPoints(line);
@@ -106,7 +136,7 @@ export function findClosestPolyline(
     }
 
     if (
-      minDistance < SELECTION_THRESHOLD &&
+      minDistance < selectionThreshold &&
       (!closest || minDistance < closest.distance)
     ) {
       closest = { line, distance: minDistance };

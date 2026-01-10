@@ -184,7 +184,14 @@ export function Selection({ is2D }: PolylineSelectionProps) {
         }
       });
 
-      const closest = findClosestPolyline(intersection, lines, is2D, camera);
+      const closest = findClosestPolyline(
+        intersection,
+        lines,
+        is2D,
+        camera,
+        rect.width,
+        rect.height
+      );
 
       if (closest) {
         e.preventDefault();
@@ -295,14 +302,43 @@ function pointToLineSegmentDistance(
   return point.distanceTo(pb);
 }
 
+const SELECTION_THRESHOLD_PIXELS = 1;
+
+function getWorldUnitsPerPixel(
+  camera: THREE.Camera,
+  canvasWidth: number,
+  canvasHeight: number
+): number {
+  if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+    const orthoCamera = camera as THREE.OrthographicCamera;
+    const visibleWidth =
+      (orthoCamera.right - orthoCamera.left) / orthoCamera.zoom;
+    return visibleWidth / canvasWidth;
+  } else {
+    const perspCamera = camera as THREE.PerspectiveCamera;
+    const distance = camera.position.length();
+    const vFov = (perspCamera.fov * Math.PI) / 180;
+    const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+    return visibleHeight / canvasHeight;
+  }
+}
+
 function findClosestPolyline(
   clickPoint: THREE.Vector3,
   lines: SelectableLine[],
   is2D: boolean,
   camera: THREE.Camera,
-  threshold: number = 0.1
+  canvasWidth: number,
+  canvasHeight: number
 ): { line: SelectableLine; distance: number } | null {
   let closest: { line: SelectableLine; distance: number } | null = null;
+
+  const worldUnitsPerPixel = getWorldUnitsPerPixel(
+    camera,
+    canvasWidth,
+    canvasHeight
+  );
+  const threshold = SELECTION_THRESHOLD_PIXELS * worldUnitsPerPixel;
 
   for (const line of lines) {
     const pathPoints = line.userData.pathPoints as THREE.Vector3[];

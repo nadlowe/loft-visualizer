@@ -34,7 +34,11 @@ export function Scene({
   return (
     <>
       <RenderEntities onDraggingChange={setIsDragging} />
-      <Selection is2D={is2D} onDraggingChange={setIsDragging} />
+      <Selection
+        is2D={is2D}
+        onDraggingChange={setIsDragging}
+        isDraggingWorkPlane={isDragging}
+      />
 
       {/* Vertex editing */}
       {editingPolylineId && (

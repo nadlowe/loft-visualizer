@@ -21,6 +21,7 @@ export interface RenderedPolyline {
 export interface RenderedLoft {
   id: string;
   rungs: THREE.Vector3[][]; // Array of rungs, each rung is [v1, v2] connecting corresponding vertices
+  subdivisions: number; // Number of subdivisions between rungs
 }
 
 export type WorkPlane = THREE.Group & {
@@ -188,6 +189,30 @@ export function polylineTableToThree(
   return result;
 }
 
+// Number of subdivisions for loft surfaces (both along polylines and across rungs)
+export const LOFT_SUBDIVISIONS = 3;
+
+// Subdivide vertices along a polyline by adding intermediate points
+function subdivideVertices(
+  vertices: THREE.Vector3[],
+  subdivisions: number
+): THREE.Vector3[] {
+  if (vertices.length < 2 || subdivisions < 1) return vertices;
+
+  const result: THREE.Vector3[] = [];
+  for (let i = 0; i < vertices.length - 1; i++) {
+    result.push(vertices[i].clone());
+    const v1 = vertices[i];
+    const v2 = vertices[i + 1];
+    for (let j = 1; j <= subdivisions; j++) {
+      const t = j / (subdivisions + 1);
+      result.push(new THREE.Vector3().lerpVectors(v1, v2, t));
+    }
+  }
+  result.push(vertices[vertices.length - 1].clone());
+  return result;
+}
+
 export function loftToThree(
   id: LoftId,
   loftEntity: LoftEntity,
@@ -218,20 +243,29 @@ export function loftToThree(
     workPlane2
   );
 
+  // Subdivide both polylines for smoother surfaces
+  const subdividedVertices1 = subdivideVertices(vertices1, LOFT_SUBDIVISIONS);
+  const subdividedVertices2 = subdivideVertices(vertices2, LOFT_SUBDIVISIONS);
+
   // Combine vertices into loft segments (ladder rungs: array of arrays)
   const rungs: THREE.Vector3[][] = [];
-  const maxCount = Math.max(vertices1.length, vertices2.length);
-  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
-  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
+  const maxCount = Math.max(
+    subdividedVertices1.length,
+    subdividedVertices2.length
+  );
+  const lastIdx1 =
+    subdividedVertices1.length > 0 ? subdividedVertices1.length - 1 : 0;
+  const lastIdx2 =
+    subdividedVertices2.length > 0 ? subdividedVertices2.length - 1 : 0;
 
   for (let i = 0; i < maxCount; i++) {
     const idx1 = Math.min(i, lastIdx1);
     const idx2 = Math.min(i, lastIdx2);
     // Each rung connects corresponding vertices (or last vertex if one is shorter)
-    rungs.push([vertices1[idx1], vertices2[idx2]]);
+    rungs.push([subdividedVertices1[idx1], subdividedVertices2[idx2]]);
   }
 
-  return { id, rungs };
+  return { id, rungs, subdivisions: LOFT_SUBDIVISIONS };
 }
 
 export function loftTableToThree(

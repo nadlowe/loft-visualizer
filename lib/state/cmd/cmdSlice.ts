@@ -1,4 +1,5 @@
 import { StateCreator } from "zustand";
+import { SnapSlice } from "../snapSlice";
 import { AddLoftCmd, createLoftCmdSlice, LoftCmdSlice } from "./loftCmdSlice";
 import {
   createPolylineCmdSlice,
@@ -16,7 +17,12 @@ interface SharedCmdSlice {
 
 export type CmdSlice = SharedCmdSlice & PolylineCmdSlice & LoftCmdSlice;
 
-export const createCmdSlice: StateCreator<CmdSlice> = (...a) => ({
+export const createCmdSlice: StateCreator<
+  CmdSlice & SnapSlice,
+  [],
+  [],
+  CmdSlice
+> = (...a) => ({
   cmd: null,
   cancelCmd: () => a[0]({ cmd: null }),
   finishCmd: () => a[0]({ cmd: null }),

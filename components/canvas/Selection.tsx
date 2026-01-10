@@ -22,9 +22,14 @@ import { SelectionWindowOverlay } from "./SelectionWindowOverlay";
 interface SelectionProps {
   is2D: boolean;
   onDraggingChange?: (isDragging: boolean) => void;
+  isDraggingWorkPlane?: boolean;
 }
 
-export function Selection({ is2D, onDraggingChange }: SelectionProps) {
+export function Selection({
+  is2D,
+  onDraggingChange,
+  isDraggingWorkPlane,
+}: SelectionProps) {
   const { raycaster, pointer, camera, gl: renderer, scene } = useThree();
   const {
     selectOnly,
@@ -86,6 +91,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       setSelectionRect,
       tryStartPendingDrag,
       is2D,
+      isDraggingWorkPlane,
     }),
     handleMouseMove: handleMouseMoveFunc({
       isPanningRef,
@@ -98,6 +104,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       selectionRect,
       setSelectionRect,
       renderer,
+      isDraggingWorkPlane,
     }),
     handleMouseUp: handleMouseUpFunc({
       draggingPolylineId,
@@ -127,6 +134,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
         scene,
         is2D,
         camera,
+        renderer,
         lastClickTimeRef,
         lastClickHandleRef,
         clearSelection,
@@ -226,6 +234,7 @@ function handleMouseMoveFunc({
   selectionRect,
   setSelectionRect,
   renderer,
+  isDraggingWorkPlane,
 }: {
   isPanningRef: React.RefObject<boolean>;
   editingPolylineId: PolylineId | null;
@@ -251,10 +260,17 @@ function handleMouseMoveFunc({
     } | null>
   >;
   renderer: THREE.WebGLRenderer;
+  isDraggingWorkPlane?: boolean;
 }) {
   return useCallback(
     (e: MouseEvent) => {
       if (isPanningRef.current || editingPolylineId) return;
+
+      // Clear selection rect if work plane drag started
+      if (isDraggingWorkPlane && selectionRect) {
+        setSelectionRect(null);
+        return;
+      }
 
       // Check if pending drag should start
       if (
@@ -270,8 +286,13 @@ function handleMouseMoveFunc({
         return;
       }
 
-      // Update selection rectangle
-      if (mouseDownPosRef.current && is2D && selectionRect) {
+      // Update selection rectangle (not when dragging work plane)
+      if (
+        mouseDownPosRef.current &&
+        is2D &&
+        selectionRect &&
+        !isDraggingWorkPlane
+      ) {
         setSelectionRect({
           ...selectionRect,
           current: { x: e.clientX, y: e.clientY },
@@ -290,6 +311,7 @@ function handleMouseMoveFunc({
       selectionRect,
       setSelectionRect,
       renderer,
+      isDraggingWorkPlane,
     ]
   );
 }
@@ -298,6 +320,7 @@ function handleClickSelectionFunc({
   scene,
   is2D,
   camera,
+  renderer,
   lastClickTimeRef,
   lastClickHandleRef,
   clearSelection,
@@ -308,6 +331,7 @@ function handleClickSelectionFunc({
   scene: THREE.Scene;
   is2D: boolean;
   camera: THREE.Camera;
+  renderer: THREE.WebGLRenderer;
   lastClickTimeRef: React.RefObject<number>;
   lastClickHandleRef: React.RefObject<SelectableHandle | null>;
   clearSelection: () => void;
@@ -318,7 +342,15 @@ function handleClickSelectionFunc({
   return useCallback(
     (e: MouseEvent, intersection: THREE.Vector3) => {
       const lines = getSelectableLines(scene);
-      const closest = findClosestPolyline(intersection, lines, is2D, camera);
+      const rect = renderer.domElement.getBoundingClientRect();
+      const closest = findClosestPolyline(
+        intersection,
+        lines,
+        is2D,
+        camera,
+        rect.width,
+        rect.height
+      );
 
       if (closest) {
         e.preventDefault();
@@ -361,6 +393,7 @@ function handleClickSelectionFunc({
       scene,
       is2D,
       camera,
+      renderer,
       lastClickTimeRef,
       lastClickHandleRef,
       clearSelection,
@@ -381,6 +414,7 @@ function handleMouseDownFunc({
   setSelectionRect,
   tryStartPendingDrag,
   is2D,
+  isDraggingWorkPlane,
 }: {
   renderer: THREE.WebGLRenderer;
   cmd: { type: string } | null;
@@ -397,6 +431,7 @@ function handleMouseDownFunc({
   >;
   tryStartPendingDrag: (clientX: number, clientY: number) => boolean;
   is2D: boolean;
+  isDraggingWorkPlane?: boolean;
 }) {
   return useCallback(
     (e: MouseEvent) => {
@@ -425,8 +460,8 @@ function handleMouseDownFunc({
         return;
       }
 
-      // Start window selection in 2D mode
-      if (is2D && e.button === 0) {
+      // Start window selection in 2D mode (not when dragging work plane)
+      if (is2D && e.button === 0 && !isDraggingWorkPlane) {
         setSelectionRect({
           start: { x: e.clientX, y: e.clientY },
           current: { x: e.clientX, y: e.clientY },
@@ -444,6 +479,7 @@ function handleMouseDownFunc({
       setSelectionRect,
       tryStartPendingDrag,
       is2D,
+      isDraggingWorkPlane,
     ]
   );
 }

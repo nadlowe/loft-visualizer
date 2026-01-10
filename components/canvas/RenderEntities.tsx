@@ -1,6 +1,7 @@
 "use client";
 import { colors } from "@/components/ui/colors";
 import {
+  LOFT_SUBDIVISIONS,
   loftTableToThree,
   polyline2ToWorldVertices,
   polylineTableToThree,
@@ -43,6 +44,9 @@ export function RenderEntities({
   const lineRefs = useRef<Map<string, LineGeometry>>(new Map());
   const loftRefs = useRef<Map<string, THREE.BufferGeometry>>(new Map());
   const loftSurfaceRefs = useRef<Map<string, THREE.BufferGeometry>>(new Map());
+  const loftWireframeRefs = useRef<Map<string, THREE.BufferGeometry>>(
+    new Map()
+  );
 
   const { renderedWorkPlanes, renderedPolylines, renderedLofts } =
     useMemo(() => {
@@ -123,44 +127,11 @@ export function RenderEntities({
           loftRefs.current.set(l.id, geometry);
         }
 
-        // Create/update surface geometry (quads between consecutive rungs)
+        // Create/update surface geometry with subdivision across rungs
         if (l.rungs.length >= 2) {
-          const surfacePositions: number[] = [];
-          const surfaceIndices: number[] = [];
-          let surfaceVertexIndex = 0;
-
-          for (let i = 0; i < l.rungs.length - 1; i++) {
-            const rung1 = l.rungs[i];
-            const rung2 = l.rungs[i + 1];
-            // Quad vertices: rung1[0], rung1[1], rung2[1], rung2[0]
-            // v0 -- v3
-            // |      |
-            // v1 -- v2
-            surfacePositions.push(
-              rung1[0].x,
-              rung1[0].y,
-              rung1[0].z, // v0
-              rung1[1].x,
-              rung1[1].y,
-              rung1[1].z, // v1
-              rung2[1].x,
-              rung2[1].y,
-              rung2[1].z, // v2
-              rung2[0].x,
-              rung2[0].y,
-              rung2[0].z // v3
-            );
-            // Two triangles: v0-v1-v2, v0-v2-v3
-            surfaceIndices.push(
-              surfaceVertexIndex,
-              surfaceVertexIndex + 1,
-              surfaceVertexIndex + 2,
-              surfaceVertexIndex,
-              surfaceVertexIndex + 2,
-              surfaceVertexIndex + 3
-            );
-            surfaceVertexIndex += 4;
-          }
+          const rungSubdivisions = l.subdivisions || LOFT_SUBDIVISIONS;
+          const { surfacePositions, surfaceIndices, wireframeIndices } =
+            generateSubdividedSurface(l.rungs, rungSubdivisions);
 
           const existingSurfaceGeometry = loftSurfaceRefs.current.get(l.id);
           if (existingSurfaceGeometry) {
@@ -180,6 +151,25 @@ export function RenderEntities({
             surfaceGeometry.setIndex(surfaceIndices);
             surfaceGeometry.computeVertexNormals();
             loftSurfaceRefs.current.set(l.id, surfaceGeometry);
+          }
+
+          // Create/update wireframe geometry for subdivision edges
+          const existingWireframeGeometry = loftWireframeRefs.current.get(l.id);
+          if (existingWireframeGeometry) {
+            existingWireframeGeometry.setAttribute(
+              "position",
+              new THREE.Float32BufferAttribute(surfacePositions, 3)
+            );
+            existingWireframeGeometry.setIndex(wireframeIndices);
+            existingWireframeGeometry.attributes.position.needsUpdate = true;
+          } else {
+            const wireframeGeometry = new THREE.BufferGeometry();
+            wireframeGeometry.setAttribute(
+              "position",
+              new THREE.Float32BufferAttribute(surfacePositions, 3)
+            );
+            wireframeGeometry.setIndex(wireframeIndices);
+            loftWireframeRefs.current.set(l.id, wireframeGeometry);
           }
         }
       });
@@ -278,7 +268,8 @@ export function RenderEntities({
                 currentWorkPlane,
                 workPlaneRefs,
                 loftRefs,
-                loftSurfaceRefs
+                loftSurfaceRefs,
+                loftWireframeRefs
               );
             }
           }
@@ -349,6 +340,7 @@ export function RenderEntities({
         const handle = handleNew("LOFT", loft.id as any);
         const geometry = loftRefs.current.get(loft.id);
         const surfaceGeometry = loftSurfaceRefs.current.get(loft.id);
+        const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
         if (!geometry) return null;
         const selected = isSelected(handle);
         const color = selected ? colors.selection.highlight : 0x888888;
@@ -368,18 +360,117 @@ export function RenderEntities({
                 />
               </mesh>
             )}
+            {/* Wireframe showing subdivision edges */}
+            {wireframeGeometry && (
+              <lineSegments geometry={wireframeGeometry}>
+                <lineBasicMaterial color={color} transparent opacity={0.75} />
+              </lineSegments>
+            )}
             {/* Line segments (rungs) */}
             <lineSegments
               geometry={geometry}
               userData={{ handleHash: handleToHash(handle), pathPoints }}
             >
-              <lineBasicMaterial color={color} />
+              <lineBasicMaterial color={color} transparent opacity={0.75} />
             </lineSegments>
           </group>
         );
       })}
     </>
   );
+}
+
+// Generate subdivided surface geometry with wireframe indices
+function generateSubdividedSurface(
+  rungs: THREE.Vector3[][],
+  rungSubdivisions: number
+): {
+  surfacePositions: number[];
+  surfaceIndices: number[];
+  wireframeIndices: number[];
+} {
+  const surfacePositions: number[] = [];
+  const surfaceIndices: number[] = [];
+  const wireframeIndices: number[] = [];
+
+  // Build a grid of vertices by subdividing across each rung
+  // Match horizontal subdivisions: subdivisions=3 means 4 segments (subdivisions + 1)
+  // Grid dimensions: (rungs.length) rows x (rungSubdivisions + 2) columns
+  const gridRows = rungs.length;
+  const gridCols = rungSubdivisions + 2; // +2 to match horizontal (subdivisions + 1 segments)
+
+  // Generate all vertices in the grid
+  for (let row = 0; row < gridRows; row++) {
+    const rung = rungs[row];
+    const p1 = rung[0];
+    const p2 = rung[1];
+    for (let col = 0; col < gridCols; col++) {
+      const t = col / (gridCols - 1);
+      const point = new THREE.Vector3().lerpVectors(p1, p2, t);
+      surfacePositions.push(point.x, point.y, point.z);
+    }
+  }
+
+  // Generate triangles and wireframe edges for each quad in the grid
+  for (let row = 0; row < gridRows - 1; row++) {
+    for (let col = 0; col < gridCols - 1; col++) {
+      // Quad vertex indices in the grid
+      const v0 = row * gridCols + col; // top-left
+      const v1 = (row + 1) * gridCols + col; // bottom-left
+      const v2 = (row + 1) * gridCols + (col + 1); // bottom-right
+      const v3 = row * gridCols + (col + 1); // top-right
+
+      // Get vertex positions for diagonal selection
+      const p0 = new THREE.Vector3(
+        surfacePositions[v0 * 3],
+        surfacePositions[v0 * 3 + 1],
+        surfacePositions[v0 * 3 + 2]
+      );
+      const p2Pos = new THREE.Vector3(
+        surfacePositions[v2 * 3],
+        surfacePositions[v2 * 3 + 1],
+        surfacePositions[v2 * 3 + 2]
+      );
+      const p1Pos = new THREE.Vector3(
+        surfacePositions[v1 * 3],
+        surfacePositions[v1 * 3 + 1],
+        surfacePositions[v1 * 3 + 2]
+      );
+      const p3Pos = new THREE.Vector3(
+        surfacePositions[v3 * 3],
+        surfacePositions[v3 * 3 + 1],
+        surfacePositions[v3 * 3 + 2]
+      );
+
+      // Choose the longer diagonal for non-planar quads
+      const d02 = p0.distanceToSquared(p2Pos);
+      const d13 = p1Pos.distanceToSquared(p3Pos);
+
+      if (d02 >= d13) {
+        // Use v0-v2 diagonal
+        surfaceIndices.push(v0, v1, v2, v0, v2, v3);
+      } else {
+        // Use v1-v3 diagonal
+        surfaceIndices.push(v0, v1, v3, v1, v2, v3);
+      }
+
+      // Wireframe edges (each edge as a line segment)
+      // Top edge (only for first row of quads)
+      if (row === 0) {
+        wireframeIndices.push(v0, v3);
+      }
+      // Left edge (only for first column of quads)
+      if (col === 0) {
+        wireframeIndices.push(v0, v1);
+      }
+      // Bottom edge
+      wireframeIndices.push(v1, v2);
+      // Right edge
+      wireframeIndices.push(v3, v2);
+    }
+  }
+
+  return { surfacePositions, surfaceIndices, wireframeIndices };
 }
 
 // Unified function to render any line as a Line2 component
@@ -412,6 +503,27 @@ function renderLine(
   return line;
 }
 
+// Subdivide vertices along a polyline by adding intermediate points
+function subdivideVertices(
+  vertices: THREE.Vector3[],
+  subdivisions: number
+): THREE.Vector3[] {
+  if (vertices.length < 2 || subdivisions < 1) return vertices;
+
+  const result: THREE.Vector3[] = [];
+  for (let i = 0; i < vertices.length - 1; i++) {
+    result.push(vertices[i].clone());
+    const v1 = vertices[i];
+    const v2 = vertices[i + 1];
+    for (let j = 1; j <= subdivisions; j++) {
+      const t = j / (subdivisions + 1);
+      result.push(new THREE.Vector3().lerpVectors(v1, v2, t));
+    }
+  }
+  result.push(vertices[vertices.length - 1].clone());
+  return result;
+}
+
 // Helper function to update loft geometry during dragging
 function updateLineGeometry(
   loftId: string,
@@ -420,7 +532,8 @@ function updateLineGeometry(
   currentWorkPlane: THREE.Group | undefined,
   workPlaneRefs: React.RefObject<Map<string, THREE.Group>>,
   loftRefs: React.RefObject<Map<string, THREE.BufferGeometry>>,
-  loftSurfaceRefs: React.RefObject<Map<string, THREE.BufferGeometry>>
+  loftSurfaceRefs: React.RefObject<Map<string, THREE.BufferGeometry>>,
+  loftWireframeRefs: React.RefObject<Map<string, THREE.BufferGeometry>>
 ) {
   const { doc } = useStore.getState();
   const polyline1 = doc.polylines[loftEntity.polyline1 as PolylineId];
@@ -453,17 +566,26 @@ function updateLineGeometry(
     wp2 || undefined
   );
 
+  // Subdivide both polylines for smoother surfaces
+  const subdividedVertices1 = subdivideVertices(vertices1, LOFT_SUBDIVISIONS);
+  const subdividedVertices2 = subdivideVertices(vertices2, LOFT_SUBDIVISIONS);
+
   // Combine vertices into loft segments (ladder rungs: array of arrays)
   const rungs: THREE.Vector3[][] = [];
-  const maxCount = Math.max(vertices1.length, vertices2.length);
-  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
-  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
+  const maxCount = Math.max(
+    subdividedVertices1.length,
+    subdividedVertices2.length
+  );
+  const lastIdx1 =
+    subdividedVertices1.length > 0 ? subdividedVertices1.length - 1 : 0;
+  const lastIdx2 =
+    subdividedVertices2.length > 0 ? subdividedVertices2.length - 1 : 0;
 
   for (let i = 0; i < maxCount; i++) {
     const idx1 = Math.min(i, lastIdx1);
     const idx2 = Math.min(i, lastIdx2);
     // Each rung connects corresponding vertices (or last vertex if one is shorter)
-    rungs.push([vertices1[idx1], vertices2[idx2]]);
+    rungs.push([subdividedVertices1[idx1], subdividedVertices2[idx2]]);
   }
 
   // Update line geometry positions and indices from rungs
@@ -486,42 +608,12 @@ function updateLineGeometry(
   loftGeometry.setIndex(indices);
   loftGeometry.attributes.position.needsUpdate = true;
 
-  // Update surface geometry (quads between consecutive rungs)
+  // Update surface and wireframe geometry with subdivisions
   const surfaceGeometry = loftSurfaceRefs.current.get(loftId);
+  const wireframeGeometry = loftWireframeRefs.current.get(loftId);
   if (surfaceGeometry && rungs.length >= 2) {
-    const surfacePositions: number[] = [];
-    const surfaceIndices: number[] = [];
-    let surfaceVertexIndex = 0;
-
-    for (let i = 0; i < rungs.length - 1; i++) {
-      const rung1 = rungs[i];
-      const rung2 = rungs[i + 1];
-      // Quad vertices: rung1[0], rung1[1], rung2[1], rung2[0]
-      surfacePositions.push(
-        rung1[0].x,
-        rung1[0].y,
-        rung1[0].z,
-        rung1[1].x,
-        rung1[1].y,
-        rung1[1].z,
-        rung2[1].x,
-        rung2[1].y,
-        rung2[1].z,
-        rung2[0].x,
-        rung2[0].y,
-        rung2[0].z
-      );
-      // Two triangles: v0-v1-v2, v0-v2-v3
-      surfaceIndices.push(
-        surfaceVertexIndex,
-        surfaceVertexIndex + 1,
-        surfaceVertexIndex + 2,
-        surfaceVertexIndex,
-        surfaceVertexIndex + 2,
-        surfaceVertexIndex + 3
-      );
-      surfaceVertexIndex += 4;
-    }
+    const { surfacePositions, surfaceIndices, wireframeIndices } =
+      generateSubdividedSurface(rungs, LOFT_SUBDIVISIONS);
 
     surfaceGeometry.setAttribute(
       "position",
@@ -530,5 +622,14 @@ function updateLineGeometry(
     surfaceGeometry.setIndex(surfaceIndices);
     surfaceGeometry.attributes.position.needsUpdate = true;
     surfaceGeometry.computeVertexNormals();
+
+    if (wireframeGeometry) {
+      wireframeGeometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(surfacePositions, 3)
+      );
+      wireframeGeometry.setIndex(wireframeIndices);
+      wireframeGeometry.attributes.position.needsUpdate = true;
+    }
   }
 }
