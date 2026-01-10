@@ -7,4 +7,6 @@ export interface LoftEntity extends BaseEntity<LoftId> {
   readonly polyline2: PolylineId;
   readonly polyline1Shift: number;
   readonly polyline2Shift: number;
+  readonly polyline1Reverse?: boolean;
+  readonly polyline2Reverse?: boolean;
 }

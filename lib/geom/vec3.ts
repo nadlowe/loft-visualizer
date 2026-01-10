@@ -51,3 +51,11 @@ export function vec3Subtract(a: Vec3, b: Vec3): Vec3 {
 export function vec3Scale(vec: Vec3, scalar: number): Vec3 {
   return [vec[0] * scalar, vec[1] * scalar, vec[2] * scalar];
 }
+
+export function vec3Lerp(a: Vec3, b: Vec3, t: number): Vec3 {
+  return [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+    a[2] + (b[2] - a[2]) * t,
+  ];
+}

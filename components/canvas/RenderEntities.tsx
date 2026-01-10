@@ -20,7 +20,7 @@ import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
 import { handleNew } from "@/lib/entity/handleTools/handleNew";
 import { handleToHash } from "@/lib/entity/handleTools/handleTools";
 import { useStore } from "@/lib/state/useStore";
-import { PolylineId, WorkPlaneId } from "@/lib/util/uid";
+import { LoftId, PolylineId, WorkPlaneId } from "@/lib/util/uid";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
@@ -34,14 +34,8 @@ export function RenderEntities({
   onDraggingChange: (isDragging: boolean) => void;
 }) {
   const { size } = useThree();
-  const { workPlanes, polylines, lofts } = useStore(
-    (state) => ({
-      workPlanes: state.doc.workPlanes,
-      polylines: state.doc.polylines,
-      lofts: state.doc.lofts,
-    }),
-    shallow
-  );
+  const doc = useStore((state) => state.doc, shallow);
+  const { workPlanes, polylines, lofts } = doc;
   const isSelected = useStore((state) => state.isSelected);
   const updateEntity = useStore((state) => state.updateEntity);
 
@@ -65,7 +59,7 @@ export function RenderEntities({
     useMemo(() => {
       const workPlanesArray = workPlaneTableToRendered(workPlanes);
       const polylinesArray = polylineTableToRendered(polylines);
-      const loftsArray = loftTableToRendered(workPlanesArray, polylines, lofts);
+      const loftsArray = loftTableToRendered(doc);
 
       polylinesArray.forEach((p: RenderedPolyline) => {
         updatePolylineGeometry(p, lineRefs.current);
@@ -85,7 +79,7 @@ export function RenderEntities({
         renderedPolylines: polylinesArray,
         renderedLofts: loftsArray,
       };
-    }, [workPlanes, polylines, lofts]);
+    }, [workPlanes, polylines, lofts, doc]);
 
   useEffect(() => {
     if (!isDragging) {
@@ -248,8 +242,7 @@ export function RenderEntities({
 
               if (wp1Affected || wp2Affected) {
                 updateLoftGeometryDuringDrag(
-                  loftId,
-                  loftEntity,
+                  loftId as LoftId,
                   workPlaneId,
                   currentWorkPlane,
                   workPlaneRefs.current,

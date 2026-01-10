@@ -1,10 +1,10 @@
-import { LoftEntity } from "@/lib/entity/loftEntity";
-import { polyline2Shift } from "@/lib/geom/polyline2";
+import { generateLoft, LOFT_SUBDIVISIONS } from "@/lib/conversion/generateLoft";
+import { sectionsToThree } from "@/lib/conversion/geomToThree";
+import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
-import { LoftId, PolylineId, WorkPlaneId } from "@/lib/util/uid";
+import { LoftId, WorkPlaneId } from "@/lib/util/uid";
 import * as THREE from "three";
-import { generateLoft, LOFT_SUBDIVISIONS } from "../../conversion/generateLoft";
 
 // ─────────────────────────────────────────────────────────────────
 // 1. PERSISTED DATA TYPES
@@ -22,58 +22,21 @@ export interface RenderedLoft {
 //    Intermediate: sections (Vector3[][]) for surface generation
 // ─────────────────────────────────────────────────────────────────
 
-function loftToRendered(
-  id: LoftId,
-  loftEntity: LoftEntity,
-  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
-  polylines: Doc["polylines"]
-): RenderedLoft | null {
-  const pl1 = polylines[loftEntity.polyline1];
-  const pl2 = polylines[loftEntity.polyline2];
-  if (!pl1 || !pl2) {
-    return null;
-  }
+function loftToRendered(loftId: LoftId, doc: Doc): RenderedLoft | null {
+  const sections = generateLoft(loftId, doc);
+  if (!sections) return null;
 
-  const workPlane1 = pl1.workPlaneId
-    ? workPlanes.find((wp) => wp.id === pl1.workPlaneId)?.workPlane
-    : undefined;
-  const workPlane2 = pl2.workPlaneId
-    ? workPlanes.find((wp) => wp.id === pl2.workPlaneId)?.workPlane
-    : undefined;
-
-  const shiftedPolyline1 = polyline2Shift(
-    pl1.polyline,
-    loftEntity.polyline1Shift ?? 0
-  );
-  const shiftedPolyline2 = polyline2Shift(
-    pl2.polyline,
-    loftEntity.polyline2Shift ?? 0
-  );
-
-  const sections = generateLoft(
-    shiftedPolyline1,
-    shiftedPolyline2,
-    workPlane1,
-    workPlane2,
-    LOFT_SUBDIVISIONS
-  );
-
-  return { id, sections, subdivisions: LOFT_SUBDIVISIONS };
+  return {
+    id: loftId,
+    sections: sectionsToThree(sections),
+    subdivisions: LOFT_SUBDIVISIONS,
+  };
 }
 
-export function loftTableToRendered(
-  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
-  polylines: Doc["polylines"],
-  lofts: Doc["lofts"]
-): RenderedLoft[] {
+export function loftTableToRendered(doc: Doc): RenderedLoft[] {
   const result: RenderedLoft[] = [];
-  for (const [id, loftEntity] of Object.entries(lofts)) {
-    const rendered = loftToRendered(
-      id as LoftId,
-      loftEntity,
-      workPlanes,
-      polylines
-    );
+  for (const loftId of Object.keys(doc.lofts)) {
+    const rendered = loftToRendered(loftId as LoftId, doc);
     if (rendered) {
       result.push(rendered);
     }
@@ -265,13 +228,7 @@ export function updateLoftGeometry(
 }
 
 export function updateLoftGeometryDuringDrag(
-  loftId: string,
-  loftEntity: {
-    polyline1: PolylineId;
-    polyline2: PolylineId;
-    polyline1Shift?: number;
-    polyline2Shift?: number;
-  },
+  loftId: LoftId,
   workPlaneId: WorkPlaneId,
   currentWorkPlane: THREE.Group | undefined,
   workPlaneRefs: Map<string, THREE.Group>,
@@ -280,49 +237,39 @@ export function updateLoftGeometryDuringDrag(
   loftWireframeRefs: Map<string, THREE.BufferGeometry>
 ): void {
   const { doc } = useStore.getState();
-  const polyline1 = doc.polylines[loftEntity.polyline1 as PolylineId];
-  const polyline2 = doc.polylines[loftEntity.polyline2 as PolylineId];
-  if (!polyline1 || !polyline2) return;
 
   const loftGeometry = loftRefs.get(loftId);
   if (!loftGeometry) return;
 
-  const wp1 =
+  const loftEntity = doc.lofts[loftId];
+  if (!loftEntity) return;
+
+  const polyline1 = doc.polylines[loftEntity.polyline1];
+  const polyline2 = doc.polylines[loftEntity.polyline2];
+  if (!polyline1 || !polyline2) return;
+
+  // Get work planes from refs (which have current drag positions) and convert to Plane3
+  const wp1Group =
     polyline1.workPlaneId === workPlaneId
       ? currentWorkPlane
       : workPlaneRefs.get(polyline1.workPlaneId || "");
-  const wp2 =
+  const wp2Group =
     polyline2.workPlaneId === workPlaneId
       ? currentWorkPlane
       : workPlaneRefs.get(polyline2.workPlaneId || "");
 
-  if (wp1) wp1.updateMatrixWorld(true);
-  if (wp2) wp2.updateMatrixWorld(true);
+  const plane1 = wp1Group ? workPlaneToPlane3(wp1Group) : undefined;
+  const plane2 = wp2Group ? workPlaneToPlane3(wp2Group) : undefined;
 
-  const shiftedPolyline1 = polyline2Shift(
-    polyline1.polyline,
-    loftEntity.polyline1Shift ?? 0
-  );
-  const shiftedPolyline2 = polyline2Shift(
-    polyline2.polyline,
-    loftEntity.polyline2Shift ?? 0
-  );
-
-  const sections = generateLoft(
-    shiftedPolyline1,
-    shiftedPolyline2,
-    wp1 || undefined,
-    wp2 || undefined,
-    LOFT_SUBDIVISIONS
-  );
+  const sections = generateLoft(loftId, doc, { plane1, plane2 });
+  if (!sections) return;
 
   const positions: number[] = [];
   const indices: number[] = [];
   let vertexIndex = 0;
 
   sections.forEach((section) => {
-    positions.push(section[0].x, section[0].y, section[0].z);
-    positions.push(section[1].x, section[1].y, section[1].z);
+    positions.push(...section[0], ...section[1]);
     indices.push(vertexIndex, vertexIndex + 1);
     vertexIndex += 2;
   });
@@ -337,8 +284,9 @@ export function updateLoftGeometryDuringDrag(
   const surfaceGeometry = loftSurfaceRefs.get(loftId);
   const wireframeGeometry = loftWireframeRefs.get(loftId);
   if (surfaceGeometry && sections.length >= 2) {
+    const threeSections = sectionsToThree(sections);
     const { surfacePositions, surfaceIndices, wireframeIndices } =
-      generateSubdividedSurface(sections, LOFT_SUBDIVISIONS);
+      generateSubdividedSurface(threeSections, LOFT_SUBDIVISIONS);
 
     surfaceGeometry.setAttribute(
       "position",

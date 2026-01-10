@@ -47,6 +47,20 @@ export function polyline2MergeOverlappingVertices(
   return result;
 }
 
+export function polyline2Reverse(polyline: Polyline2): Polyline2 {
+  const numVertices = polyline.length / 2;
+  if (numVertices <= 1) return [...polyline];
+
+  const result: Polyline2 = [];
+
+  // Iterate from last vertex to first
+  for (let i = numVertices - 1; i >= 0; i--) {
+    result.push(polyline[i * 2], polyline[i * 2 + 1]);
+  }
+
+  return result;
+}
+
 export function polyline2Shift(
   polyline: Polyline2,
   shift: number,
