@@ -88,3 +88,9 @@ yarn install
 yarn add @react-three/fiber @react-three/drei three
 yarn add -D @types/three
 ```
+
+15. Code quality tools (cycle detection, dead code analysis)
+
+```bash
+yarn add -D dpdm chokidar-cli ts-prune knip
+```
