@@ -77,7 +77,9 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
           )}
         >
           <Icon className="h-4 w-4" />
-          <span className={cn(fonts.menu)}>{entityTypeToName.plural[entityType]}</span>
+          <span className={cn(fonts.menu)}>
+            {entityTypeToName.plural[entityType]}
+          </span>
           <svg
             className={cn(
               "ml-auto h-3 w-3 transition-transform",

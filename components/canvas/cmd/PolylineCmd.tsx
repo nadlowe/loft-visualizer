@@ -1,7 +1,8 @@
 "use client";
 
 import { Entity } from "@/lib/entity/entity";
-import { entityName, polylineNew } from "@/lib/entity/entityTools/entityNew";
+import { polylineNew } from "@/lib/entity/entityTools/entityNew";
+import { entityName } from "@/lib/entity/entityTools/entityTypeToName";
 import { SelectableHandle } from "@/lib/entity/handleTypes";
 import { Vec2 } from "@/lib/geom/geomTypes";
 import { gridSnap } from "@/lib/snap/gridSnap";

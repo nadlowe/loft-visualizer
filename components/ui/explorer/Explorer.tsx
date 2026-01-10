@@ -1,10 +1,12 @@
 "use client";
 
 import { colors } from "@/components/colors";
-import { entityName, workPlaneNew } from "@/lib/entity/entityTools/entityNew";
+import { workPlaneNew } from "@/lib/entity/entityTools/entityNew";
+import { entityName } from "@/lib/entity/entityTools/entityTypeToName";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
+import { usePanelResize } from "../usePanelResize";
 import { EntityMenu } from "./EntityMenu";
 
 interface ExplorerProps {
@@ -22,40 +24,13 @@ export function Explorer({
 }: ExplorerProps) {
   const { doc, addEntity, startDrawPolyline, startAddLoft } = useStore();
 
-  const minWidth = 200;
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = isCollapsed ? 32 : width;
-    const wasCollapsed = isCollapsed;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startX;
-      const newWidth = startWidth + deltaX;
-
-      if (wasCollapsed) {
-        if (newWidth >= minWidth) {
-          onCollapse(false);
-          onResize(newWidth);
-        }
-      } else {
-        if (newWidth < minWidth) {
-          onCollapse(true);
-        } else {
-          onResize(newWidth);
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
+  const { handleMouseDown } = usePanelResize({
+    width,
+    isCollapsed,
+    onResize,
+    onCollapse,
+    side: "right",
+  });
 
   const handleAddWorkPlane = () => {
     const newWorkPlane = workPlaneNew(
@@ -68,27 +43,29 @@ export function Explorer({
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col border-r transition-all",
+        "relative flex h-full flex-col overflow-hidden border-r transition-all",
         colors.border.primary,
         colors.bg.primary
       )}
       style={{ width: isCollapsed ? "32px" : `${width}px` }}
     >
-      <div className="flex-1 overflow-auto p-4">
-        <div className="flex flex-col">
-          <EntityMenu
-            doc={doc}
-            entityType="WORKPLANE"
-            onAdd={handleAddWorkPlane}
-          />
-          <EntityMenu
-            doc={doc}
-            entityType="POLYLINE"
-            onAdd={startDrawPolyline}
-          />
-          <EntityMenu doc={doc} entityType="LOFT" onAdd={startAddLoft} />
+      {!isCollapsed && (
+        <div className="flex-1 overflow-auto p-4">
+          <div className="flex flex-col">
+            <EntityMenu
+              doc={doc}
+              entityType="WORKPLANE"
+              onAdd={handleAddWorkPlane}
+            />
+            <EntityMenu
+              doc={doc}
+              entityType="POLYLINE"
+              onAdd={startDrawPolyline}
+            />
+            <EntityMenu doc={doc} entityType="LOFT" onAdd={startAddLoft} />
+          </div>
         </div>
-      </div>
+      )}
       <div
         onMouseDown={handleMouseDown}
         className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors ${colors.resize.hover}`}

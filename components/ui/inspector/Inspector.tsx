@@ -1,8 +1,9 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "@/components/colors";
+import { usePanelResize } from "../usePanelResize";
 import { InspectorHeader } from "./InspectorHeader";
 import { MultiInspector } from "./MultiInspector";
 import { NoSelection } from "./NoSelection";
@@ -25,39 +26,13 @@ export function Inspector({
   const selectedArray = Array.from(selectedHandles);
   const selectedCount = selectedArray.length;
 
-  const minWidth = 200;
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const startX = e.clientX;
-    const startWidth = isCollapsed ? 32 : width;
-    const wasCollapsed = isCollapsed;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - startX;
-      const newWidth = startWidth - deltaX;
-
-      if (wasCollapsed) {
-        if (newWidth >= minWidth) {
-          onCollapse(false);
-          onResize(newWidth);
-        }
-      } else {
-        if (newWidth < minWidth) {
-          onCollapse(true);
-        } else {
-          onResize(newWidth);
-        }
-      }
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-  };
+  const { handleMouseDown } = usePanelResize({
+    width,
+    isCollapsed,
+    onResize,
+    onCollapse,
+    side: "left",
+  });
 
   if (isCollapsed) {
     return (

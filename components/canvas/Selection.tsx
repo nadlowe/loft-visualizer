@@ -371,7 +371,7 @@ function handleClickSelectionFunc({
           handle.id === lastHandle.id;
 
         if (isDoubleClick) {
-          clearSelection();
+          selectOnly(handle);
           setEditingPolylineId(handle.id as PolylineId);
           lastClickTimeRef.current = 0;
           lastClickHandleRef.current = null;

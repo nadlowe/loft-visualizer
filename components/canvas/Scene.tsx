@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { LoftCmd } from "./cmd/LoftCmd";
 import { PolylineCmd } from "./cmd/PolylineCmd";
 import { Grid } from "./Grid";
-import { PolylineVertexEditing } from "./polylineVertexEditing";
+import { PolylineVertexEditing } from "./polylineVertexEditing/PolylineVertexEditing";
 import { RenderEntities } from "./RenderEntities";
 import { Selection } from "./Selection";
 

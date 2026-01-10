@@ -13,6 +13,7 @@ interface UseKeyboardHandlersProps {
   updateEntity: ReturnType<typeof useStore.getState>["updateEntity"];
   setEditingPolylineId: (id: PolylineId | null) => void;
   clearSelection: () => void;
+  selectOnly: ReturnType<typeof useStore.getState>["selectOnly"];
   select: ReturnType<typeof useStore.getState>["select"];
 }
 
@@ -25,13 +26,14 @@ export function useKeyboardHandlers({
   updateEntity,
   setEditingPolylineId,
   clearSelection,
+  selectOnly,
   select,
 }: UseKeyboardHandlersProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (hasSelectedVertices) {
-          clearSelection();
+          selectOnly(polylineHandle);
         } else {
           clearSelection();
           setEditingPolylineId(null);
@@ -186,6 +188,7 @@ export function useKeyboardHandlers({
     updateEntity,
     setEditingPolylineId,
     clearSelection,
+    selectOnly,
     select,
   ]);
 }
