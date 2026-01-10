@@ -248,7 +248,7 @@ export function loftTableToThree(
   return result;
 }
 
-export function polyline2ToWorldVertices(
+function polyline2ToWorldVertices(
   polyline: Polyline2,
   workPlane?: THREE.Group
 ): THREE.Vector3[] {
