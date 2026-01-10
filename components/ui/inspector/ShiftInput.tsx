@@ -1,6 +1,7 @@
 "use client";
 
 import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { cn } from "@/lib/utils";
 
 interface ShiftInputProps {
@@ -19,7 +20,7 @@ export function ShiftInput({ label, value, onChange }: ShiftInputProps) {
 
   return (
     <div className="flex items-center justify-between">
-      <span className={cn("text-xs", colors.text.secondary)}>{label}</span>
+      <span className={cn(fonts.size.xs, colors.text.secondary)}>{label}</span>
       <input
         type="number"
         value={value}

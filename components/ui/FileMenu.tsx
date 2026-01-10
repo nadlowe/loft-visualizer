@@ -297,7 +297,13 @@ export function FileMenu() {
             </div>
             <div className="max-h-96 overflow-y-auto px-6 py-4">
               {savedDocs.length === 0 ? (
-                <div className={cn("py-8 text-center", fonts.dialogEmpty)}>
+                <div
+                  className={cn(
+                    "py-8 text-center",
+                    fonts.dialogEmpty,
+                    colors.text.secondary
+                  )}
+                >
                   No saved documents found
                 </div>
               ) : (
@@ -381,7 +387,13 @@ export function FileMenu() {
             </div>
             <div className="max-h-96 overflow-y-auto px-6 py-4">
               {savedDocs.length === 0 ? (
-                <div className={cn("py-8 text-center", fonts.dialogEmpty)}>
+                <div
+                  className={cn(
+                    "py-8 text-center",
+                    fonts.dialogEmpty,
+                    colors.text.secondary
+                  )}
+                >
                   No saved documents found
                 </div>
               ) : (

@@ -6,6 +6,7 @@ import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { EntityDropdown } from "../EntityDropdown";
 import { ShiftInput } from "./ShiftInput";
 
@@ -37,8 +38,8 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
         label="Work Plane"
       />
       <div className="flex items-center justify-between">
-        <span className={cn("text-xs", colors.text.secondary)}>Vertices</span>
-        <span className={cn("text-sm", colors.text.primary)}>
+        <span className={cn(fonts.size.xs, colors.text.secondary)}>Vertices</span>
+        <span className={cn(fonts.size.sm, colors.text.primary)}>
           {vertexCount}
         </span>
       </div>
@@ -48,8 +49,8 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
         onChange={handleShiftChange}
       />
       <div className="flex items-center justify-between">
-        <span className={cn("text-xs", colors.text.secondary)}>Closed</span>
-        <span className={cn("text-sm", colors.text.primary)}>
+        <span className={cn(fonts.size.xs, colors.text.secondary)}>Closed</span>
+        <span className={cn(fonts.size.sm, colors.text.primary)}>
           {polyline?.closed ? "True" : "False"}
         </span>
       </div>

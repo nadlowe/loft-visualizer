@@ -10,6 +10,7 @@ import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { shallow } from "zustand/shallow";
 import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 
 type HandleToEntityMap = {
   [K in EntityType]: Extract<Entity, { type: K }>;
@@ -59,7 +60,7 @@ export function EntityDropdown<H extends EntityHandle>({
 
   return (
     <div className="flex items-center justify-between">
-      <span className={cn("text-xs", colors.text.secondary)}>{label}</span>
+      <span className={cn(fonts.size.xs, colors.text.secondary)}>{label}</span>
       <select
         value={currentValue || ""}
         onChange={handleChange}

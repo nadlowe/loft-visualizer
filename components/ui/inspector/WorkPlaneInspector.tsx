@@ -6,6 +6,7 @@ import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 
 function NumberInput({
   value,
@@ -34,7 +35,7 @@ function NumberInput({
 
   return (
     <div className="flex items-center justify-between">
-      <span className={cn("text-xs", colors.text.secondary)}>{label}</span>
+      <span className={cn(fonts.size.xs, colors.text.secondary)}>{label}</span>
       <input
         type="number"
         value={localValue}

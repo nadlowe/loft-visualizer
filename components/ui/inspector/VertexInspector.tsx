@@ -1,6 +1,7 @@
 "use client";
 
 import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { VertexHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 
@@ -16,8 +17,8 @@ export function VertexInspector({ handle }: { handle: VertexHandle }) {
 
   return (
     <div className="flex items-center justify-between">
-      <span className={`text-xs ${colors.text.secondary}`}>Vertex</span>
-      <span className="text-sm">
+      <span className={`${fonts.size.xs} ${colors.text.secondary}`}>Vertex</span>
+      <span className={fonts.size.sm}>
         {handle.vertexIndex + 1} of {vertexCount}
       </span>
     </div>

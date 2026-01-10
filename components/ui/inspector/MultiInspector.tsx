@@ -1,5 +1,6 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { getEntityFromHandle } from "@/lib/entity/entityTools";
 import { EntityType } from "@/lib/entity/entityTypes";
 import { parseHandle } from "@/lib/entity/handle";
@@ -12,7 +13,6 @@ import {
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "@/components/colors";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
 import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
@@ -95,7 +95,7 @@ export function MultiInspector({ doc, handles }: MultiInspectorProps) {
               )}
             >
               <PolylineIcon className={cn("h-4 w-4", colors.text.primary)} />
-              <span className={cn("text-sm", colors.text.primary)}>
+              <span className={cn(fonts.size.sm, colors.text.primary)}>
                 {polylineName} · Vertex {handle.vertexIndex + 1}
               </span>
             </div>
