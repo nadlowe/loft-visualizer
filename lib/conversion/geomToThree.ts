@@ -12,6 +12,9 @@ import {
 import { Doc } from "../state/doc";
 import { LoftId, PolylineId, WorkPlaneId } from "../util/uid";
 
+// Number of subdivisions for loft surfaces (both along polylines and across rungs)
+export const LOFT_SUBDIVISIONS = 3;
+
 interface RenderedPolyline {
   id: string;
   vertices: THREE.Vector3[]; // Local 2D coords if on work plane, world coords if standalone
@@ -133,10 +136,6 @@ export function polylineTableToThree(
   return result;
 }
 
-// Number of subdivisions for loft surfaces (both along polylines and across rungs)
-export const LOFT_SUBDIVISIONS = 3;
-
-// Subdivide vertices along a polyline by adding intermediate points
 function subdivideVertices(
   vertices: THREE.Vector3[],
   subdivisions: number
@@ -157,44 +156,19 @@ function subdivideVertices(
   return result;
 }
 
-function loftToThree(
-  id: LoftId,
-  loftEntity: LoftEntity,
-  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
-  polylines: Doc["polylines"]
-): RenderedLoft | null {
-  const polyline1Entity = polylines[loftEntity.polyline1];
-  const polyline2Entity = polylines[loftEntity.polyline2];
-  if (!polyline1Entity || !polyline2Entity) {
-    return null;
-  }
+export function computeLoftRungs(
+  polyline1: Polyline2,
+  polyline2: Polyline2,
+  workPlane1: THREE.Group | undefined,
+  workPlane2: THREE.Group | undefined,
+  subdivisions: number = LOFT_SUBDIVISIONS
+): THREE.Vector3[][] {
+  const vertices1 = polyline2ToWorldVertices(polyline1, workPlane1);
+  const vertices2 = polyline2ToWorldVertices(polyline2, workPlane2);
 
-  // Get work planes for transformation
-  const workPlane1 = polyline1Entity.workPlaneId
-    ? workPlanes.find((wp) => wp.id === polyline1Entity.workPlaneId)?.workPlane
-    : undefined;
-  const workPlane2 = polyline2Entity.workPlaneId
-    ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)?.workPlane
-    : undefined;
+  const subdividedVertices1 = subdivideVertices(vertices1, subdivisions);
+  const subdividedVertices2 = subdivideVertices(vertices2, subdivisions);
 
-  // Apply loft-level shifts to polyline data, then convert to world space
-  const shiftedPolyline1 = polyline2Shift(
-    polyline1Entity.polyline,
-    loftEntity.polyline1Shift ?? 0
-  );
-  const shiftedPolyline2 = polyline2Shift(
-    polyline2Entity.polyline,
-    loftEntity.polyline2Shift ?? 0
-  );
-
-  const vertices1 = polyline2ToWorldVertices(shiftedPolyline1, workPlane1);
-  const vertices2 = polyline2ToWorldVertices(shiftedPolyline2, workPlane2);
-
-  // Subdivide both polylines for smoother surfaces
-  const subdividedVertices1 = subdivideVertices(vertices1, LOFT_SUBDIVISIONS);
-  const subdividedVertices2 = subdivideVertices(vertices2, LOFT_SUBDIVISIONS);
-
-  // Combine vertices into loft segments (ladder rungs: array of arrays)
   const rungs: THREE.Vector3[][] = [];
   const maxCount = Math.max(
     subdividedVertices1.length,
@@ -206,11 +180,50 @@ function loftToThree(
     subdividedVertices2.length > 0 ? subdividedVertices2.length - 1 : 0;
 
   for (let i = 0; i < maxCount; i++) {
-    const idx1 = Math.min(i, lastIdx1);
-    const idx2 = Math.min(i, lastIdx2);
-    // Each rung connects corresponding vertices (or last vertex if one is shorter)
-    rungs.push([subdividedVertices1[idx1], subdividedVertices2[idx2]]);
+    rungs.push([
+      subdividedVertices1[Math.min(i, lastIdx1)],
+      subdividedVertices2[Math.min(i, lastIdx2)],
+    ]);
   }
+
+  return rungs;
+}
+
+function loftToThree(
+  id: LoftId,
+  loftEntity: LoftEntity,
+  workPlanes: Array<{ workPlane: THREE.Group; id: string }>,
+  polylines: Doc["polylines"]
+): RenderedLoft | null {
+  const pl1 = polylines[loftEntity.polyline1];
+  const pl2 = polylines[loftEntity.polyline2];
+  if (!pl1 || !pl2) {
+    return null;
+  }
+
+  const workPlane1 = pl1.workPlaneId
+    ? workPlanes.find((wp) => wp.id === pl1.workPlaneId)?.workPlane
+    : undefined;
+  const workPlane2 = pl2.workPlaneId
+    ? workPlanes.find((wp) => wp.id === pl2.workPlaneId)?.workPlane
+    : undefined;
+
+  const shiftedPolyline1 = polyline2Shift(
+    pl1.polyline,
+    loftEntity.polyline1Shift ?? 0
+  );
+  const shiftedPolyline2 = polyline2Shift(
+    pl2.polyline,
+    loftEntity.polyline2Shift ?? 0
+  );
+
+  const rungs = computeLoftRungs(
+    shiftedPolyline1,
+    shiftedPolyline2,
+    workPlane1,
+    workPlane2,
+    LOFT_SUBDIVISIONS
+  );
 
   return { id, rungs, subdivisions: LOFT_SUBDIVISIONS };
 }

@@ -1,9 +1,9 @@
 "use client";
 import { colors } from "@/components/colors";
 import {
+  computeLoftRungs,
   LOFT_SUBDIVISIONS,
   loftTableToThree,
-  polyline2ToWorldVertices,
   polylineTableToThree,
   WorkPlane,
   workPlanesTableToThree,
@@ -212,8 +212,6 @@ export function RenderEntities({
       {renderedWorkPlanes
         .filter(({ id }) => !workPlanes[id as WorkPlaneId]?.hidden)
         .map(({ workPlane, id }) => {
-          const workPlaneId = id as WorkPlaneId;
-
           const workPlanePolylines = renderedPolylines.filter(
             (p) =>
               p.workPlaneId === id && !polylines[p.id as PolylineId]?.hidden
@@ -362,7 +360,9 @@ export function RenderEntities({
           const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
           if (!geometry) return null;
           const selected = isSelected(handle);
-          const color = selected ? colors.canvas.selected : colors.canvas.unselected;
+          const color = selected
+            ? colors.canvas.selected
+            : colors.canvas.unselected;
           // Flatten rungs for pathPoints (used for selection)
           const pathPoints = loft.rungs.flat();
           return (
@@ -524,28 +524,7 @@ function renderLine(
   return line;
 }
 
-// Subdivide vertices along a polyline by adding intermediate points
-function subdivideVertices(
-  vertices: THREE.Vector3[],
-  subdivisions: number
-): THREE.Vector3[] {
-  if (vertices.length < 2 || subdivisions < 1) return vertices;
-
-  const result: THREE.Vector3[] = [];
-  for (let i = 0; i < vertices.length - 1; i++) {
-    result.push(vertices[i].clone());
-    const v1 = vertices[i];
-    const v2 = vertices[i + 1];
-    for (let j = 1; j <= subdivisions; j++) {
-      const t = j / (subdivisions + 1);
-      result.push(new THREE.Vector3().lerpVectors(v1, v2, t));
-    }
-  }
-  result.push(vertices[vertices.length - 1].clone());
-  return result;
-}
-
-// Helper function to update loft geometry during dragging
+// Updates loft geometry during work plane dragging
 function updateLineGeometry(
   loftId: string,
   loftEntity: {
@@ -569,7 +548,7 @@ function updateLineGeometry(
   const loftGeometry = loftRefs.current.get(loftId);
   if (!loftGeometry) return;
 
-  // Get work planes for transformation
+  // Use currentWorkPlane for the dragging plane, otherwise look up from refs
   const wp1 =
     polyline1.workPlaneId === workPlaneId
       ? currentWorkPlane
@@ -582,7 +561,6 @@ function updateLineGeometry(
   if (wp1) wp1.updateMatrixWorld(true);
   if (wp2) wp2.updateMatrixWorld(true);
 
-  // Apply loft-level shifts to polyline data, then convert to world space
   const shiftedPolyline1 = polyline2Shift(
     polyline1.polyline,
     loftEntity.polyline1Shift ?? 0
@@ -592,37 +570,13 @@ function updateLineGeometry(
     loftEntity.polyline2Shift ?? 0
   );
 
-  // Recompute vertices in world space
-  const vertices1 = polyline2ToWorldVertices(
+  const rungs = computeLoftRungs(
     shiftedPolyline1,
-    wp1 || undefined
-  );
-  const vertices2 = polyline2ToWorldVertices(
     shiftedPolyline2,
-    wp2 || undefined
+    wp1 || undefined,
+    wp2 || undefined,
+    LOFT_SUBDIVISIONS
   );
-
-  // Subdivide both polylines for smoother surfaces
-  const subdividedVertices1 = subdivideVertices(vertices1, LOFT_SUBDIVISIONS);
-  const subdividedVertices2 = subdivideVertices(vertices2, LOFT_SUBDIVISIONS);
-
-  // Combine vertices into loft segments (ladder rungs: array of arrays)
-  const rungs: THREE.Vector3[][] = [];
-  const maxCount = Math.max(
-    subdividedVertices1.length,
-    subdividedVertices2.length
-  );
-  const lastIdx1 =
-    subdividedVertices1.length > 0 ? subdividedVertices1.length - 1 : 0;
-  const lastIdx2 =
-    subdividedVertices2.length > 0 ? subdividedVertices2.length - 1 : 0;
-
-  for (let i = 0; i < maxCount; i++) {
-    const idx1 = Math.min(i, lastIdx1);
-    const idx2 = Math.min(i, lastIdx2);
-    // Each rung connects corresponding vertices (or last vertex if one is shorter)
-    rungs.push([subdividedVertices1[idx1], subdividedVertices2[idx2]]);
-  }
 
   // Update line geometry positions and indices from rungs
   const positions: number[] = [];
