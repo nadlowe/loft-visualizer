@@ -1,5 +1,6 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -46,7 +47,7 @@ export function Grid({
   minCellSizePixels = 2,
   fadeBandPixels = 5,
   opacity = 0.4,
-  colorGrid = "#cccccc",
+  colorGrid = colors.canvas.grid,
   planeSize = 40000,
   followCamera = false,
   followSnap,

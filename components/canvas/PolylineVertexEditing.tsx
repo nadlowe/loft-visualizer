@@ -1,6 +1,6 @@
 "use client";
 
-import { colors } from "@/components/ui/colors";
+import { colors } from "@/components/colors";
 import {
   findClosestSegment,
   getIntersectionPlane,
@@ -940,7 +940,7 @@ function VertexHandle({
   useEffect(() => {
     if (materialRef.current) {
       materialRef.current.color.setHex(
-        isSelected ? colors.selection.highlight : 0xffffff
+        isSelected ? colors.canvas.selected : colors.canvas.white
       );
     }
   }, [isSelected]);
@@ -964,7 +964,7 @@ function VertexHandle({
         <sphereGeometry args={[0.05, 16, 16]} />
         <meshBasicMaterial
           ref={materialRef}
-          color={isSelected ? colors.selection.highlight : 0xffffff}
+          color={isSelected ? colors.canvas.selected : colors.canvas.white}
         />
       </mesh>
     </group>

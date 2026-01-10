@@ -1,5 +1,6 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { Vec2 } from "@/lib/geom/geomTypes";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo } from "react";
@@ -48,7 +49,7 @@ export function PolylineCmdPreview({
     geometry.setPositions(positions);
 
     const material = new LineMaterial({
-      color: 0xffffff,
+      color: colors.canvas.white,
       linewidth: 1.5,
       resolution: new THREE.Vector2(size.width, size.height),
     });
@@ -63,7 +64,7 @@ export function PolylineCmdPreview({
     geometry.setPositions([0, 0, 0, 1, 0, 0]); // Placeholder, updated in useFrame
 
     const material = new LineMaterial({
-      color: 0xffffff,
+      color: colors.canvas.white,
       linewidth: 1.5,
       resolution: new THREE.Vector2(size.width, size.height),
       dashed: true,
@@ -79,7 +80,7 @@ export function PolylineCmdPreview({
   // Snap indicator (plus/crosshair) - created once, position/scale updated in useFrame
   const snapIndicator = useMemo(() => {
     const group = new THREE.Group();
-    const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+    const material = new THREE.LineBasicMaterial({ color: colors.canvas.white });
 
     // Create horizontal line (unit size, will be scaled in useFrame)
     const hGeometry = new THREE.BufferGeometry().setFromPoints([

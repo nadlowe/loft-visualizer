@@ -10,7 +10,7 @@ import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { colors } from "../../colors";
+import { colors } from "@/components/colors";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
 import { DuplicateIcon, EyeIcon, EyeSlashIcon, TrashIcon } from "../Icons";

@@ -9,7 +9,7 @@ import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { shallow } from "zustand/shallow";
-import { colors } from "./colors";
+import { colors } from "@/components/colors";
 
 type HandleToEntityMap = {
   [K in EntityType]: Extract<Entity, { type: K }>;

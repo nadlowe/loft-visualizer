@@ -1,10 +1,10 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { entityName, workPlaneNew } from "@/lib/entity/entityNew";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "../../colors";
 import { EntityMenu } from "./EntityMenu";
 
 interface ExplorerProps {
@@ -91,7 +91,7 @@ export function Explorer({
       </div>
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+        className={`absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors ${colors.resize.hover}`}
       />
     </div>
   );

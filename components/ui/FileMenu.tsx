@@ -1,9 +1,9 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { colors } from "../colors";
 import { fonts } from "../fonts";
 
 function DocumentIcon({ className }: { className?: string }) {
@@ -99,13 +99,6 @@ export function FileMenu() {
     setSavedDocs(getSavedDocs());
     setIsDeleteDialogOpen(true);
     setIsMenuOpen(false);
-  };
-
-  const handleDeleteClick = (docId: string, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setDocToDelete(docId);
-    setIsDeleteDialogOpen(true);
-    setIsLoadDialogOpen(false);
   };
 
   const handleDeleteConfirm = () => {

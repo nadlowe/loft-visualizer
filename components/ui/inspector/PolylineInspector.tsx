@@ -5,7 +5,7 @@ import { polyline2Shift } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { colors } from "../../colors";
+import { colors } from "@/components/colors";
 import { EntityDropdown } from "../EntityDropdown";
 import { ShiftInput } from "./ShiftInput";
 

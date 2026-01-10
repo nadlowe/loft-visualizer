@@ -1,5 +1,7 @@
 "use client";
 
+import { colors } from "@/components/colors";
+
 interface SelectionWindowOverlayProps {
   start: { x: number; y: number } | null;
   current: { x: number; y: number } | null;
@@ -22,7 +24,7 @@ export function SelectionWindowOverlay({
 
   return (
     <div
-      className="pointer-events-none absolute border border-blue-500 bg-blue-500/10"
+      className={`pointer-events-none absolute border ${colors.selectionWindow.border} ${colors.selectionWindow.bg}`}
       style={{
         left: `${left}px`,
         top: `${top}px`,

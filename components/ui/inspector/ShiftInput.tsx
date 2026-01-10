@@ -1,7 +1,7 @@
 "use client";
 
+import { colors } from "@/components/colors";
 import { cn } from "@/lib/utils";
-import { colors } from "../colors";
 
 interface ShiftInputProps {
   label: string;

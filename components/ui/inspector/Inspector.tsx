@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "../../colors";
+import { colors } from "@/components/colors";
 import { InspectorHeader } from "./InspectorHeader";
 import { MultiInspector } from "./MultiInspector";
 import { NoSelection } from "./NoSelection";
@@ -71,7 +71,7 @@ export function Inspector({
       >
         <div
           onMouseDown={handleMouseDown}
-          className="absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+          className={`absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors ${colors.resize.hover}`}
         />
         <div className="flex-1 overflow-auto p-4"></div>
       </div>
@@ -91,7 +91,7 @@ export function Inspector({
     >
       <div
         onMouseDown={handleMouseDown}
-        className="absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-blue-500"
+        className={`absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors ${colors.resize.hover}`}
       />
       <div className="flex-1 overflow-auto p-4">
         {singleHandle && <InspectorHeader handle={singleHandle} />}

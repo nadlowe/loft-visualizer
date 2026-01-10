@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { colors } from "../../colors";
+import { colors } from "@/components/colors";
 import { fonts } from "../../fonts";
 
 export function NoSelection() {

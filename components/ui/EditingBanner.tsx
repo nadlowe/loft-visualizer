@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "../colors";
+import { colors } from "@/components/colors";
 import { fonts } from "../fonts";
 
 export function EditingBanner() {
@@ -50,7 +50,7 @@ export function EditingBanner() {
             onClick={handleToggle}
             className={cn(
               "relative h-5 w-9 rounded-full transition-colors",
-              closeLoop ? "bg-blue-500" : "bg-gray-600"
+              closeLoop ? colors.toggle.on : colors.toggle.off
             )}
           >
             <span

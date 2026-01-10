@@ -1,5 +1,5 @@
 "use client";
-import { colors } from "@/components/ui/colors";
+import { colors } from "@/components/colors";
 import {
   LOFT_SUBDIVISIONS,
   loftTableToThree,
@@ -362,7 +362,7 @@ export function RenderEntities({
           const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
           if (!geometry) return null;
           const selected = isSelected(handle);
-          const color = selected ? colors.selection.highlight : 0x888888;
+          const color = selected ? colors.canvas.selected : colors.canvas.unselected;
           // Flatten rungs for pathPoints (used for selection)
           const pathPoints = loft.rungs.flat();
           return (
@@ -506,11 +506,11 @@ function renderLine(
   const color =
     handle.type === "LOFT"
       ? selected
-        ? colors.selection.highlight
-        : 0x888888
+        ? colors.canvas.selected
+        : colors.canvas.unselected
       : selected
-        ? colors.selection.highlight
-        : 0xffffff;
+        ? colors.canvas.selected
+        : colors.canvas.white;
 
   const material = new LineMaterial({
     color,

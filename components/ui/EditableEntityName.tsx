@@ -5,7 +5,7 @@ import { EntityHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { colors } from "../colors";
+import { colors } from "@/components/colors";
 import { fonts } from "../fonts";
 
 interface EditableEntityNameProps {

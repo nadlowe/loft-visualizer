@@ -5,7 +5,7 @@ import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { colors } from "../../colors";
+import { colors } from "@/components/colors";
 
 function NumberInput({
   value,

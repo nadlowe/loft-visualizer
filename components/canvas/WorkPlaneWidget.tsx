@@ -1,4 +1,5 @@
 "use client";
+import { colors } from "@/components/colors";
 import { WorkPlane } from "@/lib/conversion/geomToThree";
 import { TransformControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
@@ -182,7 +183,7 @@ export function WorkPlaneWidget({
             <mesh geometry={new THREE.ShapeGeometry(workPlane.shape)}>
               <meshStandardMaterial
                 side={THREE.DoubleSide}
-                color="#FFD700"
+                color={colors.canvas.workPlane}
                 opacity={0.75}
                 transparent
               />
@@ -198,7 +199,7 @@ export function WorkPlaneWidget({
                   new THREE.Vector3(0, 0, 1),
                   new THREE.Vector3(0, 0, 0),
                   1,
-                  0xff0000,
+                  colors.canvas.axis.x,
                   0.1,
                   0.05,
                 ]}
@@ -210,7 +211,7 @@ export function WorkPlaneWidget({
                   new THREE.Vector3(1, 0, 0),
                   new THREE.Vector3(0, 0, 0),
                   0.8,
-                  0x0000ff,
+                  colors.canvas.axis.z,
                   0.08,
                   0.04,
                 ]}
@@ -222,7 +223,7 @@ export function WorkPlaneWidget({
                   new THREE.Vector3(0, 1, 0),
                   new THREE.Vector3(0, 0, 0),
                   0.8,
-                  0x00ff00,
+                  colors.canvas.axis.y,
                   0.08,
                   0.04,
                 ]}
