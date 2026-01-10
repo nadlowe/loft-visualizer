@@ -237,6 +237,7 @@ export function WorkPlaneWidget({
 
       {/* Transform controls for rotation - attached to empty group at origin */}
       {/* Only show when Shift is held */}
+      {/* space="local" keeps rotation axes relative to the plane (barrel roll about normal) */}
       {enabled &&
         showRotate &&
         isShiftHeld &&
@@ -245,6 +246,7 @@ export function WorkPlaneWidget({
             ref={rotateControlsRef}
             object={rotationControlsAnchorRef.current}
             mode="rotate"
+            space="local"
             size={0.5}
             onChange={handleRotationChange}
             onMouseDown={() => {
