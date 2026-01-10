@@ -43,5 +43,5 @@ Pick one vertex on one and then pick the closest vertex on the other... then use
 Then final steps...
 
 1. Finish above... make sure all geometric operations have unit tests.
-2. Delete all unused steps.
+2. Delete all unused steps. [ DONE ]
 3. Create a readme file explaining the repo.
