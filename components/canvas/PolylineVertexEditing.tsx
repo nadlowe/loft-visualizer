@@ -114,6 +114,10 @@ export function PolylineVertexEditing({
     isSelected,
   });
 
+  // Refs for 2D double-click detection
+  const last2DClickTimeRef = useRef<number>(0);
+  const last2DClickPosRef = useRef<{ x: number; y: number } | null>(null);
+
   // Manual click detection for 2D mode using screen-space distance
   useEffect(() => {
     if (!is2D || !polyline) return;
@@ -126,6 +130,19 @@ export function PolylineVertexEditing({
       const rect = renderer.domElement.getBoundingClientRect();
       const clickX = e.clientX;
       const clickY = e.clientY;
+
+      // Check for double-click
+      const currentTime = Date.now();
+      const timeSinceLastClick = currentTime - last2DClickTimeRef.current;
+      const lastPos = last2DClickPosRef.current;
+      const isDoubleClick =
+        timeSinceLastClick < 300 &&
+        lastPos &&
+        Math.abs(clickX - lastPos.x) < 10 &&
+        Math.abs(clickY - lastPos.y) < 10;
+
+      last2DClickTimeRef.current = currentTime;
+      last2DClickPosRef.current = { x: clickX, y: clickY };
 
       // Check each vertex's screen position
       const count = Math.floor(polyline.polyline.length / 2);
@@ -159,6 +176,7 @@ export function PolylineVertexEditing({
       }
 
       if (closestIndex >= 0) {
+        // Clicked on a vertex
         isClickingVertexRef.current = true;
         requestAnimationFrame(() => {
           isClickingVertexRef.current = false;
@@ -199,6 +217,43 @@ export function PolylineVertexEditing({
         // Start drag
         setSelectionRect(null);
         handleVertexDragStart(closestIndex);
+      } else if (isDoubleClick && count >= 2) {
+        // Double-click on empty space - insert vertex
+        // Convert screen coords to local coords using unproject (same as 2D drag)
+        const ndcX = ((clickX - rect.left) / rect.width) * 2 - 1;
+        const ndcY = -((clickY - rect.top) / rect.height) * 2 + 1;
+        const worldPos = new THREE.Vector3(ndcX, ndcY, 0).unproject(camera);
+
+        let localX = worldPos.x;
+        let localY = worldPos.y;
+        if (workPlane) {
+          workPlane.updateMatrixWorld(true);
+          const invMatrix = new THREE.Matrix4()
+            .copy(workPlane.matrixWorld)
+            .invert();
+          worldPos.applyMatrix4(invMatrix);
+          localX = worldPos.x;
+          localY = worldPos.y;
+        }
+
+        const { segmentIndex } = findClosestSegment(
+          { x: localX, y: localY },
+          polyline.polyline
+        );
+        const insertIndex = (segmentIndex + 1) * 2;
+
+        updateEntity(polylineHandle, (entity) => {
+          const newPolyline = [...entity.polyline];
+          newPolyline.splice(insertIndex, 0, localX, localY);
+          return { ...entity, polyline: newPolyline };
+        });
+
+        const newVertexHandle: VertexHandle = {
+          type: "VERTEX",
+          polylineId,
+          vertexIndex: segmentIndex + 1,
+        };
+        selectOnly(newVertexHandle);
       }
     };
 
@@ -210,6 +265,7 @@ export function PolylineVertexEditing({
     is2D,
     polyline,
     polylineId,
+    polylineHandle,
     workPlane,
     camera,
     renderer,
@@ -222,6 +278,7 @@ export function PolylineVertexEditing({
     isSelected,
     setSelectionRect,
     handleVertexDragStart,
+    updateEntity,
   ]);
 
   // Mouse event listeners for dragging
