@@ -1,21 +1,23 @@
 "use client";
 
-import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
+import {
+  DRAG_THRESHOLD,
+  findClosestPolyline,
+  findPolylinesInRect,
+  getSelectableLines,
+  GROUND_PLANE,
+  screenToPointer,
+  screenToWorld,
+} from "@/lib/canvas/selectionUtils";
 import { hashToHandle, SelectableHandle } from "@/lib/entity/handleTypes";
+import { usePolylineDrag } from "@/lib/hooks/usePolylineDrag";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useThree } from "@react-three/fiber";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import * as THREE from "three";
-import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { SelectionWindowOverlay } from "./SelectionWindowOverlay";
-
-const DRAG_THRESHOLD = 5;
-const SELECTION_THRESHOLD = 0.1;
-const PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-
-type SelectableLine = Line2 | THREE.LineSegments;
 
 interface SelectionProps {
   is2D: boolean;
@@ -23,7 +25,7 @@ interface SelectionProps {
 }
 
 export function Selection({ is2D, onDraggingChange }: SelectionProps) {
-  const { raycaster, pointer, camera, gl, scene } = useThree();
+  const { raycaster, pointer, camera, gl: renderer, scene } = useThree();
   const {
     selectOnly,
     toggleSelection,
@@ -33,12 +35,10 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
     cmd,
     setEditingPolylineId,
     editingPolylineId,
-    doc,
-    updatePolyline,
-    saveSnapshot,
   } = useStore();
+
   const isPanningRef = useRef(false);
-  const spaceKeyPressedRef = useRef(false);
+  const spaceKeyPressedRef = handleSpaceKeyPressedFunc(renderer.domElement);
   const mouseDownPosRef = useRef<{ x: number; y: number } | null>(null);
   const lastClickTimeRef = useRef<number>(0);
   const lastClickHandleRef = useRef<SelectableHandle | null>(null);
@@ -48,30 +48,113 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
     canvasRect: DOMRect;
   } | null>(null);
 
-  // Polyline dragging state
-  const [draggingPolylineId, setDraggingPolylineId] =
-    useState<PolylineId | null>(null);
-  const dragStartLocalRef = useRef<{ x: number; y: number } | null>(null);
-  const dragStartVerticesRef = useRef<number[] | null>(null);
-  // Pending drag - set on mousedown, converted to actual drag on mousemove if threshold exceeded
-  const pendingDragRef = useRef<{
-    polylineId: PolylineId;
-    localStart: { x: number; y: number };
-    vertices: number[];
-  } | null>(null);
+  // Clear selection rect when entering vertex editing mode
+  useEffect(() => {
+    if (editingPolylineId) {
+      setSelectionRect(null);
+    }
+  }, [editingPolylineId]);
 
-  // Get work planes for coordinate transformation
-  const workPlanes = useMemo(
-    () => workPlanesTableToThree(doc.workPlanes),
-    [doc.workPlanes]
-  );
+  const {
+    draggingPolylineId,
+    hasPendingDrag,
+    tryStartPendingDrag,
+    checkStartDrag,
+    handleDragMove,
+    endDrag,
+    clearPendingDrag,
+  } = usePolylineDrag({
+    scene,
+    camera,
+    renderer,
+    raycaster,
+    pointer,
+    is2D,
+    onDraggingChange,
+  });
 
-  const resetSelectionState = useCallback(() => {
-    setSelectionRect(null);
-    mouseDownPosRef.current = null;
-  }, []);
+  useMouseEventListeners({
+    renderer,
+    cmd,
+    handleMouseDown: handleMouseDownFunc({
+      renderer,
+      cmd,
+      editingPolylineId,
+      spaceKeyPressedRef,
+      isPanningRef,
+      mouseDownPosRef,
+      setSelectionRect,
+      tryStartPendingDrag,
+      is2D,
+    }),
+    handleMouseMove: handleMouseMoveFunc({
+      isPanningRef,
+      editingPolylineId,
+      mouseDownPosRef,
+      hasPendingDrag,
+      checkStartDrag,
+      handleDragMove,
+      is2D,
+      selectionRect,
+      setSelectionRect,
+      renderer,
+    }),
+    handleMouseUp: handleMouseUpFunc({
+      draggingPolylineId,
+      endDrag,
+      mouseDownPosRef,
+      clearPendingDrag,
+      renderer,
+      cmd,
+      editingPolylineId,
+      isPanningRef,
+      resetSelectionState: useCallback(() => {
+        setSelectionRect(null);
+        mouseDownPosRef.current = null;
+      }, []),
+      is2D,
+      selectionRect,
+      camera,
+      handleWindowSelection: handleWindowSelectionFunc(
+        scene,
+        selectMultiple,
+        selectedHandles,
+        clearSelection
+      ),
+      pointer,
+      raycaster,
+      handleClickSelection: handleClickSelectionFunc({
+        scene,
+        is2D,
+        camera,
+        lastClickTimeRef,
+        lastClickHandleRef,
+        clearSelection,
+        setEditingPolylineId,
+        toggleSelection,
+        selectOnly,
+      }),
+    }),
+  });
 
-  const handleWindowSelection = useCallback(
+  useSelectionOverlay({
+    editingPolylineId,
+    isPanningRef,
+    setSelectionRect,
+    renderer,
+    selectionRect,
+  });
+
+  return null;
+}
+
+function handleWindowSelectionFunc(
+  scene: THREE.Scene<THREE.Object3DEventMap>,
+  selectMultiple: (handles: SelectableHandle[]) => void,
+  selectedHandles: Set<SelectableHandle>,
+  clearSelection: () => void
+) {
+  return useCallback(
     (e: MouseEvent, startWorld: THREE.Vector3, endWorld: THREE.Vector3) => {
       const rectMin = new THREE.Vector3(
         Math.min(startWorld.x, endWorld.x),
@@ -85,7 +168,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       );
 
       const lines = getSelectableLines(scene);
-      const selectedLines = findPolylinesInRectangle(rectMin, rectMax, lines);
+      const selectedLines = findPolylinesInRect(rectMin, rectMax, lines);
 
       if (selectedLines.length > 0) {
         const handles = selectedLines
@@ -103,8 +186,136 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
     },
     [scene, selectedHandles, selectMultiple, clearSelection]
   );
+}
 
-  const handleClickSelection = useCallback(
+function handleSpaceKeyPressedFunc(domElement: HTMLCanvasElement) {
+  const spaceKeyPressedRef = useRef(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Space" && e.target === domElement) {
+        spaceKeyPressedRef.current = true;
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        spaceKeyPressedRef.current = false;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [domElement]);
+
+  return spaceKeyPressedRef;
+}
+
+function handleMouseMoveFunc({
+  isPanningRef,
+  editingPolylineId,
+  mouseDownPosRef,
+  hasPendingDrag,
+  checkStartDrag,
+  handleDragMove,
+  is2D,
+  selectionRect,
+  setSelectionRect,
+  renderer,
+}: {
+  isPanningRef: React.RefObject<boolean>;
+  editingPolylineId: PolylineId | null;
+  mouseDownPosRef: React.RefObject<{ x: number; y: number } | null>;
+  hasPendingDrag: () => boolean;
+  checkStartDrag: (
+    clientX: number,
+    clientY: number,
+    mouseDownPos: { x: number; y: number }
+  ) => boolean;
+  handleDragMove: (clientX: number, clientY: number) => boolean;
+  is2D: boolean;
+  selectionRect: {
+    start: { x: number; y: number };
+    current: { x: number; y: number };
+    canvasRect: DOMRect;
+  } | null;
+  setSelectionRect: React.Dispatch<
+    React.SetStateAction<{
+      start: { x: number; y: number };
+      current: { x: number; y: number };
+      canvasRect: DOMRect;
+    } | null>
+  >;
+  renderer: THREE.WebGLRenderer;
+}) {
+  return useCallback(
+    (e: MouseEvent) => {
+      if (isPanningRef.current || editingPolylineId) return;
+
+      // Check if pending drag should start
+      if (
+        mouseDownPosRef.current &&
+        hasPendingDrag() &&
+        checkStartDrag(e.clientX, e.clientY, mouseDownPosRef.current)
+      ) {
+        return;
+      }
+
+      // Handle active drag
+      if (handleDragMove(e.clientX, e.clientY)) {
+        return;
+      }
+
+      // Update selection rectangle
+      if (mouseDownPosRef.current && is2D && selectionRect) {
+        setSelectionRect({
+          ...selectionRect,
+          current: { x: e.clientX, y: e.clientY },
+          canvasRect: renderer.domElement.getBoundingClientRect(),
+        });
+      }
+    },
+    [
+      isPanningRef,
+      editingPolylineId,
+      mouseDownPosRef,
+      hasPendingDrag,
+      checkStartDrag,
+      handleDragMove,
+      is2D,
+      selectionRect,
+      setSelectionRect,
+      renderer,
+    ]
+  );
+}
+
+function handleClickSelectionFunc({
+  scene,
+  is2D,
+  camera,
+  lastClickTimeRef,
+  lastClickHandleRef,
+  clearSelection,
+  setEditingPolylineId,
+  toggleSelection,
+  selectOnly,
+}: {
+  scene: THREE.Scene;
+  is2D: boolean;
+  camera: THREE.Camera;
+  lastClickTimeRef: React.RefObject<number>;
+  lastClickHandleRef: React.RefObject<SelectableHandle | null>;
+  clearSelection: () => void;
+  setEditingPolylineId: (id: PolylineId | null) => void;
+  toggleSelection: (handle: SelectableHandle) => void;
+  selectOnly: (handle: SelectableHandle) => void;
+}) {
+  return useCallback(
     (e: MouseEvent, intersection: THREE.Vector3) => {
       const lines = getSelectableLines(scene);
       const closest = findClosestPolyline(intersection, lines, is2D, camera);
@@ -115,7 +326,7 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
         const handle = hashToHandle(closest.line.userData.handleHash as string);
         if (!handle) return;
 
-        // Check for double-click (only for polylines, not vertices)
+        // Check for double-click (only for polylines)
         const currentTime = Date.now();
         const timeSinceLastClick = currentTime - lastClickTimeRef.current;
         const lastHandle = lastClickHandleRef.current;
@@ -127,7 +338,6 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
           handle.id === lastHandle.id;
 
         if (isDoubleClick) {
-          // Enter vertex editing mode and clear entity selection
           clearSelection();
           setEditingPolylineId(handle.id as PolylineId);
           lastClickTimeRef.current = 0;
@@ -151,292 +361,150 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       scene,
       is2D,
       camera,
-      toggleSelection,
-      selectOnly,
+      lastClickTimeRef,
+      lastClickHandleRef,
       clearSelection,
       setEditingPolylineId,
+      toggleSelection,
+      selectOnly,
     ]
   );
+}
 
-  const handleMouseDown = useCallback(
+function handleMouseDownFunc({
+  renderer,
+  cmd,
+  editingPolylineId,
+  spaceKeyPressedRef,
+  isPanningRef,
+  mouseDownPosRef,
+  setSelectionRect,
+  tryStartPendingDrag,
+  is2D,
+}: {
+  renderer: THREE.WebGLRenderer;
+  cmd: { type: string } | null;
+  editingPolylineId: PolylineId | null;
+  spaceKeyPressedRef: React.RefObject<boolean>;
+  isPanningRef: React.RefObject<boolean>;
+  mouseDownPosRef: React.RefObject<{ x: number; y: number } | null>;
+  setSelectionRect: React.Dispatch<
+    React.SetStateAction<{
+      start: { x: number; y: number };
+      current: { x: number; y: number };
+      canvasRect: DOMRect;
+    } | null>
+  >;
+  tryStartPendingDrag: (clientX: number, clientY: number) => boolean;
+  is2D: boolean;
+}) {
+  return useCallback(
     (e: MouseEvent) => {
       if (
-        e.target !== gl.domElement ||
+        e.target !== renderer.domElement ||
         cmd?.type === "DRAW_POLYLINE" ||
         editingPolylineId
       )
         return;
 
-      // Check if middle mouse button, right mouse button, or left button with space key (panning)
+      // Check for panning (middle/right mouse button or space+left click)
       if (
         e.button === 1 ||
         e.button === 2 ||
         (e.button === 0 && spaceKeyPressedRef.current)
       ) {
         isPanningRef.current = true;
-        setSelectionRect(null); // Clear selection rect if panning starts
+        setSelectionRect(null);
         return;
       }
 
       mouseDownPosRef.current = { x: e.clientX, y: e.clientY };
 
-      // Check if clicking on an already-selected polyline (for dragging)
-      if (e.button === 0) {
-        const rect = gl.domElement.getBoundingClientRect();
-        const pointerCoords = screenToPointer(e.clientX, e.clientY, rect);
-        pointer.x = pointerCoords.x;
-        pointer.y = pointerCoords.y;
-        raycaster.setFromCamera(pointer, camera);
-
-        const intersection = new THREE.Vector3();
-        if (raycaster.ray.intersectPlane(PLANE, intersection)) {
-          const lines = getSelectableLines(scene);
-          const closest = findClosestPolyline(
-            intersection,
-            lines,
-            is2D,
-            camera
-          );
-
-          if (closest) {
-            const handle = hashToHandle(
-              closest.line.userData.handleHash as string
-            );
-            if (handle && handle.type === "POLYLINE") {
-              // Check if this polyline is already selected
-              const isAlreadySelected = Array.from(selectedHandles).some(
-                (h) => h.type === "POLYLINE" && h.id === handle.id
-              );
-
-              if (isAlreadySelected) {
-                // Set up pending drag
-                const polyline = doc.polylines[handle.id as PolylineId];
-                if (polyline) {
-                  const wp = polyline.workPlaneId
-                    ? workPlanes.find((w) => w.id === polyline.workPlaneId)
-                        ?.workPlane
-                    : undefined;
-
-                  let localX: number, localY: number;
-                  if (wp) {
-                    wp.updateMatrixWorld(true);
-                    const matrix = wp.matrixWorld;
-                    const worldOrigin =
-                      new THREE.Vector3().setFromMatrixPosition(matrix);
-                    const worldXAxis = new THREE.Vector3()
-                      .setFromMatrixColumn(matrix, 0)
-                      .normalize();
-                    const worldYAxis = new THREE.Vector3()
-                      .setFromMatrixColumn(matrix, 1)
-                      .normalize();
-                    const worldZAxis = new THREE.Vector3()
-                      .setFromMatrixColumn(matrix, 2)
-                      .normalize();
-
-                    // Intersect with the work plane
-                    const workPlane3 = new THREE.Plane();
-                    workPlane3.setFromNormalAndCoplanarPoint(
-                      worldZAxis,
-                      worldOrigin
-                    );
-                    const wpIntersection = new THREE.Vector3();
-                    if (
-                      !raycaster.ray.intersectPlane(workPlane3, wpIntersection)
-                    ) {
-                      return;
-                    }
-
-                    const toIntersection = wpIntersection
-                      .clone()
-                      .sub(worldOrigin);
-                    localX = toIntersection.dot(worldXAxis);
-                    localY = toIntersection.dot(worldYAxis);
-                  } else {
-                    localX = intersection.x;
-                    localY = intersection.y;
-                  }
-
-                  pendingDragRef.current = {
-                    polylineId: handle.id as PolylineId,
-                    localStart: { x: localX, y: localY },
-                    vertices: [...polyline.polyline],
-                  };
-                  return; // Don't set up window selection
-                }
-              }
-            }
-          }
-        }
+      // Try to set up polyline drag if clicking on selected polyline
+      if (e.button === 0 && tryStartPendingDrag(e.clientX, e.clientY)) {
+        return;
       }
 
+      // Start window selection in 2D mode
       if (is2D && e.button === 0) {
         setSelectionRect({
           start: { x: e.clientX, y: e.clientY },
           current: { x: e.clientX, y: e.clientY },
-          canvasRect: gl.domElement.getBoundingClientRect(),
+          canvasRect: renderer.domElement.getBoundingClientRect(),
         });
       }
     },
     [
-      gl.domElement,
+      renderer,
       cmd,
-      is2D,
       editingPolylineId,
-      pointer,
-      raycaster,
-      camera,
-      scene,
-      selectedHandles,
-      doc.polylines,
-      workPlanes,
+      spaceKeyPressedRef,
+      isPanningRef,
+      mouseDownPosRef,
+      setSelectionRect,
+      tryStartPendingDrag,
+      is2D,
     ]
   );
+}
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      // If panning, don't show selection rect
-      if (isPanningRef.current || editingPolylineId) {
-        return;
-      }
-
-      // Check if we should start actual drag from pending drag
-      if (
-        pendingDragRef.current &&
-        mouseDownPosRef.current &&
-        !draggingPolylineId
-      ) {
-        const dx = Math.abs(e.clientX - mouseDownPosRef.current.x);
-        const dy = Math.abs(e.clientY - mouseDownPosRef.current.y);
-        if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
-          // Start actual drag
-          saveSnapshot();
-          setDraggingPolylineId(pendingDragRef.current.polylineId);
-          dragStartLocalRef.current = pendingDragRef.current.localStart;
-          dragStartVerticesRef.current = pendingDragRef.current.vertices;
-          onDraggingChange?.(true);
-          pendingDragRef.current = null;
-        }
-      }
-
-      // Handle polyline dragging
-      if (
-        draggingPolylineId &&
-        dragStartLocalRef.current &&
-        dragStartVerticesRef.current
-      ) {
-        const polyline = doc.polylines[draggingPolylineId];
-        if (!polyline) return;
-
-        const rect = gl.domElement.getBoundingClientRect();
-        const pointerCoords = screenToPointer(e.clientX, e.clientY, rect);
-        pointer.x = pointerCoords.x;
-        pointer.y = pointerCoords.y;
-        raycaster.setFromCamera(pointer, camera);
-
-        const wp = polyline.workPlaneId
-          ? workPlanes.find((w) => w.id === polyline.workPlaneId)?.workPlane
-          : undefined;
-
-        let localX: number, localY: number;
-
-        if (wp) {
-          wp.updateMatrixWorld(true);
-          const matrix = wp.matrixWorld;
-          const worldOrigin = new THREE.Vector3().setFromMatrixPosition(matrix);
-          const worldXAxis = new THREE.Vector3()
-            .setFromMatrixColumn(matrix, 0)
-            .normalize();
-          const worldYAxis = new THREE.Vector3()
-            .setFromMatrixColumn(matrix, 1)
-            .normalize();
-          const worldZAxis = new THREE.Vector3()
-            .setFromMatrixColumn(matrix, 2)
-            .normalize();
-
-          const plane = new THREE.Plane();
-          plane.setFromNormalAndCoplanarPoint(worldZAxis, worldOrigin);
-          const intersection = new THREE.Vector3();
-          if (!raycaster.ray.intersectPlane(plane, intersection)) return;
-
-          const toIntersection = intersection.clone().sub(worldOrigin);
-          localX = toIntersection.dot(worldXAxis);
-          localY = toIntersection.dot(worldYAxis);
-        } else {
-          const intersection = new THREE.Vector3();
-          if (!raycaster.ray.intersectPlane(PLANE, intersection)) return;
-          localX = intersection.x;
-          localY = intersection.y;
-        }
-
-        // Calculate delta from drag start
-        const deltaX = localX - dragStartLocalRef.current.x;
-        const deltaY = localY - dragStartLocalRef.current.y;
-
-        // Update all vertices by delta
-        const startVertices = dragStartVerticesRef.current;
-        const newVertices: number[] = [];
-        for (let i = 0; i < startVertices.length; i += 2) {
-          newVertices.push(startVertices[i] + deltaX);
-          newVertices.push(startVertices[i + 1] + deltaY);
-        }
-
-        updatePolyline(
-          draggingPolylineId,
-          (entity) => ({
-            ...entity,
-            polyline: newVertices,
-          }),
-          false
-        );
-        return;
-      }
-
-      if (mouseDownPosRef.current && is2D && selectionRect) {
-        setSelectionRect({
-          ...selectionRect,
-          current: { x: e.clientX, y: e.clientY },
-          canvasRect: gl.domElement.getBoundingClientRect(),
-        });
-      }
-    },
-    [
-      gl.domElement,
-      is2D,
-      selectionRect,
-      editingPolylineId,
-      draggingPolylineId,
-      doc.polylines,
-      workPlanes,
-      pointer,
-      raycaster,
-      camera,
-      updatePolyline,
-      saveSnapshot,
-      onDraggingChange,
-    ]
-  );
-
-  const handleMouseUp = useCallback(
+function handleMouseUpFunc({
+  draggingPolylineId,
+  endDrag,
+  mouseDownPosRef,
+  clearPendingDrag,
+  renderer,
+  cmd,
+  editingPolylineId,
+  isPanningRef,
+  resetSelectionState,
+  is2D,
+  selectionRect,
+  camera,
+  handleWindowSelection,
+  pointer,
+  raycaster,
+  handleClickSelection,
+}: {
+  draggingPolylineId: PolylineId | null;
+  endDrag: () => void;
+  mouseDownPosRef: React.RefObject<{ x: number; y: number } | null>;
+  clearPendingDrag: () => void;
+  renderer: THREE.WebGLRenderer;
+  cmd: { type: string } | null;
+  editingPolylineId: PolylineId | null;
+  isPanningRef: React.RefObject<boolean>;
+  resetSelectionState: () => void;
+  is2D: boolean;
+  selectionRect: {
+    start: { x: number; y: number };
+    current: { x: number; y: number };
+    canvasRect: DOMRect;
+  } | null;
+  camera: THREE.Camera;
+  handleWindowSelection: (
+    e: MouseEvent,
+    startWorld: THREE.Vector3,
+    endWorld: THREE.Vector3
+  ) => void;
+  pointer: THREE.Vector2;
+  raycaster: THREE.Raycaster;
+  handleClickSelection: (e: MouseEvent, intersection: THREE.Vector3) => void;
+}) {
+  return useCallback(
     (e: MouseEvent) => {
       // End polyline dragging
       if (draggingPolylineId) {
-        setDraggingPolylineId(null);
-        dragStartLocalRef.current = null;
-        dragStartVerticesRef.current = null;
-        pendingDragRef.current = null;
-        onDraggingChange?.(false);
+        endDrag();
         mouseDownPosRef.current = null;
         return;
       }
 
-      // Clear pending drag if we didn't actually drag (allows click/double-click)
-      if (pendingDragRef.current) {
-        pendingDragRef.current = null;
-        // Fall through to handle as a click
-      }
+      // Clear pending drag (allows click/double-click to proceed)
+      clearPendingDrag();
 
       if (
-        e.target !== gl.domElement ||
+        e.target !== renderer.domElement ||
         !mouseDownPosRef.current ||
         cmd?.type === "DRAW_POLYLINE" ||
         editingPolylineId
@@ -446,7 +514,6 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
         return;
       }
 
-      // If we were panning, don't do selection
       if (isPanningRef.current) {
         isPanningRef.current = false;
         resetSelectionState();
@@ -457,8 +524,9 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       const dy = Math.abs(e.clientY - mouseDownPosRef.current.y);
       const moved = dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD;
 
+      // Handle window selection
       if (is2D && selectionRect && moved) {
-        const rect = gl.domElement.getBoundingClientRect();
+        const rect = renderer.domElement.getBoundingClientRect();
         const startWorld = screenToWorld(
           selectionRect.start.x,
           selectionRect.start.y,
@@ -484,14 +552,15 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
         return;
       }
 
-      const rect = gl.domElement.getBoundingClientRect();
+      // Handle click selection
+      const rect = renderer.domElement.getBoundingClientRect();
       const pointerCoords = screenToPointer(e.clientX, e.clientY, rect);
       pointer.x = pointerCoords.x;
       pointer.y = pointerCoords.y;
       raycaster.setFromCamera(pointer, camera);
 
       const intersection = new THREE.Vector3();
-      if (!raycaster.ray.intersectPlane(PLANE, intersection)) {
+      if (!raycaster.ray.intersectPlane(GROUND_PLANE, intersection)) {
         resetSelectionState();
         return;
       }
@@ -500,73 +569,84 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       resetSelectionState();
     },
     [
-      gl.domElement,
+      draggingPolylineId,
+      endDrag,
+      mouseDownPosRef,
+      clearPendingDrag,
+      renderer,
       cmd,
+      editingPolylineId,
+      isPanningRef,
+      resetSelectionState,
       is2D,
       selectionRect,
       camera,
+      handleWindowSelection,
       pointer,
       raycaster,
-      handleWindowSelection,
       handleClickSelection,
-      resetSelectionState,
-      draggingPolylineId,
-      onDraggingChange,
-      editingPolylineId,
     ]
   );
+}
 
-  // Track space key for panning
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === "Space" && e.target === gl.domElement) {
-        spaceKeyPressedRef.current = true;
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === "Space") {
-        spaceKeyPressedRef.current = false;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-    };
-  }, [gl.domElement]);
-
+function useMouseEventListeners({
+  renderer,
+  cmd,
+  handleMouseDown,
+  handleMouseMove,
+  handleMouseUp,
+}: {
+  renderer: THREE.WebGLRenderer;
+  cmd: { type: string } | null;
+  handleMouseDown: (e: MouseEvent) => void;
+  handleMouseMove: (e: MouseEvent) => void;
+  handleMouseUp: (e: MouseEvent) => void;
+}) {
   useEffect(() => {
     if (cmd?.type === "DRAW_POLYLINE") return;
 
-    gl.domElement.addEventListener("mousedown", handleMouseDown);
-    gl.domElement.addEventListener("mousemove", handleMouseMove);
-    gl.domElement.addEventListener("mouseup", handleMouseUp);
+    renderer.domElement.addEventListener("mousedown", handleMouseDown);
+    renderer.domElement.addEventListener("mousemove", handleMouseMove);
+    renderer.domElement.addEventListener("mouseup", handleMouseUp);
 
     return () => {
-      gl.domElement.removeEventListener("mousedown", handleMouseDown);
-      gl.domElement.removeEventListener("mousemove", handleMouseMove);
-      gl.domElement.removeEventListener("mouseup", handleMouseUp);
+      renderer.domElement.removeEventListener("mousedown", handleMouseDown);
+      renderer.domElement.removeEventListener("mousemove", handleMouseMove);
+      renderer.domElement.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [gl.domElement, cmd, handleMouseDown, handleMouseMove, handleMouseUp]);
+  }, [renderer, cmd, handleMouseDown, handleMouseMove, handleMouseUp]);
+}
 
-  // Clear selection rect when entering vertex editing mode
+function useSelectionOverlay({
+  editingPolylineId,
+  isPanningRef,
+  setSelectionRect,
+  renderer,
+  selectionRect,
+}: {
+  editingPolylineId: string | null;
+  isPanningRef: React.MutableRefObject<boolean>;
+  setSelectionRect: React.Dispatch<
+    React.SetStateAction<{
+      start: { x: number; y: number };
+      current: { x: number; y: number };
+      canvasRect: DOMRect;
+    } | null>
+  >;
+  renderer: THREE.WebGLRenderer;
+  selectionRect: {
+    start: { x: number; y: number };
+    current: { x: number; y: number };
+    canvasRect: DOMRect;
+  } | null;
+}) {
   useEffect(() => {
-    if (editingPolylineId) {
-      setSelectionRect(null);
-    }
-  }, [editingPolylineId]);
-
-  useEffect(() => {
-    // Don't show overlay if editing vertices or panning
     if (editingPolylineId || isPanningRef.current) {
       setSelectionRect(null);
       return;
     }
 
-    const containerElement = gl.domElement.parentElement;
+    const containerElement = renderer.domElement.parentElement;
     if (!containerElement || !selectionRect) return;
 
     const overlayContainer = document.createElement("div");
@@ -594,144 +674,11 @@ export function Selection({ is2D, onDraggingChange }: SelectionProps) {
       root.unmount();
       overlayContainer.parentElement?.removeChild(overlayContainer);
     };
-  }, [selectionRect, gl.domElement, editingPolylineId]);
-
-  return null;
-}
-
-function getSelectableLines(scene: THREE.Scene): SelectableLine[] {
-  const lines: SelectableLine[] = [];
-  scene.traverse((object) => {
-    if (
-      (object instanceof Line2 || object instanceof THREE.LineSegments) &&
-      object.userData.handleHash
-    ) {
-      lines.push(object);
-    }
-  });
-  return lines;
-}
-
-function screenToPointer(clientX: number, clientY: number, rect: DOMRect) {
-  return {
-    x: ((clientX - rect.left) / rect.width) * 2 - 1,
-    y: -((clientY - rect.top) / rect.height) * 2 + 1,
-  };
-}
-
-function screenToWorld(
-  screenX: number,
-  screenY: number,
-  rect: DOMRect,
-  camera: THREE.Camera
-): THREE.Vector3 | null {
-  const pointer = screenToPointer(screenX, screenY, rect);
-  const raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera(new THREE.Vector2(pointer.x, pointer.y), camera);
-  const intersection = new THREE.Vector3();
-  return raycaster.ray.intersectPlane(PLANE, intersection)
-    ? intersection
-    : null;
-}
-
-function getWorldPathPoints(line: SelectableLine): THREE.Vector3[] {
-  line.updateMatrixWorld(true);
-  const pathPoints = line.userData.pathPoints as THREE.Vector3[];
-  if (!pathPoints || pathPoints.length < 2) return [];
-  return pathPoints.map((pt) => pt.clone().applyMatrix4(line.matrixWorld));
-}
-
-function pointToLineSegmentDistance(
-  point: THREE.Vector3,
-  p1: THREE.Vector3,
-  p2: THREE.Vector3
-): number {
-  const v = new THREE.Vector3().subVectors(p2, p1);
-  const w = new THREE.Vector3().subVectors(point, p1);
-  const c1 = w.dot(v);
-  if (c1 <= 0) return point.distanceTo(p1);
-  const c2 = v.dot(v);
-  if (c2 <= c1) return point.distanceTo(p2);
-  const b = c1 / c2;
-  return point.distanceTo(p1.clone().add(v.multiplyScalar(b)));
-}
-
-function findClosestPolyline(
-  clickPoint: THREE.Vector3,
-  lines: SelectableLine[],
-  is2D: boolean,
-  camera: THREE.Camera
-): { line: SelectableLine; distance: number } | null {
-  let closest: { line: SelectableLine; distance: number } | null = null;
-
-  for (const line of lines) {
-    const worldPathPoints = getWorldPathPoints(line);
-    if (worldPathPoints.length < 2) continue;
-
-    let minDistance = Infinity;
-
-    if (is2D) {
-      const projectedClick = new THREE.Vector3(clickPoint.x, clickPoint.y, 0);
-      const projected = worldPathPoints.map(
-        (pt) => new THREE.Vector3(pt.x, pt.y, 0)
-      );
-      for (let i = 0; i < projected.length - 1; i++) {
-        minDistance = Math.min(
-          minDistance,
-          pointToLineSegmentDistance(
-            projectedClick,
-            projected[i],
-            projected[i + 1]
-          )
-        );
-      }
-    } else {
-      const clickScreen = clickPoint.clone().project(camera);
-      for (let i = 0; i < worldPathPoints.length - 1; i++) {
-        const p1Screen = worldPathPoints[i].clone().project(camera);
-        const p2Screen = worldPathPoints[i + 1].clone().project(camera);
-        minDistance = Math.min(
-          minDistance,
-          pointToLineSegmentDistance(clickScreen, p1Screen, p2Screen)
-        );
-      }
-    }
-
-    if (
-      minDistance < SELECTION_THRESHOLD &&
-      (!closest || minDistance < closest.distance)
-    ) {
-      closest = { line, distance: minDistance };
-    }
-  }
-
-  return closest;
-}
-
-function polylineIntersectsRectangle(
-  pathPoints: THREE.Vector3[],
-  rectMin: THREE.Vector3,
-  rectMax: THREE.Vector3
-): boolean {
-  return pathPoints.some(
-    (point) =>
-      point.x >= rectMin.x &&
-      point.x <= rectMax.x &&
-      point.y >= rectMin.y &&
-      point.y <= rectMax.y
-  );
-}
-
-function findPolylinesInRectangle(
-  rectMin: THREE.Vector3,
-  rectMax: THREE.Vector3,
-  lines: SelectableLine[]
-): SelectableLine[] {
-  return lines.filter((line) => {
-    const worldPathPoints = getWorldPathPoints(line);
-    return (
-      worldPathPoints.length >= 2 &&
-      polylineIntersectsRectangle(worldPathPoints, rectMin, rectMax)
-    );
-  });
+  }, [
+    selectionRect,
+    renderer,
+    editingPolylineId,
+    isPanningRef,
+    setSelectionRect,
+  ]);
 }

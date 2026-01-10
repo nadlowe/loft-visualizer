@@ -36,8 +36,6 @@ export function RenderEntities({
     shallow
   );
   const isSelected = useStore((state) => state.isSelected);
-  const selectOnly = useStore((state) => state.selectOnly);
-  const toggleSelection = useStore((state) => state.toggleSelection);
   const updateWorkPlane = useStore((state) => state.updateWorkPlane);
 
   const [isDragging, setIsDragging] = useState(false);
