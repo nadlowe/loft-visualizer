@@ -1,8 +1,8 @@
 "use client";
 
 import { Vec2 } from "@/lib/geom/geomTypes";
-import { useThree } from "@react-three/fiber";
-import { useMemo } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
@@ -55,8 +55,11 @@ export function PolylineCmdPreview({
   }, [vertices, hoverPosition, size.width, size.height]);
 
   // Dashed line from hover position back to first vertex (when closeLoop enabled)
+  const closeLineMaterialRef = useRef<LineMaterial | null>(null);
+
   const closeLine = useMemo(() => {
     if (!closeLoop || !hoverPosition || vertices.length < 3) {
+      closeLineMaterialRef.current = null;
       return null;
     }
 
@@ -78,14 +81,24 @@ export function PolylineCmdPreview({
       linewidth: 1.5,
       resolution: new THREE.Vector2(size.width, size.height),
       dashed: true,
-      dashSize: 0.15,
-      gapSize: 0.1,
+      dashSize: 10,
+      gapSize: 6,
     });
+    closeLineMaterialRef.current = material;
 
     const line = new Line2(geometry, material);
     line.computeLineDistances();
     return line;
   }, [closeLoop, hoverPosition, vertices, size.width, size.height]);
+
+  // Update dash scale based on camera zoom each frame
+  useFrame(({ camera }) => {
+    if (closeLineMaterialRef.current) {
+      const zoom = (camera as THREE.OrthographicCamera).zoom || 1;
+      closeLineMaterialRef.current.dashSize = 10 / zoom;
+      closeLineMaterialRef.current.gapSize = 6 / zoom;
+    }
+  });
 
   if (!mainLine) {
     return null;
