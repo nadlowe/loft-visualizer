@@ -15,6 +15,7 @@ import { vertexHandleToHash } from "@/lib/entity/handleTypes";
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
 import { useVertexDrag } from "@/lib/hooks/useVertexDrag";
 import { useVertexWindowSelection } from "@/lib/hooks/useVertexWindowSelection";
+import { gridSnap } from "@/lib/snap/gridSnap";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -75,6 +76,7 @@ export function PolylineVertexEditing({
     draggingVertexIndex,
     clickStartPosRef,
     handleVertexDragStart,
+    handleVertexDragEnd,
     handleMouseMove,
     handleMouseUp,
   } = useVertexDrag({
@@ -224,7 +226,82 @@ export function PolylineVertexEditing({
 
   // Mouse event listeners for dragging
   useEffect(() => {
-    if (draggingVertexIndex !== null) {
+    if (draggingVertexIndex === null) return;
+
+    if (is2D) {
+      // 2D mode: use screen-to-world conversion instead of raycasting
+      const handle2DMouseMove = (e: MouseEvent) => {
+        if (draggingVertexIndex === null || !polyline) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        // Convert screen coords to NDC
+        const ndcX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        const ndcY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        // Unproject to world coordinates
+        const worldPos = new THREE.Vector3(ndcX, ndcY, 0).unproject(camera);
+
+        // Convert to local coordinates if there's a work plane
+        let localX = worldPos.x;
+        let localY = worldPos.y;
+        if (workPlane) {
+          workPlane.updateMatrixWorld(true);
+          const invMatrix = new THREE.Matrix4()
+            .copy(workPlane.matrixWorld)
+            .invert();
+          worldPos.applyMatrix4(invMatrix);
+          localX = worldPos.x;
+          localY = worldPos.y;
+        }
+
+        // Apply grid snap
+        const { gridSnapMode } = useStore.getState();
+        const snapped = gridSnap(localX, localY, gridSnapMode);
+        localX = snapped.x;
+        localY = snapped.y;
+
+        // Update polyline vertex
+        const newPolyline = [...polyline.polyline];
+        const vertexCount = Math.floor(newPolyline.length / 2);
+        const lastIdx = vertexCount - 1;
+
+        newPolyline[draggingVertexIndex * 2] = localX;
+        newPolyline[draggingVertexIndex * 2 + 1] = localY;
+
+        // If closed, link first and last vertices
+        if (polyline.closed && vertexCount >= 2) {
+          if (draggingVertexIndex === 0) {
+            newPolyline[lastIdx * 2] = localX;
+            newPolyline[lastIdx * 2 + 1] = localY;
+          } else if (draggingVertexIndex === lastIdx) {
+            newPolyline[0] = localX;
+            newPolyline[1] = localY;
+          }
+        }
+
+        updateEntity(
+          polylineHandle,
+          (entity) => ({
+            ...entity,
+            polyline: newPolyline,
+          }),
+          false
+        );
+      };
+
+      const handle2DMouseUp = () => {
+        clickStartPosRef.current = null;
+        handleVertexDragEnd();
+      };
+
+      renderer.domElement.addEventListener("mousemove", handle2DMouseMove);
+      renderer.domElement.addEventListener("mouseup", handle2DMouseUp);
+      return () => {
+        renderer.domElement.removeEventListener("mousemove", handle2DMouseMove);
+        renderer.domElement.removeEventListener("mouseup", handle2DMouseUp);
+      };
+    } else {
+      // 3D mode: use raycasting
       renderer.domElement.addEventListener("mousemove", handleMouseMove);
       renderer.domElement.addEventListener("mouseup", handleMouseUp);
       return () => {
@@ -232,7 +309,20 @@ export function PolylineVertexEditing({
         renderer.domElement.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [draggingVertexIndex, renderer, handleMouseMove, handleMouseUp]);
+  }, [
+    draggingVertexIndex,
+    renderer,
+    handleMouseMove,
+    handleMouseUp,
+    is2D,
+    camera,
+    workPlane,
+    polyline,
+    polylineHandle,
+    updateEntity,
+    handleVertexDragEnd,
+    clickStartPosRef,
+  ]);
 
   // Keyboard handlers
   useKeyboardHandlers({
@@ -414,28 +504,74 @@ function useKeyboardHandlers({
         if (hasSelectedVertices && polyline) {
           e.preventDefault();
 
-          const newPolyline = [...polyline.polyline];
-          const vertexCount = Math.floor(newPolyline.length / 2);
+          const vertexCount = Math.floor(polyline.polyline.length / 2);
           const lastIdx = vertexCount - 1;
 
-          const sortedIndices = [...selectedVertexIndices].sort(
-            (a, b) => b - a
-          );
-
-          if (vertexCount - sortedIndices.length >= 2) {
-            const deletingJoinedVertex =
-              polyline.closed &&
-              (sortedIndices.includes(0) || sortedIndices.includes(lastIdx));
-
-            for (const idx of sortedIndices) {
-              newPolyline.splice(idx * 2, 2);
+          if (polyline.closed) {
+            // For closed polylines, treat first and last as the same vertex
+            const indicesToDelete = new Set(selectedVertexIndices);
+            if (indicesToDelete.has(0) || indicesToDelete.has(lastIdx)) {
+              indicesToDelete.add(0);
+              indicesToDelete.add(lastIdx);
             }
-            updateEntity(polylineHandle, (entity) => ({
-              ...entity,
-              polyline: newPolyline,
-              closed: deletingJoinedVertex ? false : entity.closed,
-            }));
-            clearSelection();
+
+            // Count unique vertices (exclude duplicated last vertex)
+            const uniqueCount = lastIdx; // vertices 0 to lastIdx-1 are unique
+            const deletedCount = [...indicesToDelete].filter(
+              (i) => i < lastIdx
+            ).length;
+            const remainingCount = uniqueCount - deletedCount;
+
+            if (remainingCount >= 2) {
+              // Find first non-deleted vertex to start from
+              let newStartIdx = -1;
+              for (let i = 0; i < lastIdx; i++) {
+                if (!indicesToDelete.has(i)) {
+                  newStartIdx = i;
+                  break;
+                }
+              }
+
+              if (newStartIdx >= 0) {
+                // Build new polyline rotating to start from newStartIdx
+                const newPolyline: number[] = [];
+                for (let i = 0; i < lastIdx; i++) {
+                  const srcIdx = (newStartIdx + i) % lastIdx;
+                  if (!indicesToDelete.has(srcIdx)) {
+                    newPolyline.push(
+                      polyline.polyline[srcIdx * 2],
+                      polyline.polyline[srcIdx * 2 + 1]
+                    );
+                  }
+                }
+                // Duplicate first vertex at end for closure
+                newPolyline.push(newPolyline[0], newPolyline[1]);
+
+                updateEntity(polylineHandle, (entity) => ({
+                  ...entity,
+                  polyline: newPolyline,
+                  closed: true,
+                }));
+                clearSelection();
+              }
+            }
+          } else {
+            // For open polylines, just remove vertices in reverse order
+            const sortedIndices = [...selectedVertexIndices].sort(
+              (a, b) => b - a
+            );
+
+            if (vertexCount - sortedIndices.length >= 2) {
+              const newPolyline = [...polyline.polyline];
+              for (const idx of sortedIndices) {
+                newPolyline.splice(idx * 2, 2);
+              }
+              updateEntity(polylineHandle, (entity) => ({
+                ...entity,
+                polyline: newPolyline,
+              }));
+              clearSelection();
+            }
           }
         }
       }
