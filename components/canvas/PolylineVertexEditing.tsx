@@ -219,21 +219,52 @@ export function PolylineVertexEditing({
         handleVertexDragStart(closestIndex);
       } else if (isDoubleClick && count >= 2) {
         // Double-click on empty space - insert vertex
-        // Convert screen coords to local coords using unproject (same as 2D drag)
+        // Convert screen coords to world coords using unproject
         const ndcX = ((clickX - rect.left) / rect.width) * 2 - 1;
         const ndcY = -((clickY - rect.top) / rect.height) * 2 + 1;
         const worldPos = new THREE.Vector3(ndcX, ndcY, 0).unproject(camera);
 
-        let localX = worldPos.x;
-        let localY = worldPos.y;
+        // Apply grid snap to WORLD coordinates (snaps to visible grid)
+        const { gridSnapMode } = useStore.getState();
+        const snapped = gridSnap(worldPos.x, worldPos.y, gridSnapMode);
+
+        // Project the snapped point back onto the work plane
+        let localX: number;
+        let localY: number;
         if (workPlane) {
           workPlane.updateMatrixWorld(true);
-          const invMatrix = new THREE.Matrix4()
-            .copy(workPlane.matrixWorld)
-            .invert();
-          worldPos.applyMatrix4(invMatrix);
-          localX = worldPos.x;
-          localY = worldPos.y;
+          const rayOrigin = new THREE.Vector3(snapped.x, snapped.y, 100);
+          const rayDir = new THREE.Vector3(0, 0, -1);
+          camera.getWorldDirection(rayDir);
+          rayDir.normalize();
+
+          const planeNormal = new THREE.Vector3(0, 0, 1).applyMatrix4(
+            new THREE.Matrix4().extractRotation(workPlane.matrixWorld)
+          );
+          const planePoint = new THREE.Vector3().setFromMatrixPosition(
+            workPlane.matrixWorld
+          );
+          const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+            planeNormal,
+            planePoint
+          );
+
+          const ray = new THREE.Ray(rayOrigin, rayDir);
+          const intersection = new THREE.Vector3();
+          if (ray.intersectPlane(plane, intersection)) {
+            const invMatrix = new THREE.Matrix4()
+              .copy(workPlane.matrixWorld)
+              .invert();
+            intersection.applyMatrix4(invMatrix);
+            localX = intersection.x;
+            localY = intersection.y;
+          } else {
+            localX = snapped.x;
+            localY = snapped.y;
+          }
+        } else {
+          localX = snapped.x;
+          localY = snapped.y;
         }
 
         const { segmentIndex } = findClosestSegment(
@@ -298,24 +329,53 @@ export function PolylineVertexEditing({
         // Unproject to world coordinates
         const worldPos = new THREE.Vector3(ndcX, ndcY, 0).unproject(camera);
 
-        // Convert to local coordinates if there's a work plane
-        let localX = worldPos.x;
-        let localY = worldPos.y;
+        // Apply grid snap to WORLD coordinates (snaps to visible grid)
+        const { gridSnapMode } = useStore.getState();
+        const snapped = gridSnap(worldPos.x, worldPos.y, gridSnapMode);
+
+        // Project the snapped point back onto the work plane
+        // by casting a ray from the snapped X,Y in the camera's view direction
+        let localX: number;
+        let localY: number;
         if (workPlane) {
           workPlane.updateMatrixWorld(true);
-          const invMatrix = new THREE.Matrix4()
-            .copy(workPlane.matrixWorld)
-            .invert();
-          worldPos.applyMatrix4(invMatrix);
-          localX = worldPos.x;
-          localY = worldPos.y;
-        }
+          // Create ray from snapped world position along camera view direction
+          const rayOrigin = new THREE.Vector3(snapped.x, snapped.y, 100);
+          const rayDir = new THREE.Vector3(0, 0, -1);
+          camera.getWorldDirection(rayDir);
+          rayDir.normalize();
 
-        // Apply grid snap
-        const { gridSnapMode } = useStore.getState();
-        const snapped = gridSnap(localX, localY, gridSnapMode);
-        localX = snapped.x;
-        localY = snapped.y;
+          // Intersect with work plane
+          const planeNormal = new THREE.Vector3(0, 0, 1).applyMatrix4(
+            new THREE.Matrix4().extractRotation(workPlane.matrixWorld)
+          );
+          const planePoint = new THREE.Vector3().setFromMatrixPosition(
+            workPlane.matrixWorld
+          );
+          const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(
+            planeNormal,
+            planePoint
+          );
+
+          const ray = new THREE.Ray(rayOrigin, rayDir);
+          const intersection = new THREE.Vector3();
+          if (ray.intersectPlane(plane, intersection)) {
+            // Convert intersection to local
+            const invMatrix = new THREE.Matrix4()
+              .copy(workPlane.matrixWorld)
+              .invert();
+            intersection.applyMatrix4(invMatrix);
+            localX = intersection.x;
+            localY = intersection.y;
+          } else {
+            // Fallback: just use snapped world coords
+            localX = snapped.x;
+            localY = snapped.y;
+          }
+        } else {
+          localX = snapped.x;
+          localY = snapped.y;
+        }
 
         // Update polyline vertex
         const newPolyline = [...polyline.polyline];
