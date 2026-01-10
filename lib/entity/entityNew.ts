@@ -43,6 +43,8 @@ export function loftNew(
     name,
     polyline1,
     polyline2,
+    polyline1Shift: 0,
+    polyline2Shift: 0,
   };
 }
 

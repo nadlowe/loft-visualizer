@@ -3,6 +3,7 @@ import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { Face, Plane3, Polygon, Polyline2, Vec3 } from "../geom/geomTypes";
+import { polyline2Shift } from "../geom/polyline2";
 import {
   computeDefaultU,
   vec3Cross,
@@ -233,15 +234,18 @@ export function loftToThree(
     ? workPlanes.find((wp) => wp.id === polyline2Entity.workPlaneId)?.workPlane
     : undefined;
 
-  // Transform polyline vertices to world space
-  const vertices1 = polyline2ToWorldVertices(
+  // Apply loft-level shifts to polyline data, then convert to world space
+  const shiftedPolyline1 = polyline2Shift(
     polyline1Entity.polyline,
-    workPlane1
+    loftEntity.polyline1Shift ?? 0
   );
-  const vertices2 = polyline2ToWorldVertices(
+  const shiftedPolyline2 = polyline2Shift(
     polyline2Entity.polyline,
-    workPlane2
+    loftEntity.polyline2Shift ?? 0
   );
+
+  const vertices1 = polyline2ToWorldVertices(shiftedPolyline1, workPlane1);
+  const vertices2 = polyline2ToWorldVertices(shiftedPolyline2, workPlane2);
 
   // Subdivide both polylines for smoother surfaces
   const subdividedVertices1 = subdivideVertices(vertices1, LOFT_SUBDIVISIONS);

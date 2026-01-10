@@ -11,6 +11,7 @@ import {
 import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
 import { handleNew } from "@/lib/entity/handle";
 import { EntityHandle, handleToHash } from "@/lib/entity/handleTypes";
+import { polyline2Shift } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId, WorkPlaneId } from "@/lib/util/uid";
 import { useThree } from "@react-three/fiber";
@@ -83,42 +84,35 @@ export function RenderEntities({
       });
 
       loftsArray.forEach((l) => {
+        // Build rung line geometry
+        const positions: number[] = [];
+        const indices: number[] = [];
+        let vertexIndex = 0;
+
+        l.rungs.forEach((rung) => {
+          positions.push(rung[0].x, rung[0].y, rung[0].z);
+          positions.push(rung[1].x, rung[1].y, rung[1].z);
+          indices.push(vertexIndex, vertexIndex + 1);
+          vertexIndex += 2;
+        });
+
         const existingGeometry = loftRefs.current.get(l.id);
-        if (existingGeometry) {
-          // Update existing geometry positions and indices
-          const positions: number[] = [];
-          const indices: number[] = [];
-          let vertexIndex = 0;
+        const newVertexCount = positions.length / 3;
+        const existingVertexCount = existingGeometry
+          ? (existingGeometry.attributes.position?.count ?? 0)
+          : 0;
 
-          l.rungs.forEach((rung) => {
-            positions.push(rung[0].x, rung[0].y, rung[0].z);
-            positions.push(rung[1].x, rung[1].y, rung[1].z);
-            // Each rung is a line segment connecting the two vertices
-            indices.push(vertexIndex, vertexIndex + 1);
-            vertexIndex += 2;
-          });
-
-          existingGeometry.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(positions, 3)
-          );
-          existingGeometry.setIndex(indices);
-          existingGeometry.attributes.position.needsUpdate = true;
+        // Recreate geometry if vertex count changed, otherwise update in place
+        if (existingGeometry && existingVertexCount === newVertexCount) {
+          const posAttr = existingGeometry.attributes
+            .position as THREE.BufferAttribute;
+          posAttr.array.set(positions);
+          posAttr.needsUpdate = true;
         } else {
-          // Create new geometry with indices
+          if (existingGeometry) {
+            existingGeometry.dispose();
+          }
           const geometry = new THREE.BufferGeometry();
-          const positions: number[] = [];
-          const indices: number[] = [];
-          let vertexIndex = 0;
-
-          l.rungs.forEach((rung) => {
-            positions.push(rung[0].x, rung[0].y, rung[0].z);
-            positions.push(rung[1].x, rung[1].y, rung[1].z);
-            // Each rung is a line segment connecting the two vertices
-            indices.push(vertexIndex, vertexIndex + 1);
-            vertexIndex += 2;
-          });
-
           geometry.setAttribute(
             "position",
             new THREE.Float32BufferAttribute(positions, 3)
@@ -134,15 +128,25 @@ export function RenderEntities({
             generateSubdividedSurface(l.rungs, rungSubdivisions);
 
           const existingSurfaceGeometry = loftSurfaceRefs.current.get(l.id);
-          if (existingSurfaceGeometry) {
-            existingSurfaceGeometry.setAttribute(
-              "position",
-              new THREE.Float32BufferAttribute(surfacePositions, 3)
-            );
-            existingSurfaceGeometry.setIndex(surfaceIndices);
-            existingSurfaceGeometry.attributes.position.needsUpdate = true;
+          const newVertexCount = surfacePositions.length / 3;
+          const existingVertexCount = existingSurfaceGeometry
+            ? (existingSurfaceGeometry.attributes.position?.count ?? 0)
+            : 0;
+
+          // Recreate geometry if vertex count changed, otherwise update in place
+          if (
+            existingSurfaceGeometry &&
+            existingVertexCount === newVertexCount
+          ) {
+            const posAttr = existingSurfaceGeometry.attributes
+              .position as THREE.BufferAttribute;
+            posAttr.array.set(surfacePositions);
+            posAttr.needsUpdate = true;
             existingSurfaceGeometry.computeVertexNormals();
           } else {
+            if (existingSurfaceGeometry) {
+              existingSurfaceGeometry.dispose();
+            }
             const surfaceGeometry = new THREE.BufferGeometry();
             surfaceGeometry.setAttribute(
               "position",
@@ -155,14 +159,22 @@ export function RenderEntities({
 
           // Create/update wireframe geometry for subdivision edges
           const existingWireframeGeometry = loftWireframeRefs.current.get(l.id);
-          if (existingWireframeGeometry) {
-            existingWireframeGeometry.setAttribute(
-              "position",
-              new THREE.Float32BufferAttribute(surfacePositions, 3)
-            );
-            existingWireframeGeometry.setIndex(wireframeIndices);
-            existingWireframeGeometry.attributes.position.needsUpdate = true;
+          const existingWireframeVertexCount = existingWireframeGeometry
+            ? (existingWireframeGeometry.attributes.position?.count ?? 0)
+            : 0;
+
+          if (
+            existingWireframeGeometry &&
+            existingWireframeVertexCount === newVertexCount
+          ) {
+            const posAttr = existingWireframeGeometry.attributes
+              .position as THREE.BufferAttribute;
+            posAttr.array.set(surfacePositions);
+            posAttr.needsUpdate = true;
           } else {
+            if (existingWireframeGeometry) {
+              existingWireframeGeometry.dispose();
+            }
             const wireframeGeometry = new THREE.BufferGeometry();
             wireframeGeometry.setAttribute(
               "position",
@@ -351,12 +363,14 @@ export function RenderEntities({
             {/* Surface mesh with 20% opacity */}
             {surfaceGeometry && (
               <mesh geometry={surfaceGeometry}>
-                <meshBasicMaterial
+                <meshStandardMaterial
                   color={color}
                   transparent
-                  opacity={0.2}
+                  opacity={0.8}
                   side={THREE.DoubleSide}
-                  depthWrite={false}
+                  depthWrite={true}
+                  roughness={1}
+                  metalness={0}
                 />
               </mesh>
             )}
@@ -527,7 +541,12 @@ function subdivideVertices(
 // Helper function to update loft geometry during dragging
 function updateLineGeometry(
   loftId: string,
-  loftEntity: { polyline1: PolylineId; polyline2: PolylineId },
+  loftEntity: {
+    polyline1: PolylineId;
+    polyline2: PolylineId;
+    polyline1Shift?: number;
+    polyline2Shift?: number;
+  },
   workPlaneId: WorkPlaneId,
   currentWorkPlane: THREE.Group | undefined,
   workPlaneRefs: React.RefObject<Map<string, THREE.Group>>,
@@ -556,13 +575,23 @@ function updateLineGeometry(
   if (wp1) wp1.updateMatrixWorld(true);
   if (wp2) wp2.updateMatrixWorld(true);
 
+  // Apply loft-level shifts to polyline data, then convert to world space
+  const shiftedPolyline1 = polyline2Shift(
+    polyline1.polyline,
+    loftEntity.polyline1Shift ?? 0
+  );
+  const shiftedPolyline2 = polyline2Shift(
+    polyline2.polyline,
+    loftEntity.polyline2Shift ?? 0
+  );
+
   // Recompute vertices in world space
   const vertices1 = polyline2ToWorldVertices(
-    polyline1.polyline,
+    shiftedPolyline1,
     wp1 || undefined
   );
   const vertices2 = polyline2ToWorldVertices(
-    polyline2.polyline,
+    shiftedPolyline2,
     wp2 || undefined
   );
 
