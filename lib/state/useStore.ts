@@ -2,7 +2,9 @@ import { createWithEqualityFn } from "zustand/traditional";
 import { CmdSlice, createCmdSlice } from "./cmd/cmdSlice";
 import { createDocSlice, DocSlice } from "./docSlice";
 import { createSelectionSlice, SelectionSlice } from "./selectionSlice";
-import { createSnapSlice, SnapSlice } from "./snapSlice";
+import { createSnapSlice, GridSnapMode, SnapSlice } from "./snapSlice";
+
+export type { GridSnapMode };
 
 export type AppState = DocSlice & SelectionSlice & CmdSlice & SnapSlice;
 

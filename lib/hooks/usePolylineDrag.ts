@@ -1,6 +1,7 @@
 import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
 import { handleNew } from "@/lib/entity/handle";
 import { hashToHandle } from "@/lib/entity/handleTypes";
+import { gridSnap } from "@/lib/snap/gridSnap";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -38,7 +39,8 @@ export function usePolylineDrag({
   is2D,
   onDraggingChange,
 }: UsePolylineDragProps) {
-  const { doc, updateEntity, saveSnapshot, selectedHandles } = useStore();
+  const { doc, updateEntity, saveSnapshot, selectedHandles, gridSnapMode } =
+    useStore();
 
   const [draggingPolylineId, setDraggingPolylineId] =
     useState<PolylineId | null>(null);
@@ -193,7 +195,23 @@ export function usePolylineDrag({
       pointer.y = pointerCoords.y;
       raycaster.setFromCamera(pointer, camera);
 
-      const localCoords = getLocalCoords(polyline.workPlaneId);
+      // Get world intersection on ground plane and apply grid snap
+      const worldIntersection = new THREE.Vector3();
+      if (!raycaster.ray.intersectPlane(GROUND_PLANE, worldIntersection))
+        return false;
+
+      const gridSnapped = gridSnap(
+        worldIntersection.x,
+        worldIntersection.y,
+        gridSnapMode
+      );
+
+      // For polylines on ground plane, use grid-snapped world coords directly
+      // For polylines on work planes, get local coords (grid snap applies to world)
+      const localCoords = polyline.workPlaneId
+        ? getLocalCoords(polyline.workPlaneId)
+        : { x: gridSnapped.x, y: gridSnapped.y };
+
       if (!localCoords) return false;
 
       const deltaX = localCoords.x - dragStartLocalRef.current.x;
@@ -225,6 +243,7 @@ export function usePolylineDrag({
       raycaster,
       camera,
       getLocalCoords,
+      gridSnapMode,
       updateEntity,
     ]
   );

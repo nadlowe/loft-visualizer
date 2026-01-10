@@ -6,7 +6,7 @@ import { colors } from "../colors";
 import { fonts } from "../fonts";
 
 export function EditingBanner() {
-  const { cmd, setCloseLoop } = useStore();
+  const { cmd, setCloseLoop, setPolylineClosedPref } = useStore();
 
   if (!cmd) {
     return null;
@@ -18,11 +18,17 @@ export function EditingBanner() {
 
   if (cmd.type === "DRAW_POLYLINE") {
     message = "Drawing polyline...";
-    showCloseToggle = cmd.vertices.length >= 3;
+    showCloseToggle = cmd.vertices.length >= 2;
     closeLoop = cmd.closeLoop;
   } else if (cmd.type === "ADD_LOFT") {
     message = "Select two polylines to create a loft";
   }
+
+  const handleToggle = () => {
+    const newValue = !closeLoop;
+    setCloseLoop(newValue);
+    setPolylineClosedPref(newValue);
+  };
 
   return (
     <div
@@ -38,10 +44,10 @@ export function EditingBanner() {
       {showCloseToggle && (
         <label className="flex cursor-pointer items-center gap-2">
           <span className={cn(fonts.size.sm, colors.text.secondary)}>
-            Close loop
+            Closed
           </span>
           <button
-            onClick={() => setCloseLoop(!closeLoop)}
+            onClick={handleToggle}
             className={cn(
               "relative h-5 w-9 rounded-full transition-colors",
               closeLoop ? "bg-blue-500" : "bg-gray-600"

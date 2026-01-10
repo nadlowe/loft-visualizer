@@ -4,10 +4,11 @@ import { Entity } from "@/lib/entity/entity";
 import { entityName, polylineNew } from "@/lib/entity/entityNew";
 import { SelectableHandle } from "@/lib/entity/handleTypes";
 import { Vec2 } from "@/lib/geom/geomTypes";
+import { gridSnap } from "@/lib/snap/gridSnap";
 import { snapToVertices } from "@/lib/snap/snapToVertices";
 import { Cmd } from "@/lib/state/cmd/cmdSlice";
 import { Doc } from "@/lib/state/doc";
-import { useStore } from "@/lib/state/useStore";
+import { GridSnapMode, useStore } from "@/lib/state/useStore";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
@@ -17,14 +18,23 @@ const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 
 export function PolylineCmd() {
   const { camera, raycaster, pointer, gl: renderer } = useThree();
-  const { cmd, addVertex, finishCmd, addEntity, doc, selectOnly, snapEnabled } =
-    useStore();
+  const {
+    cmd,
+    addVertex,
+    finishCmd,
+    addEntity,
+    doc,
+    selectOnly,
+    snapEnabled,
+    gridSnapMode,
+  } = useStore();
 
   const lastClickTimeRef = useRef<number>(0);
   const lastClickPositionRef = useRef<THREE.Vector3 | null>(null);
   const [hoverPosition, setHoverPosition] = useState<THREE.Vector3 | null>(
     null
   );
+  const [snapPosition, setSnapPosition] = useState<THREE.Vector3 | null>(null);
 
   const intersectPlane = useIntersectPlane({ raycaster, pointer, camera });
 
@@ -32,6 +42,10 @@ export function PolylineCmd() {
     cmd,
     intersectPlane,
     setHoverPosition,
+    setSnapPosition,
+    gridSnapMode,
+    snapEnabled,
+    doc,
   });
 
   usePointerEventListeners({
@@ -45,6 +59,7 @@ export function PolylineCmd() {
       lastClickTimeRef,
       lastClickPositionRef,
       snapEnabled,
+      gridSnapMode,
       doc,
       addVertex,
       handleDoubleClick: handleDoubleClickFunc({
@@ -67,6 +82,7 @@ export function PolylineCmd() {
     <PolylineCmdPreview
       vertices={cmd.vertices}
       hoverPosition={hoverPosition}
+      snapPosition={snapPosition}
       closeLoop={cmd.closeLoop}
     />
   );
@@ -115,7 +131,7 @@ function handleDoubleClickFunc({
     let polylineCoords = cmd.vertices.flat();
 
     // If closing loop, add the first vertex at the end
-    if (cmd.closeLoop && cmd.vertices.length >= 3) {
+    if (cmd.closeLoop && cmd.vertices.length >= 2) {
       const firstVertex = cmd.vertices[0];
       polylineCoords = [...polylineCoords, firstVertex[0], firstVertex[1]];
     }
@@ -123,7 +139,7 @@ function handleDoubleClickFunc({
     const newPolyline = polylineNew(
       polylineCoords,
       entityName(doc, "POLYLINE"),
-      cmd.closeLoop && cmd.vertices.length >= 3
+      cmd.closeLoop && cmd.vertices.length >= 2
     );
     addEntity(newPolyline);
     finishCmd();
@@ -140,6 +156,7 @@ function handlePointerDownFunc({
   lastClickTimeRef,
   lastClickPositionRef,
   snapEnabled,
+  gridSnapMode,
   doc,
   addVertex,
   handleDoubleClick,
@@ -151,6 +168,7 @@ function handlePointerDownFunc({
   lastClickTimeRef: React.MutableRefObject<number>;
   lastClickPositionRef: React.MutableRefObject<THREE.Vector3 | null>;
   snapEnabled: boolean;
+  gridSnapMode: GridSnapMode;
   doc: Doc;
   addVertex: (vertex: Vec2) => void;
   handleDoubleClick: () => void;
@@ -185,6 +203,13 @@ function handlePointerDownFunc({
 
       let x = hit.x;
       let y = hit.y;
+
+      // Apply grid snap first (snaps to world grid)
+      const gridSnapped = gridSnap(x, y, gridSnapMode);
+      x = gridSnapped.x;
+      y = gridSnapped.y;
+
+      // Then apply vertex snap if enabled
       if (snapEnabled) {
         const snapResult = snapToVertices(
           { x, y },
@@ -211,6 +236,7 @@ function handlePointerDownFunc({
       lastClickTimeRef,
       lastClickPositionRef,
       snapEnabled,
+      gridSnapMode,
       doc.polylines,
       addVertex,
       handleDoubleClick,
@@ -222,17 +248,65 @@ function useHoverPosition({
   cmd,
   intersectPlane,
   setHoverPosition,
+  setSnapPosition,
+  gridSnapMode,
+  snapEnabled,
+  doc,
 }: {
   cmd: Cmd | null;
   intersectPlane: () => THREE.Vector3 | null;
   setHoverPosition: React.Dispatch<React.SetStateAction<THREE.Vector3 | null>>;
+  setSnapPosition: React.Dispatch<React.SetStateAction<THREE.Vector3 | null>>;
+  gridSnapMode: GridSnapMode;
+  snapEnabled: boolean;
+  doc: Doc;
 }) {
   useFrame(() => {
     if (cmd?.type !== "DRAW_POLYLINE") {
       setHoverPosition(null);
+      setSnapPosition(null);
       return;
     }
-    setHoverPosition(intersectPlane());
+
+    const hit = intersectPlane();
+    setHoverPosition(hit);
+
+    if (!hit) {
+      setSnapPosition(null);
+      return;
+    }
+
+    // Compute snapped position
+    let x = hit.x;
+    let y = hit.y;
+
+    // Only show snap indicator when grid snap is enabled
+    if (gridSnapMode === "OFF") {
+      setSnapPosition(null);
+      return;
+    }
+
+    // Apply grid snap first
+    const gridSnapped = gridSnap(x, y, gridSnapMode);
+    x = gridSnapped.x;
+    y = gridSnapped.y;
+
+    // Then apply vertex snap if enabled
+    if (snapEnabled) {
+      const snapResult = snapToVertices(
+        { x, y },
+        undefined,
+        doc.polylines,
+        undefined,
+        undefined
+      );
+      if (snapResult.snapped) {
+        x = snapResult.point.x;
+        y = snapResult.point.y;
+      }
+    }
+
+    setSnapPosition(new THREE.Vector3(x, y, 0));
   });
 }
 

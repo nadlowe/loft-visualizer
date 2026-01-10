@@ -1,5 +1,6 @@
 import { handleNew } from "@/lib/entity/handle";
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
+import { gridSnap } from "@/lib/snap/gridSnap";
 import { snapToVertices } from "@/lib/snap/snapToVertices";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
@@ -33,7 +34,7 @@ export function useVertexDrag({
   pointer,
   onDraggingChange,
 }: UseVertexDragProps) {
-  const { doc, updateEntity, snapEnabled } = useStore();
+  const { doc, updateEntity, snapEnabled, gridSnapMode } = useStore();
   const polylineHandle = handleNew("POLYLINE", polylineId);
 
   const [draggingVertexIndex, setDraggingVertexIndex] = useState<number | null>(
@@ -55,9 +56,19 @@ export function useVertexDrag({
     (vertexIndex: number, intersection: THREE.Vector3) => {
       if (!polyline) return;
 
-      let { x, y } = worldToLocal(intersection, workPlane);
+      // Apply grid snap to world coordinates first
+      const gridSnapped = gridSnap(
+        intersection.x,
+        intersection.y,
+        gridSnapMode
+      );
+      const snappedIntersection = intersection.clone();
+      snappedIntersection.x = gridSnapped.x;
+      snappedIntersection.y = gridSnapped.y;
 
-      // Apply snapping if enabled
+      let { x, y } = worldToLocal(snappedIntersection, workPlane);
+
+      // Apply vertex snapping if enabled
       if (snapEnabled) {
         const snapResult = snapToVertices(
           { x, y },
@@ -106,6 +117,7 @@ export function useVertexDrag({
       workPlane,
       updateEntity,
       snapEnabled,
+      gridSnapMode,
       doc.polylines,
       polylineHandle,
     ]

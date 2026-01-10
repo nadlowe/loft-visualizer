@@ -1,5 +1,6 @@
 import { StateCreator } from "zustand";
 import { Vec2 } from "../../geom/geomTypes";
+import { SnapSlice } from "../snapSlice";
 import { CmdSlice } from "./cmdSlice";
 
 export type DrawPolylineCmd = {
@@ -16,17 +17,17 @@ export interface PolylineCmdSlice {
 }
 
 export const createPolylineCmdSlice: StateCreator<
-  CmdSlice,
+  CmdSlice & SnapSlice,
   [],
   [],
   PolylineCmdSlice
-> = (set) => ({
+> = (set, get) => ({
   startDrawPolyline: () =>
     set({
       cmd: {
         type: "DRAW_POLYLINE",
         vertices: [],
-        closeLoop: false,
+        closeLoop: get().polylineClosedPref,
       },
     }),
   addVertex: (vertex) =>

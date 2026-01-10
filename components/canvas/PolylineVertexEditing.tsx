@@ -535,13 +535,30 @@ function VertexHandle({
     vertexIndex,
   };
   const meshRef = useRef<THREE.Mesh>(null);
-  const { camera } = useThree();
+  const { camera, size } = useThree();
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame(() => {
     if (meshRef.current) {
-      const distance = camera.position.distanceTo(meshRef.current.position);
-      const scale = distance * 0.1;
+      // Calculate world units per pixel for screen-space scaling
+      let worldUnitsPerPixel: number;
+      if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+        const orthoCamera = camera as THREE.OrthographicCamera;
+        const visibleWidth =
+          (orthoCamera.right - orthoCamera.left) / orthoCamera.zoom;
+        worldUnitsPerPixel = visibleWidth / size.width;
+      } else {
+        // For perspective camera, use distance-based scaling
+        const distance = camera.position.distanceTo(meshRef.current.position);
+        const fov = (camera as THREE.PerspectiveCamera).fov || 75;
+        const vFov = (fov * Math.PI) / 180;
+        const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+        worldUnitsPerPixel = visibleHeight / size.height;
+      }
+
+      // ~3 pixel radius sphere (geometry has 0.05 base radius, so scale accordingly)
+      const pixelSize = 3;
+      const scale = (pixelSize * worldUnitsPerPixel) / 0.05;
       meshRef.current.scale.setScalar(scale);
     }
   });

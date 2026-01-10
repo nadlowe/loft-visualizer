@@ -4,6 +4,7 @@ import { CameraController } from "@/components/canvas/CameraController";
 import { Scene } from "@/components/canvas/Scene";
 import { EditingBanner } from "@/components/ui/EditingBanner";
 import { Explorer } from "@/components/ui/explorer/Explorer";
+import { GridSnapButton } from "@/components/ui/GridSnapButton";
 import { Inspector } from "@/components/ui/inspector/Inspector";
 import { ModeToggleButton } from "@/components/ui/ModeToggleButton";
 import { TopBar } from "@/components/ui/TopBar";
@@ -70,7 +71,8 @@ export default function Home() {
             <Scene is2D={is2D} controlsRef={controlsRef} />
           </Canvas>
 
-          <div className="absolute right-4 bottom-4">
+          <div className="absolute right-4 bottom-4 flex gap-2">
+            <GridSnapButton />
             <ModeToggleButton is2D={is2D} onToggle={() => setIs2D(!is2D)} />
           </div>
         </div>
