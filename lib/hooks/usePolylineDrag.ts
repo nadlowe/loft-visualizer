@@ -1,6 +1,5 @@
-import { workPlanesTableToThree } from "@/lib/conversion/geomToThree";
-import { handleNew } from "@/lib/entity/handle";
-import { hashToHandle } from "@/lib/entity/handleTypes";
+import { workPlaneTableToRendered } from "@/lib/canvas/render/renderWorkPlane";
+import { handleNew } from "@/lib/entity/handleTools/handleNew";
 import { gridSnap } from "@/lib/snap/gridSnap";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
@@ -13,6 +12,7 @@ import {
   GROUND_PLANE,
   screenToPointer,
 } from "../canvas/selectionUtils";
+import { hashToHandle } from "../entity/handleTools/handleTools";
 
 interface UsePolylineDragProps {
   scene: THREE.Scene;
@@ -49,7 +49,7 @@ export function usePolylineDrag({
   const pendingDragRef = useRef<PendingDrag | null>(null);
 
   const workPlanes = useMemo(
-    () => workPlanesTableToThree(doc.workPlanes),
+    () => workPlaneTableToRendered(doc.workPlanes),
     [doc.workPlanes]
   );
 

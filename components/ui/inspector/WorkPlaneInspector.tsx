@@ -1,12 +1,12 @@
 "use client";
 
+import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { WorkPlaneHandle } from "@/lib/entity/handleTypes";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
-import { colors } from "@/components/colors";
-import { fonts } from "@/components/fonts";
 
 function NumberInput({
   value,

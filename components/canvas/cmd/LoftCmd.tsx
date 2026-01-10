@@ -1,6 +1,6 @@
 "use client";
 
-import { entityName, loftNew } from "@/lib/entity/entityNew";
+import { entityName, loftNew } from "@/lib/entity/entityTools/entityNew";
 import { useStore } from "@/lib/state/useStore";
 import { useEffect } from "react";
 

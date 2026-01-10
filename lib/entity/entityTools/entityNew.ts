@@ -1,21 +1,16 @@
-import { Plane3, Polyline2 } from "../geom/geomTypes";
-import { Doc } from "../state/doc";
-import { LoftId, PolylineId, uid, WorkPlaneId } from "../util/uid";
+import { Plane3, Polyline2 } from "../../geom/geomTypes";
+import { Doc } from "../../state/doc";
+import { LoftId, PolylineId, uid, WorkPlaneId } from "../../util/uid";
+import { EntityType } from "../entityTypes";
+import { LoftEntity } from "../loftEntity";
+import { PolylineEntity } from "../polylineEntity";
+import { WorkPlaneEntity } from "../workPlaneEntity";
 import { entityTypeToDocField } from "./entityTypeToDocField";
-import { EntityType } from "./entityTypes";
-import { LoftEntity } from "./loftEntity";
-import { PolylineEntity } from "./polylineEntity";
-import { WorkPlaneEntity } from "./workPlaneEntity";
-
-const entityTypeToSingularName: Record<EntityType, string> = {
-  WORKPLANE: "Work Plane",
-  POLYLINE: "Polyline",
-  LOFT: "Loft",
-};
+import { entityTypeToName } from "./entityTypeToName";
 
 export function entityName(doc: Doc, entityType: EntityType): string {
   const count = Object.keys(doc[entityTypeToDocField[entityType]]).length;
-  return `${entityTypeToSingularName[entityType]} ${count + 1}`;
+  return `${entityTypeToName.singular[entityType]} ${count + 1}`;
 }
 
 export function polylineNew(

@@ -1,16 +1,16 @@
 "use client";
 
+import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { Entity } from "@/lib/entity/entity";
-import { getEntityFromHandle } from "@/lib/entity/entityTools";
+import { getEntityFromHandle } from "@/lib/entity/entityTools/entityTools";
+import { entityTypeToDocField } from "@/lib/entity/entityTools/entityTypeToDocField";
 import { EntityType } from "@/lib/entity/entityTypes";
-import { entityTypeToDocField } from "@/lib/entity/entityTypeToDocField";
 import { EntityHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { shallow } from "zustand/shallow";
-import { colors } from "@/components/colors";
-import { fonts } from "@/components/fonts";
 
 type HandleToEntityMap = {
   [K in EntityType]: Extract<Entity, { type: K }>;

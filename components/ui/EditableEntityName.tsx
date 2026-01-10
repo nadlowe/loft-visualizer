@@ -1,11 +1,11 @@
 "use client";
 
-import { getEntityFromHandle } from "@/lib/entity/entityTools";
+import { colors } from "@/components/colors";
+import { getEntityFromHandle } from "@/lib/entity/entityTools/entityTools";
 import { EntityHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
-import { colors } from "@/components/colors";
 import { fonts } from "../fonts";
 
 interface EditableEntityNameProps {

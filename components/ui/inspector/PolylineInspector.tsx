@@ -1,12 +1,12 @@
 "use client";
 
+import { colors } from "@/components/colors";
+import { fonts } from "@/components/fonts";
 import { PolylineHandle } from "@/lib/entity/handleTypes";
 import { polyline2Shift } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { colors } from "@/components/colors";
-import { fonts } from "@/components/fonts";
 import { EntityDropdown } from "../EntityDropdown";
 import { ShiftInput } from "./ShiftInput";
 
@@ -38,7 +38,9 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
         label="Work Plane"
       />
       <div className="flex items-center justify-between">
-        <span className={cn(fonts.size.xs, colors.text.secondary)}>Vertices</span>
+        <span className={cn(fonts.size.xs, colors.text.secondary)}>
+          Vertices
+        </span>
         <span className={cn(fonts.size.sm, colors.text.primary)}>
           {vertexCount}
         </span>

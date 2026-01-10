@@ -1,5 +1,5 @@
 import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "@/components/ui/Icons";
-import { EntityType } from "./entityTypes";
+import { EntityType } from "../../lib/entity/entityTypes";
 
 export const entityTypeToIcon: Record<
   EntityType,

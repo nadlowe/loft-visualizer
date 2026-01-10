@@ -1,8 +1,10 @@
 import { StateCreator } from "zustand";
 import { BaseEntity } from "../entity/baseEntity";
-import { Entity, EntityTypeMap } from "../entity/entity";
-import { entityTypeToDocField } from "../entity/entityTypeToDocField";
-import { handleNew, parseHandle } from "../entity/handle";
+import { Entity } from "../entity/entity";
+import { entityTypeToDocField } from "../entity/entityTools/entityTypeToDocField";
+import { EntityTypeToEntity } from "../entity/entityTools/entityTypeToEntity";
+import { handleNew } from "../entity/handleTools/handleNew";
+import { parseHandle } from "../entity/handleTools/handleTools";
 import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
 import { uid } from "../util/uid";
 import { CmdSlice } from "./cmd/cmdSlice";
@@ -38,13 +40,15 @@ export interface DocSlice {
   addEntity: (entity: Entity) => void;
   updateEntity: <H extends EntityHandle>(
     handle: H,
-    updater: (entity: EntityTypeMap[H["type"]]) => EntityTypeMap[H["type"]],
+    updater: (
+      entity: EntityTypeToEntity[H["type"]]
+    ) => EntityTypeToEntity[H["type"]],
     snapshot?: boolean
   ) => void;
   deleteEntity: (handle: EntityHandle) => void;
   getEntity: <H extends EntityHandle>(
     handle: H
-  ) => EntityTypeMap[H["type"]] | undefined;
+  ) => EntityTypeToEntity[H["type"]] | undefined;
   duplicateEntity: (handle: EntityHandle) => EntityHandle | null;
   setHidden: (handles: EntityHandle[], hidden: boolean) => void;
 
@@ -175,7 +179,9 @@ export const createDocSlice: StateCreator<
     },
     updateEntity: <H extends EntityHandle>(
       handle: H,
-      updater: (entity: EntityTypeMap[H["type"]]) => EntityTypeMap[H["type"]],
+      updater: (
+        entity: EntityTypeToEntity[H["type"]]
+      ) => EntityTypeToEntity[H["type"]],
       snapshot = true
     ) => {
       const { type, id } = parseHandle(handle);
@@ -188,7 +194,7 @@ export const createDocSlice: StateCreator<
             ...state.doc,
             [fieldName]: {
               ...(state.doc[fieldName] as Record<string, Entity>),
-              [id]: updater(entity as EntityTypeMap[H["type"]]),
+              [id]: updater(entity as EntityTypeToEntity[H["type"]]),
             },
           },
         };
@@ -212,7 +218,7 @@ export const createDocSlice: StateCreator<
       const { type, id } = parseHandle(handle);
       const fieldName = entityTypeToDocField[type];
       return (get().doc[fieldName] as Record<string, Entity>)[id] as
-        | EntityTypeMap[H["type"]]
+        | EntityTypeToEntity[H["type"]]
         | undefined;
     },
     duplicateEntity: (handle, selectNew = true) => {

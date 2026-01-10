@@ -1,9 +1,10 @@
 "use client";
 
+import { colors } from "@/components/colors";
+import { entityTypeToName } from "@/lib/entity/entityTools/entityTypeToName";
 import { EntityHandle, SelectableHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
-import { colors } from "@/components/colors";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
 import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
@@ -11,12 +12,6 @@ import { LoftIcon, PolylineIcon, WorkPlaneIcon } from "../Icons";
 interface InspectorHeaderProps {
   handle: SelectableHandle;
 }
-
-const typeLabels: Record<EntityHandle["type"], string> = {
-  WORKPLANE: "Work Plane",
-  POLYLINE: "Polyline",
-  LOFT: "Loft",
-};
 
 const typeIcons: Record<
   EntityHandle["type"],
@@ -62,7 +57,7 @@ export function InspectorHeader({ handle }: InspectorHeaderProps) {
 
   const entityType = handle.type;
   const Icon = typeIcons[entityType];
-  const typeLabel = typeLabels[entityType];
+  const typeLabel = entityTypeToName.singular[entityType];
 
   return (
     <div

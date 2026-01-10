@@ -1,15 +1,14 @@
 "use client";
 
 import { colors } from "@/components/colors";
-import { getEntityFromHandle } from "@/lib/entity/entityTools";
+import { getEntityFromHandle } from "@/lib/entity/entityTools/entityTools";
 import { EntityType } from "@/lib/entity/entityTypes";
-import { parseHandle } from "@/lib/entity/handle";
 import {
-  EntityHandle,
   handleToHash,
-  SelectableHandle,
+  parseHandle,
   vertexHandleToHash,
-} from "@/lib/entity/handleTypes";
+} from "@/lib/entity/handleTools/handleTools";
+import { EntityHandle, SelectableHandle } from "@/lib/entity/handleTypes";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";

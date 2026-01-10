@@ -1,11 +1,11 @@
-import { EntityId, LoftId, PolylineId, WorkPlaneId } from "../util/uid";
-import { EntityType } from "./entityTypes";
+import { EntityId, LoftId, PolylineId, WorkPlaneId } from "../../util/uid";
+import { EntityType } from "../entityTypes";
 import {
   EntityHandle,
   LoftHandle,
   PolylineHandle,
   WorkPlaneHandle,
-} from "./handleTypes";
+} from "../handleTypes";
 
 export function handleNew(type: "WORKPLANE", id: WorkPlaneId): WorkPlaneHandle;
 export function handleNew(type: "POLYLINE", id: PolylineId): PolylineHandle;
@@ -20,14 +20,4 @@ export function handleNew(type: EntityType, id: EntityId): EntityHandle {
     case "LOFT":
       return { type: "LOFT", id: id as LoftId };
   }
-}
-
-export function parseHandle(handle: EntityHandle): {
-  type: EntityType;
-  id: EntityId;
-} {
-  return {
-    type: handle.type,
-    id: handle.id,
-  };
 }

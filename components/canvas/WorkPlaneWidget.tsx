@@ -1,6 +1,6 @@
 "use client";
 import { colors } from "@/components/colors";
-import { WorkPlane } from "@/lib/conversion/geomToThree";
+import { WorkPlane } from "@/lib/canvas/render/renderWorkPlane";
 import { TransformControls } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { useEffect, useRef, useState } from "react";

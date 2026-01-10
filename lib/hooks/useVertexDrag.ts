@@ -1,4 +1,4 @@
-import { handleNew } from "@/lib/entity/handle";
+import { handleNew } from "@/lib/entity/handleTools/handleNew";
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
 import { gridSnap } from "@/lib/snap/gridSnap";
 import { snapToVertices } from "@/lib/snap/snapToVertices";

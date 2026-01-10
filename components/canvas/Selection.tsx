@@ -9,7 +9,8 @@ import {
   screenToPointer,
   screenToWorld,
 } from "@/lib/canvas/selectionUtils";
-import { hashToHandle, SelectableHandle } from "@/lib/entity/handleTypes";
+import { hashToHandle } from "@/lib/entity/handleTools/handleTools";
+import { SelectableHandle } from "@/lib/entity/handleTypes";
 import { usePolylineDrag } from "@/lib/hooks/usePolylineDrag";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";

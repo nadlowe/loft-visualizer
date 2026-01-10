@@ -1,16 +1,16 @@
 "use client";
 
+import { colors } from "@/components/colors";
+import { entityTypeToIcon } from "@/components/ui/entityTypeToIcon";
+import { entityTypeToDocField } from "@/lib/entity/entityTools/entityTypeToDocField";
+import { entityTypeToName } from "@/lib/entity/entityTools/entityTypeToName";
 import { EntityType } from "@/lib/entity/entityTypes";
-import { entityTypeToDocField } from "@/lib/entity/entityTypeToDocField";
-import { entityTypeToIcon } from "@/lib/entity/entityTypeToIcon";
-import { entityTypeToName } from "@/lib/entity/entityTypeToName";
-import { handleNew } from "@/lib/entity/handle";
+import { handleNew } from "@/lib/entity/handleTools/handleNew";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { colors } from "@/components/colors";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
 import { DuplicateIcon, EyeIcon, EyeSlashIcon, TrashIcon } from "../Icons";
@@ -77,7 +77,7 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
           )}
         >
           <Icon className="h-4 w-4" />
-          <span className={cn(fonts.menu)}>{entityTypeToName[entityType]}</span>
+          <span className={cn(fonts.menu)}>{entityTypeToName.plural[entityType]}</span>
           <svg
             className={cn(
               "ml-auto h-3 w-3 transition-transform",
@@ -104,7 +104,7 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
             "flex items-center justify-center rounded p-0.5 transition-colors",
             "hover:" + colors.bg.secondary
           )}
-          title={`Add ${entityTypeToName[entityType].slice(0, -1)}`}
+          title={`Add ${entityTypeToName.singular[entityType]}`}
         >
           <svg
             className="h-3.5 w-3.5"

@@ -17,7 +17,9 @@ export function VertexInspector({ handle }: { handle: VertexHandle }) {
 
   return (
     <div className="flex items-center justify-between">
-      <span className={`${fonts.size.xs} ${colors.text.secondary}`}>Vertex</span>
+      <span className={`${fonts.size.xs} ${colors.text.secondary}`}>
+        Vertex
+      </span>
       <span className={fonts.size.sm}>
         {handle.vertexIndex + 1} of {vertexCount}
       </span>

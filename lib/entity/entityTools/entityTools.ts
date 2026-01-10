@@ -1,9 +1,9 @@
-import { Doc } from "../state/doc";
-import { Table } from "../util/table";
-import { Entity } from "./entity";
-import { EntityType } from "./entityTypes";
+import { Doc } from "../../state/doc";
+import { Table } from "../../util/table";
+import { Entity } from "../entity";
+import { EntityType } from "../entityTypes";
+import { EntityHandle } from "../handleTypes";
 import { entityTypeToDocField } from "./entityTypeToDocField";
-import { EntityHandle } from "./handleTypes";
 
 type HandleToEntityMap = {
   [K in EntityType]: Extract<Entity, { type: K }>;

@@ -1,7 +1,7 @@
 "use client";
 
 import { colors } from "@/components/colors";
-import { entityName, workPlaneNew } from "@/lib/entity/entityNew";
+import { entityName, workPlaneNew } from "@/lib/entity/entityTools/entityNew";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
