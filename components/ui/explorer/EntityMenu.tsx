@@ -26,6 +26,8 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
     isSelected,
     selectOnly,
     toggleSelection,
+    selectRange,
+    lastSelectedHandle,
     duplicateEntity,
     deleteEntity,
   } = useStore();
@@ -37,11 +39,20 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
 
   const Icon = entityTypeToIcon[entityType];
 
+  // Build handles array for range selection
+  const handles = entries.map(([id]) => handleNew(entityType, id as EntityId));
+
   const handleEntityClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     const handle = handleNew(entityType, id as EntityId);
 
-    if (e.metaKey || e.ctrlKey) {
+    if (
+      e.shiftKey &&
+      lastSelectedHandle &&
+      lastSelectedHandle.type === entityType
+    ) {
+      selectRange(handles, lastSelectedHandle, handle);
+    } else if (e.metaKey || e.ctrlKey) {
       toggleSelection(handle);
     } else {
       selectOnly(handle);

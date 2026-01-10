@@ -27,12 +27,18 @@ function findHandleInSet(
 
 export interface SelectionSlice {
   selectedHandles: Set<SelectableHandle>;
+  lastSelectedHandle: SelectableHandle | null;
   isSelected: (handle: SelectableHandle) => boolean;
   select: (handle: SelectableHandle) => void;
   deselect: (handle: SelectableHandle) => void;
   toggleSelection: (handle: SelectableHandle) => void;
   selectOnly: (handle: SelectableHandle) => void;
   selectMultiple: (handles: SelectableHandle[]) => void;
+  selectRange: (
+    handles: SelectableHandle[],
+    from: SelectableHandle,
+    to: SelectableHandle
+  ) => void;
   clearSelection: () => void;
   getSelectedCount: () => number;
   editingPolylineId: PolylineId | null;
@@ -44,6 +50,7 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
   get
 ) => ({
   selectedHandles: new Set<SelectableHandle>(),
+  lastSelectedHandle: null,
   isSelected: (handle) => {
     return findHandleInSet(get().selectedHandles, handle) !== undefined;
   },
@@ -81,10 +88,28 @@ export const createSelectionSlice: StateCreator<SelectionSlice> = (
     });
   },
   selectOnly: (handle) => {
-    set({ selectedHandles: new Set([handle]) });
+    set({ selectedHandles: new Set([handle]), lastSelectedHandle: handle });
   },
   selectMultiple: (handles) => {
     set({ selectedHandles: new Set(handles) });
+  },
+  selectRange: (handles, from, to) => {
+    const fromIdx = handles.findIndex((h) => handleEquals(h, from));
+    const toIdx = handles.findIndex((h) => handleEquals(h, to));
+
+    if (fromIdx === -1 || toIdx === -1) {
+      set({ selectedHandles: new Set([to]), lastSelectedHandle: to });
+      return;
+    }
+
+    const start = Math.min(fromIdx, toIdx);
+    const end = Math.max(fromIdx, toIdx);
+    const rangeHandles = handles.slice(start, end + 1);
+
+    set({
+      selectedHandles: new Set(rangeHandles),
+      lastSelectedHandle: to,
+    });
   },
   clearSelection: () => set({ selectedHandles: new Set() }),
   getSelectedCount: () => get().selectedHandles.size,
