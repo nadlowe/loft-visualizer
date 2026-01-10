@@ -6,7 +6,6 @@ import { EditingBanner } from "@/components/ui/EditingBanner";
 import { Explorer } from "@/components/ui/explorer/Explorer";
 import { Inspector } from "@/components/ui/inspector/Inspector";
 import { ModeToggleButton } from "@/components/ui/ModeToggleButton";
-import { SnapsToggleButton } from "@/components/ui/SnapsToggleButton";
 import { TopBar } from "@/components/ui/TopBar";
 import { useKeyboardShortcuts } from "@/lib/hooks/useKeyboardShortcuts";
 import { getCurrentDocId } from "@/lib/state/persistence";
@@ -71,8 +70,7 @@ export default function Home() {
             <Scene is2D={is2D} controlsRef={controlsRef} />
           </Canvas>
 
-          <div className="absolute right-4 bottom-4 flex gap-2">
-            <SnapsToggleButton />
+          <div className="absolute right-4 bottom-4">
             <ModeToggleButton is2D={is2D} onToggle={() => setIs2D(!is2D)} />
           </div>
         </div>

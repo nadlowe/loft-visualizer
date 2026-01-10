@@ -22,15 +22,16 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
   };
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-3">
       <EntityDropdown
         handle={handle}
         field="workPlaneId"
         targetEntityType="WORKPLANE"
+        label="Work Plane"
       />
-      <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
         <span className={cn("text-xs", colors.text.secondary)}>Vertices</span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <span className={cn("text-sm", colors.text.primary)}>
             {vertexCount}
           </span>
@@ -56,10 +57,10 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
           </button>
         </div>
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex items-center justify-between">
         <span className={cn("text-xs", colors.text.secondary)}>Closed</span>
         <span className={cn("text-sm", colors.text.primary)}>
-          {polyline?.closed ? "Yes" : "No"}
+          {polyline?.closed ? "True" : "False"}
         </span>
       </div>
     </div>

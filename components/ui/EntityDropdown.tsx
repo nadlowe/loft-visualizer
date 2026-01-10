@@ -23,6 +23,7 @@ interface EntityDropdownProps<H extends EntityHandle> {
   handle: H;
   field: EntityIdKeys<HandleToEntityMap[H["type"]]>;
   targetEntityType: EntityType;
+  label: string;
   placeholder?: string;
 }
 
@@ -30,6 +31,7 @@ export function EntityDropdown<H extends EntityHandle>({
   handle,
   field,
   targetEntityType,
+  label,
   placeholder = "None",
 }: EntityDropdownProps<H>) {
   const { currentValue, targetEntities, updateEntity } = useStore(
@@ -56,12 +58,13 @@ export function EntityDropdown<H extends EntityHandle>({
   };
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex items-center justify-between">
+      <span className={cn("text-xs", colors.text.secondary)}>{label}</span>
       <select
         value={currentValue || ""}
         onChange={handleChange}
         className={cn(
-          "w-full rounded border bg-gray-800 px-2 py-1.5 text-sm transition-colors outline-none",
+          "rounded border bg-gray-800 px-2 py-1 text-sm transition-colors outline-none",
           colors.border.primary,
           colors.text.primary,
           "hover:" + colors.bg.secondary,

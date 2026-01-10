@@ -14,11 +14,11 @@ export function VertexInspector({ handle }: { handle: VertexHandle }) {
   const vertexCount = Math.floor(polyline.polyline.length / 2);
 
   return (
-    <div>
-      <div className="text-xs text-gray-400">Vertex</div>
-      <div className="mt-1 text-sm">
+    <div className="flex items-center justify-between">
+      <span className="text-xs text-gray-400">Vertex</span>
+      <span className="text-sm">
         {handle.vertexIndex + 1} of {vertexCount}
-      </div>
+      </span>
     </div>
   );
 }
