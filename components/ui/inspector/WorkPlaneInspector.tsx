@@ -1,6 +1,7 @@
 "use client";
 
 import { WorkPlaneHandle } from "@/lib/entity/handleTypes";
+import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
@@ -79,6 +80,13 @@ export function WorkPlaneInspector({ handle }: { handle: WorkPlaneHandle }) {
     });
   };
 
+  const handleClearRotation = () => {
+    updateEntity(handle, (entity) => ({
+      ...entity,
+      plane3: plane3New(entity.plane3.origin, [0, 0, 1]),
+    }));
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <NumberInput
@@ -96,6 +104,18 @@ export function WorkPlaneInspector({ handle }: { handle: WorkPlaneHandle }) {
         value={origin[2]}
         onCommit={(v) => handleOriginChange(2, v)}
       />
+      <button
+        onClick={handleClearRotation}
+        className={cn(
+          "mt-1 rounded border px-3 py-1.5 text-xs transition-all",
+          colors.border.primary,
+          colors.text.secondary,
+          "hover:" + colors.bg.secondary,
+          "active:scale-95 active:border-blue-500 active:bg-blue-600"
+        )}
+      >
+        Clear Rotation
+      </button>
     </div>
   );
 }

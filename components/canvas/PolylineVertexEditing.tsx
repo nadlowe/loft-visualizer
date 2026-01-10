@@ -112,6 +112,116 @@ export function PolylineVertexEditing({
     isSelected,
   });
 
+  // Manual click detection for 2D mode using screen-space distance
+  useEffect(() => {
+    if (!is2D || !polyline) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (e.target !== renderer.domElement) return;
+      if (e.button !== 0) return; // Only left click
+      if (draggingVertexIndex !== null) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+
+      // Check each vertex's screen position
+      const count = Math.floor(polyline.polyline.length / 2);
+      let closestIndex = -1;
+      let closestDistSq = Infinity;
+      const hitRadiusSq = 12 * 12; // 12 pixel hit radius
+
+      for (let i = 0; i < count; i++) {
+        const vx = polyline.polyline[i * 2];
+        const vy = polyline.polyline[i * 2 + 1];
+
+        // Convert vertex to world position
+        const worldPos = new THREE.Vector3(vx, vy, 0);
+        if (workPlane) {
+          workPlane.localToWorld(worldPos);
+        }
+
+        // Project to screen
+        worldPos.project(camera);
+        const screenX = (worldPos.x * 0.5 + 0.5) * rect.width + rect.left;
+        const screenY = (-worldPos.y * 0.5 + 0.5) * rect.height + rect.top;
+
+        const dx = clickX - screenX;
+        const dy = clickY - screenY;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq < hitRadiusSq && distSq < closestDistSq) {
+          closestDistSq = distSq;
+          closestIndex = i;
+        }
+      }
+
+      if (closestIndex >= 0) {
+        isClickingVertexRef.current = true;
+        requestAnimationFrame(() => {
+          isClickingVertexRef.current = false;
+        });
+
+        clickStartPosRef.current = { x: e.clientX, y: e.clientY };
+
+        const vertexHandle: VertexHandle = {
+          type: "VERTEX",
+          polylineId,
+          vertexIndex: closestIndex,
+        };
+
+        // Handle linked vertices for closed polylines
+        const lastIdx = count - 1;
+        const isLinkedVertex =
+          polyline.closed &&
+          count >= 2 &&
+          (closestIndex === 0 || closestIndex === lastIdx);
+        const linkedIndex = closestIndex === 0 ? lastIdx : 0;
+        const linkedHandle: VertexHandle | null = isLinkedVertex
+          ? { type: "VERTEX", polylineId, vertexIndex: linkedIndex }
+          : null;
+
+        if (e.shiftKey) {
+          if (isSelected(vertexHandle)) {
+            deselect(vertexHandle);
+            if (linkedHandle) deselect(linkedHandle);
+          } else {
+            select(vertexHandle);
+            if (linkedHandle) select(linkedHandle);
+          }
+        } else {
+          selectOnly(vertexHandle);
+          if (linkedHandle) select(linkedHandle);
+        }
+
+        // Start drag
+        setSelectionRect(null);
+        handleVertexDragStart(closestIndex);
+      }
+    };
+
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [
+    is2D,
+    polyline,
+    polylineId,
+    workPlane,
+    camera,
+    renderer,
+    draggingVertexIndex,
+    isClickingVertexRef,
+    clickStartPosRef,
+    selectOnly,
+    select,
+    deselect,
+    isSelected,
+    setSelectionRect,
+    handleVertexDragStart,
+  ]);
+
   // Mouse event listeners for dragging
   useEffect(() => {
     if (draggingVertexIndex !== null) {
@@ -179,7 +289,11 @@ export function PolylineVertexEditing({
   ));
 
   const clickPlane = (
-    <mesh visible={false} onPointerDown={handleLineDoubleClick}>
+    <mesh
+      visible={false}
+      onPointerDown={handleLineDoubleClick}
+      position={[0, 0, -0.1]}
+    >
       <planeGeometry args={[1000, 1000]} />
       <meshBasicMaterial transparent opacity={0} side={THREE.DoubleSide} />
     </mesh>
@@ -188,16 +302,16 @@ export function PolylineVertexEditing({
   if (workPlane) {
     return (
       <primitive object={workPlane}>
-        {clickPlane}
         {vertexHandles}
+        {clickPlane}
       </primitive>
     );
   }
 
   return (
     <>
-      {clickPlane}
       {vertexHandles}
+      {clickPlane}
     </>
   );
 }
@@ -534,22 +648,27 @@ function VertexHandle({
     polylineId,
     vertexIndex,
   };
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const { camera, size } = useThree();
   const materialRef = useRef<THREE.MeshBasicMaterial>(null);
 
   useFrame(() => {
-    if (meshRef.current) {
+    if (groupRef.current) {
+      // Get world position of the group (important when it's a child of work plane)
+      const worldPos = new THREE.Vector3();
+      groupRef.current.getWorldPosition(worldPos);
+
       // Calculate world units per pixel for screen-space scaling
       let worldUnitsPerPixel: number;
       if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
         const orthoCamera = camera as THREE.OrthographicCamera;
-        const visibleWidth =
-          (orthoCamera.right - orthoCamera.left) / orthoCamera.zoom;
-        worldUnitsPerPixel = visibleWidth / size.width;
+        // Use height for consistency with perspective calculation
+        const visibleHeight =
+          (orthoCamera.top - orthoCamera.bottom) / orthoCamera.zoom;
+        worldUnitsPerPixel = visibleHeight / size.height;
       } else {
-        // For perspective camera, use distance-based scaling
-        const distance = camera.position.distanceTo(meshRef.current.position);
+        // For perspective camera, use distance-based scaling with world position
+        const distance = camera.position.distanceTo(worldPos);
         const fov = (camera as THREE.PerspectiveCamera).fov || 75;
         const vFov = (fov * Math.PI) / 180;
         const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
@@ -559,7 +678,9 @@ function VertexHandle({
       // ~3 pixel radius sphere (geometry has 0.05 base radius, so scale accordingly)
       const pixelSize = 3;
       const scale = (pixelSize * worldUnitsPerPixel) / 0.05;
-      meshRef.current.scale.setScalar(scale);
+      if (scale > 0 && isFinite(scale)) {
+        groupRef.current.scale.setScalar(scale);
+      }
     }
   });
 
@@ -572,21 +693,27 @@ function VertexHandle({
   }, [isSelected]);
 
   return (
-    <mesh
-      ref={meshRef}
-      position={vertex}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        onPointerDown(e);
-        onDragStart();
-      }}
-      userData={{ handleHash: vertexHandleToHash(handle) }}
-    >
-      <sphereGeometry args={[0.05, 16, 16]} />
-      <meshBasicMaterial
-        ref={materialRef}
-        color={isSelected ? colors.selection.highlight : 0xffffff}
-      />
-    </mesh>
+    <group ref={groupRef} position={vertex}>
+      {/* Transparent larger hit area for easier clicking */}
+      <mesh
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onPointerDown(e);
+          onDragStart();
+        }}
+        userData={{ handleHash: vertexHandleToHash(handle) }}
+      >
+        <sphereGeometry args={[0.15, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {/* Visible smaller sphere */}
+      <mesh>
+        <sphereGeometry args={[0.05, 16, 16]} />
+        <meshBasicMaterial
+          ref={materialRef}
+          color={isSelected ? colors.selection.highlight : 0xffffff}
+        />
+      </mesh>
+    </group>
   );
 }

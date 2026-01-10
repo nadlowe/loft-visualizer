@@ -45,7 +45,6 @@ export function useVertexWindowSelection({
     null
   );
   const windowSelectionStartRef = useRef<{ x: number; y: number } | null>(null);
-
   // Window selection event handlers
   useEffect(() => {
     if (!is2D) return;
@@ -54,6 +53,8 @@ export function useVertexWindowSelection({
       if (e.target !== renderer.domElement) return;
       if (isClickingVertexRef.current) return;
       if (draggingVertexIndex !== null) return;
+      // Don't start selection when panning (right mouse button = 2, middle = 1)
+      if (e.button === 1 || e.button === 2) return;
 
       windowSelectionStartRef.current = { x: e.clientX, y: e.clientY };
       setSelectionRect({
