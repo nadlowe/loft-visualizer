@@ -11,6 +11,7 @@ import { handleNew } from "../entity/handleTools/handleNew";
 import { parseHandle } from "../entity/handleTools/handleTools";
 import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
 import { adjustLoftSeamsAfterPolylineEdit } from "../geom/utils";
+import { PolylineId } from "../util/uid";
 import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
@@ -22,7 +23,6 @@ import {
   saveDocToStorage,
 } from "./persistence";
 import { SelectionSlice } from "./selectionSlice";
-import { PolylineId } from "../util/uid";
 
 export interface HistoryState {
   doc: Doc;
@@ -61,6 +61,7 @@ export interface DocSlice {
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
 
+  // Polyline vertex editing
   updatePolylineVertices: (
     polylineId: PolylineId,
     newCoords: number[],

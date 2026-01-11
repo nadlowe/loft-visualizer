@@ -24,7 +24,7 @@ export interface AlignedPolylines {
   seamIndexB: number;
 }
 
-export function getPolylineUniqueCount(polyline: PolylineEntity): number {
+export function getPolylineUniqueVertexCount(polyline: PolylineEntity): number {
   const rawCount = Math.floor(polyline.polyline.length / 2);
   return polyline.closed && rawCount > 0 ? rawCount - 1 : rawCount;
 }
@@ -91,8 +91,8 @@ export function adjustLoftSeamsAfterPolylineEdit(
     const otherPolyEntity = doc.polylines[otherPolyId];
     if (!otherPolyEntity) continue;
 
-    const n = getPolylineUniqueCount(polyEntity);
-    const nOther = getPolylineUniqueCount(otherPolyEntity);
+    const n = getPolylineUniqueVertexCount(polyEntity);
+    const nOther = getPolylineUniqueVertexCount(otherPolyEntity);
 
     if (edit.type === "ADD") {
       const idx = isPoly1 ? seamA : seamB;

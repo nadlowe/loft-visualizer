@@ -27,11 +27,9 @@ export function generateLoft(
   const sections = generateLoftSections(
     docPl1.polyline,
     loftEntity.seamIndexA,
-    !!docPl1.closed,
     plane1,
     docPl2.polyline,
     loftEntity.seamIndexB,
-    !!docPl2.closed,
     plane2
   );
 
@@ -43,11 +41,9 @@ export function generateLoft(
 function generateLoftSections(
   polyline1: number[],
   seam1: number,
-  closed1: boolean,
   plane1: Plane3,
   polyline2: number[],
   seam2: number,
-  closed2: boolean,
   plane2: Plane3
 ): Section[] {
   // Guard against empty polylines

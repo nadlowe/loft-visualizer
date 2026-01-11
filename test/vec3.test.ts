@@ -5,6 +5,7 @@ import {
   vec3Cross,
   vec3Dot,
   vec3Length,
+  vec3Lerp,
   vec3Normalize,
   vec3Scale,
   vec3Subtract,
@@ -288,5 +289,15 @@ describe("vec3Scale", () => {
     const vec: Vec3 = [2, 4, 6];
     const result = vec3Scale(vec, 0.5);
     expect(result).toEqual([1, 2, 3]);
+  });
+});
+
+describe("vec3Lerp", () => {
+  it("interpolates between two vectors", () => {
+    const a: Vec3 = [0, 0, 0];
+    const b: Vec3 = [10, 20, 30];
+    expect(vec3Lerp(a, b, 0)).toEqual([0, 0, 0]);
+    expect(vec3Lerp(a, b, 1)).toEqual([10, 20, 30]);
+    expect(vec3Lerp(a, b, 0.5)).toEqual([5, 10, 15]);
   });
 });
