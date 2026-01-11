@@ -39,6 +39,7 @@ export function PolylineVertexEditing({
     clearSelection,
     selectedHandles,
     getEntity,
+    updatePolylineVertices,
   } = useStore();
 
   const polylineHandle = handleNew("POLYLINE", polylineId);
@@ -126,7 +127,7 @@ export function PolylineVertexEditing({
     isSelected,
     setSelectionRect,
     handleVertexDragStart,
-    updateEntity,
+    updatePolylineVertices,
   });
 
   // Drag event listeners (2D and 3D modes)
@@ -153,6 +154,7 @@ export function PolylineVertexEditing({
     hasSelectedVertices,
     selectedVertexIndices,
     updateEntity,
+    updatePolylineVertices,
     setEditingPolylineId,
     clearSelection,
     selectOnly,
@@ -169,7 +171,7 @@ export function PolylineVertexEditing({
     camera,
     raycaster,
     pointer,
-    updateEntity,
+    updatePolylineVertices,
     selectOnly,
     lastLineClickTimeRef,
   });

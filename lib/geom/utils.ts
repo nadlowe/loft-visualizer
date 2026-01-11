@@ -1,7 +1,7 @@
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { Doc } from "../state/doc";
-import { LoftId } from "../util/uid";
+import { LoftId, PolylineId } from "../util/uid";
 import {
   Plane3,
   PlaneOverrides,
@@ -16,11 +16,133 @@ import {
 } from "./plane3";
 import { polyline2Centroid } from "./polyline2";
 import { projectPolyline3ToPlane3, projectVec2ToPlane3 } from "./project";
+import { DIST_EPSILON } from "./scalar";
 import { vec2Distance } from "./vec2";
 
 export interface AlignedPolylines {
   seamIndexA: number;
   seamIndexB: number;
+}
+
+export function getPolylineUniqueCount(polyline: PolylineEntity): number {
+  const rawCount = Math.floor(polyline.polyline.length / 2);
+  return polyline.closed && rawCount > 0 ? rawCount - 1 : rawCount;
+}
+
+/**
+ * Utility to merge overlapping vertices and return the deleted indices.
+ * Keeps polyline2.ts logic-only.
+ */
+export function mergePolylineVerticesWithIndices(
+  polyline: number[],
+  epsilon: number = DIST_EPSILON
+): { polyline: number[]; deletedIndices: number[] } {
+  const numVertices = polyline.length / 2;
+  if (numVertices < 3) return { polyline: [...polyline], deletedIndices: [] };
+
+  const result: number[] = [];
+  const deletedIndices: number[] = [];
+
+  const endX = polyline[polyline.length - 2];
+  const endY = polyline[polyline.length - 1];
+
+  result.push(polyline[0], polyline[1]);
+
+  for (let i = 1; i < numVertices - 1; i++) {
+    const x = polyline[i * 2];
+    const y = polyline[i * 2 + 1];
+
+    const lastX = result[result.length - 2];
+    const lastY = result[result.length - 1];
+    const distToLast = vec2Distance([x, y], [lastX, lastY]);
+    const distToEnd = vec2Distance([x, y], [endX, endY]);
+
+    if (distToLast >= epsilon && distToEnd >= epsilon) {
+      result.push(x, y);
+    } else {
+      deletedIndices.push(i);
+    }
+  }
+
+  result.push(endX, endY);
+  return { polyline: result, deletedIndices };
+}
+
+export function adjustLoftSeamsAfterPolylineEdit(
+  doc: Doc,
+  polylineId: PolylineId,
+  edit: { type: "ADD"; index: number } | { type: "DELETE"; indices: number[] }
+): Record<LoftId, LoftEntity> {
+  const updatedLofts: Record<LoftId, LoftEntity> = { ...doc.lofts };
+
+  for (const [loftId, loft] of Object.entries(doc.lofts)) {
+    const isPoly1 = loft.polyline1 === polylineId;
+    const isPoly2 = loft.polyline2 === polylineId;
+
+    if (!isPoly1 && !isPoly2) continue;
+
+    let seamA = loft.seamIndexA;
+    let seamB = loft.seamIndexB;
+
+    const polyEntity = doc.polylines[polylineId];
+    if (!polyEntity) continue;
+
+    const otherPolyId = isPoly1 ? loft.polyline2 : loft.polyline1;
+    const otherPolyEntity = doc.polylines[otherPolyId];
+    if (!otherPolyEntity) continue;
+
+    const n = getPolylineUniqueCount(polyEntity);
+    const nOther = getPolylineUniqueCount(otherPolyEntity);
+
+    if (edit.type === "ADD") {
+      const idx = isPoly1 ? seamA : seamB;
+      // If adding a vertex before or at the seam, increment the seam
+      if (edit.index <= idx) {
+        if (isPoly1) seamA = (seamA + 1) % (n + 1);
+        else seamB = (seamB + 1) % (n + 1);
+      }
+    } else {
+      // Sort indices descending to process them from high to low
+      // This ensures indices remain valid during the iteration
+      const sortedIndices = [...edit.indices].sort((a, b) => b - a);
+      let currentN = n;
+
+      for (const delIdx of sortedIndices) {
+        if (isPoly1) {
+          if (delIdx < seamA) {
+            seamA--;
+          } else if (delIdx === seamA) {
+            // Keep same index unless it was the last unique vertex
+            if (seamA >= currentN - 1) {
+              seamA = 0;
+            }
+            // Increment the non-deletion triggered polyline's seam
+            seamB = (seamB + 1) % nOther;
+          }
+        } else {
+          if (delIdx < seamB) {
+            seamB--;
+          } else if (delIdx === seamB) {
+            if (seamB >= currentN - 1) {
+              seamB = 0;
+            }
+            seamA = (seamA + 1) % nOther;
+          }
+        }
+        currentN--;
+      }
+    }
+
+    if (seamA !== loft.seamIndexA || seamB !== loft.seamIndexB) {
+      updatedLofts[loftId as LoftId] = {
+        ...loft,
+        seamIndexA: seamA,
+        seamIndexB: seamB,
+      };
+    }
+  }
+
+  return updatedLofts;
 }
 
 export function determineLoftSeam(

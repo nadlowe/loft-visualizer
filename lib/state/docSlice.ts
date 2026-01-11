@@ -10,6 +10,7 @@ import { EntityTypeToEntity } from "../entity/entityTools/entityTypeToEntity";
 import { handleNew } from "../entity/handleTools/handleNew";
 import { parseHandle } from "../entity/handleTools/handleTools";
 import { EntityHandle, SelectableHandle } from "../entity/handleTypes";
+import { adjustLoftSeamsAfterPolylineEdit } from "../geom/utils";
 import { CmdSlice } from "./cmd/cmdSlice";
 import { defaultDocInit } from "./defaultDoc";
 import { Doc } from "./doc";
@@ -21,6 +22,7 @@ import {
   saveDocToStorage,
 } from "./persistence";
 import { SelectionSlice } from "./selectionSlice";
+import { PolylineId } from "../util/uid";
 
 export interface HistoryState {
   doc: Doc;
@@ -58,6 +60,12 @@ export interface DocSlice {
 
   // Batch transaction
   transact: (updater: (doc: Doc) => Doc) => void;
+
+  updatePolylineVertices: (
+    polylineId: PolylineId,
+    newCoords: number[],
+    edit: { type: "ADD"; index: number } | { type: "DELETE"; indices: number[] }
+  ) => void;
 
   // Persistence
   saveDoc: () => void;
@@ -279,6 +287,30 @@ export const createDocSlice: StateCreator<
       transact((state) => ({
         doc: updater(state.doc),
       }));
+    },
+
+    updatePolylineVertices: (polylineId, newCoords, edit) => {
+      transact((state) => {
+        const polyline = state.doc.polylines[polylineId];
+        if (!polyline) return {};
+
+        const updatedLofts = adjustLoftSeamsAfterPolylineEdit(
+          state.doc,
+          polylineId,
+          edit
+        );
+
+        return {
+          doc: {
+            ...state.doc,
+            polylines: {
+              ...state.doc.polylines,
+              [polylineId]: { ...polyline, polyline: newCoords },
+            },
+            lofts: updatedLofts,
+          },
+        };
+      });
     },
 
     // Persistence

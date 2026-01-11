@@ -24,7 +24,9 @@ interface Use2DClickDetectionProps {
   isSelected: ReturnType<typeof useStore.getState>["isSelected"];
   setSelectionRect: (rect: null) => void;
   handleVertexDragStart: (index: number) => void;
-  updateEntity: ReturnType<typeof useStore.getState>["updateEntity"];
+  updatePolylineVertices: ReturnType<
+    typeof useStore.getState
+  >["updatePolylineVertices"];
 }
 
 export function use2DClickDetection({
@@ -44,7 +46,7 @@ export function use2DClickDetection({
   isSelected,
   setSelectionRect,
   handleVertexDragStart,
-  updateEntity,
+  updatePolylineVertices,
 }: Use2DClickDetectionProps) {
   const last2DClickTimeRef = useRef<number>(0);
   const last2DClickPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -128,7 +130,7 @@ export function use2DClickDetection({
           polyline,
           polylineId,
           polylineHandle,
-          updateEntity,
+          updatePolylineVertices,
           selectOnly
         );
       }
@@ -155,7 +157,7 @@ export function use2DClickDetection({
     isSelected,
     setSelectionRect,
     handleVertexDragStart,
-    updateEntity,
+    updatePolylineVertices,
   ]);
 }
 
@@ -223,7 +225,9 @@ function handleDoubleClickInsert(
   polyline: PolylineEntity,
   polylineId: PolylineId,
   polylineHandle: { type: "POLYLINE"; id: PolylineId },
-  updateEntity: ReturnType<typeof useStore.getState>["updateEntity"],
+  updatePolylineVertices: ReturnType<
+    typeof useStore.getState
+  >["updatePolylineVertices"],
   selectOnly: ReturnType<typeof useStore.getState>["selectOnly"]
 ) {
   const ndcX = ((clickX - rect.left) / rect.width) * 2 - 1;
@@ -279,10 +283,12 @@ function handleDoubleClickInsert(
   );
   const insertIndex = (segmentIndex + 1) * 2;
 
-  updateEntity(polylineHandle, (entity) => {
-    const newPolyline = [...entity.polyline];
-    newPolyline.splice(insertIndex, 0, localX, localY);
-    return { ...entity, polyline: newPolyline };
+  const newPolyline = [...polyline.polyline];
+  newPolyline.splice(insertIndex, 0, localX, localY);
+
+  updatePolylineVertices(polylineId, newPolyline, {
+    type: "ADD",
+    index: segmentIndex + 1,
   });
 
   const newVertexHandle: VertexHandle = {

@@ -1,8 +1,8 @@
 import { PolylineEntity } from "@/lib/entity/polylineEntity";
-import { polyline2MergeOverlappingVertices } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useEffect } from "react";
+import { mergePolylineVerticesWithIndices } from "../geom/utils";
 
 export function useKeyboardShortcuts() {
   const {
@@ -20,6 +20,7 @@ export function useKeyboardShortcuts() {
     editingPolylineId,
     doc,
     updateEntity,
+    updatePolylineVertices,
   } = useStore();
 
   useEffect(() => {
@@ -141,18 +142,14 @@ export function useKeyboardShortcuts() {
           const polyline = doc.polylines[polylineId];
           if (!polyline) continue;
 
-          const mergedPolyline = polyline2MergeOverlappingVertices(
-            polyline.polyline
-          );
+          const { polyline: mergedPolyline, deletedIndices } =
+            mergePolylineVerticesWithIndices(polyline.polyline);
 
           // Only update if vertices were actually merged
-          if (mergedPolyline.length !== polyline.polyline.length) {
-            updateEntity({ type: "POLYLINE", id: polylineId }, (e) => {
-              const entity = e as PolylineEntity;
-              return {
-                ...entity,
-                polyline: mergedPolyline,
-              };
+          if (deletedIndices.length > 0) {
+            updatePolylineVertices(polylineId, mergedPolyline, {
+              type: "DELETE",
+              indices: deletedIndices,
             });
           }
         }

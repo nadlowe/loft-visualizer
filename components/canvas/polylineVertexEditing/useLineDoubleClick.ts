@@ -21,7 +21,9 @@ interface UseLineDoubleClickProps {
   camera: THREE.Camera;
   raycaster: THREE.Raycaster;
   pointer: THREE.Vector2;
-  updateEntity: ReturnType<typeof useStore.getState>["updateEntity"];
+  updatePolylineVertices: ReturnType<
+    typeof useStore.getState
+  >["updatePolylineVertices"];
   selectOnly: ReturnType<typeof useStore.getState>["selectOnly"];
   lastLineClickTimeRef: React.MutableRefObject<number>;
 }
@@ -35,7 +37,7 @@ export function useLineDoubleClick({
   camera,
   raycaster,
   pointer,
-  updateEntity,
+  updatePolylineVertices,
   selectOnly,
   lastLineClickTimeRef,
 }: UseLineDoubleClickProps) {
@@ -72,13 +74,12 @@ export function useLineDoubleClick({
       );
       const insertIndex = (segmentIndex + 1) * 2;
 
-      updateEntity(polylineHandle, (entity) => {
-        const newPolyline = [...entity.polyline];
-        newPolyline.splice(insertIndex, 0, localPoint.x, localPoint.y);
-        return {
-          ...entity,
-          polyline: newPolyline,
-        };
+      const newPolyline = [...polyline.polyline];
+      newPolyline.splice(insertIndex, 0, localPoint.x, localPoint.y);
+
+      updatePolylineVertices(polylineId, newPolyline, {
+        type: "ADD",
+        index: segmentIndex + 1,
       });
 
       const newVertexHandle: VertexHandle = {
@@ -97,7 +98,7 @@ export function useLineDoubleClick({
       raycaster,
       camera,
       workPlane,
-      updateEntity,
+      updatePolylineVertices,
       selectOnly,
       lastLineClickTimeRef,
     ]

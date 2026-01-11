@@ -11,6 +11,9 @@ interface UseKeyboardHandlersProps {
   hasSelectedVertices: boolean;
   selectedVertexIndices: number[];
   updateEntity: ReturnType<typeof useStore.getState>["updateEntity"];
+  updatePolylineVertices: ReturnType<
+    typeof useStore.getState
+  >["updatePolylineVertices"];
   setEditingPolylineId: (id: PolylineId | null) => void;
   clearSelection: () => void;
   selectOnly: ReturnType<typeof useStore.getState>["selectOnly"];
@@ -24,6 +27,7 @@ export function useKeyboardHandlers({
   hasSelectedVertices,
   selectedVertexIndices,
   updateEntity,
+  updatePolylineVertices,
   setEditingPolylineId,
   clearSelection,
   selectOnly,
@@ -73,6 +77,9 @@ export function useKeyboardHandlers({
           }));
           newLastIdx = vertexCount - 1;
         } else {
+          // This is technically an "ADD" of a vertex at the end, but it's a special case
+          // where we duplicate the first vertex. For now, let's keep it as updateEntity
+          // but we might want to reconsider if it affects the seam logic.
           updateEntity(polylineHandle, (entity) => {
             const newPolyline = [...entity.polyline, firstX, firstY];
             return {
@@ -148,11 +155,14 @@ export function useKeyboardHandlers({
                 // Duplicate first vertex at end for closure
                 newPolyline.push(newPolyline[0], newPolyline[1]);
 
-                updateEntity(polylineHandle, (entity) => ({
-                  ...entity,
-                  polyline: newPolyline,
-                  closed: true,
-                }));
+                // We need to notify the store about the deletions for seam adjustment
+                const deletedIndices = Array.from(indicesToDelete).filter(
+                  (i) => i < lastIdx
+                );
+                updatePolylineVertices(polylineId, newPolyline, {
+                  type: "DELETE",
+                  indices: deletedIndices,
+                });
                 clearSelection();
               }
             }
@@ -167,10 +177,10 @@ export function useKeyboardHandlers({
               for (const idx of sortedIndices) {
                 newPolyline.splice(idx * 2, 2);
               }
-              updateEntity(polylineHandle, (entity) => ({
-                ...entity,
-                polyline: newPolyline,
-              }));
+              updatePolylineVertices(polylineId, newPolyline, {
+                type: "DELETE",
+                indices: sortedIndices,
+              });
               clearSelection();
             }
           }
@@ -186,6 +196,7 @@ export function useKeyboardHandlers({
     polylineId,
     polylineHandle,
     updateEntity,
+    updatePolylineVertices,
     setEditingPolylineId,
     clearSelection,
     selectOnly,
