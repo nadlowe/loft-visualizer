@@ -1,5 +1,4 @@
-import { Plane3 } from "../geom/geomTypes";
-import { worldPlaneXY } from "../geom/plane3";
+import { Plane3, PlaneOverrides } from "../geom/geomTypes";
 import {
   polyline2Eval,
   polyline2Shift,
@@ -7,6 +6,7 @@ import {
 } from "../geom/polyline2";
 import { projectVec2ToPlane3 } from "../geom/project";
 import { Section } from "../geom/section";
+import { getLoftSubEntities } from "../geom/utils";
 import { vec3Lerp } from "../geom/vec3";
 import { Doc } from "../state/doc";
 import { LoftId } from "../util/uid";
@@ -14,35 +14,15 @@ import { LoftId } from "../util/uid";
 // Number of subdivisions for loft surfaces (both along polylines and across sections)
 export const LOFT_SUBDIVISIONS = 3;
 
-// this is used for responsiveness during drag operations
-export interface PlaneOverrides {
-  plane1?: Plane3;
-  plane2?: Plane3;
-}
-
 export function generateLoft(
   loftId: LoftId,
   doc: Doc,
   planeOverrides?: PlaneOverrides
 ): Section[] | null {
-  const loftEntity = doc.lofts[loftId];
-  if (!loftEntity) return null;
+  const subEntities = getLoftSubEntities(loftId, doc, planeOverrides);
+  if (!subEntities) return null;
 
-  const docPl1 = doc.polylines[loftEntity.polyline1];
-  const docPl2 = doc.polylines[loftEntity.polyline2];
-  if (!docPl1 || !docPl2) return null;
-
-  // Use overrides if provided, otherwise look up from doc
-  const plane1 =
-    planeOverrides?.plane1 ??
-    (docPl1.workPlaneId
-      ? doc.workPlanes[docPl1.workPlaneId]?.plane3
-      : worldPlaneXY());
-  const plane2 =
-    planeOverrides?.plane2 ??
-    (docPl2.workPlaneId
-      ? doc.workPlanes[docPl2.workPlaneId]?.plane3
-      : worldPlaneXY());
+  const { loftEntity, docPl1, docPl2, plane1, plane2 } = subEntities;
 
   const sections = generateLoftSections(
     docPl1.polyline,

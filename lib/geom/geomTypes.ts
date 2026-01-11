@@ -11,3 +11,8 @@ export interface Plane3 {
   readonly normal: Vec3;
   readonly u?: Vec3;
 }
+
+export interface PlaneOverrides {
+  plane1?: Plane3;
+  plane2?: Plane3;
+}

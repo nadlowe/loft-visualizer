@@ -1,5 +1,19 @@
-import { Plane3, Polyline2, Polyline3, Vec2 } from "./geomTypes";
-import { normalFromVec3sOnNormalAxis, plane3FromNormal } from "./plane3";
+import { LoftEntity } from "../entity/loftEntity";
+import { PolylineEntity } from "../entity/polylineEntity";
+import { Doc } from "../state/doc";
+import { LoftId } from "../util/uid";
+import {
+  Plane3,
+  PlaneOverrides,
+  Polyline2,
+  Polyline3,
+  Vec2,
+} from "./geomTypes";
+import {
+  normalFromVec3sOnNormalAxis,
+  plane3FromNormal,
+  worldPlaneXY,
+} from "./plane3";
 import { polyline2Centroid } from "./polyline2";
 import { projectPolyline3ToPlane3, projectVec2ToPlane3 } from "./project";
 import { vec2Distance } from "./vec2";
@@ -44,6 +58,38 @@ export function determineLoftSeam(
 
   // stop here and I'll give more directions
   return { seamIndexA: idxA, seamIndexB: idxB };
+}
+
+export interface LoftSubEntities {
+  loftEntity: LoftEntity;
+  docPl1: PolylineEntity;
+  docPl2: PolylineEntity;
+  plane1: Plane3;
+  plane2: Plane3;
+}
+
+export function getPolylinePlane(polyline: PolylineEntity, doc: Doc): Plane3 {
+  return polyline.workPlaneId
+    ? (doc.workPlanes[polyline.workPlaneId]?.plane3 ?? worldPlaneXY())
+    : worldPlaneXY();
+}
+
+export function getLoftSubEntities(
+  loftId: LoftId,
+  doc: Doc,
+  planeOverrides?: PlaneOverrides
+): LoftSubEntities | null {
+  const loftEntity = doc.lofts[loftId];
+  if (!loftEntity) return null;
+
+  const docPl1 = doc.polylines[loftEntity.polyline1];
+  const docPl2 = doc.polylines[loftEntity.polyline2];
+  if (!docPl1 || !docPl2) return null;
+
+  const plane1 = planeOverrides?.plane1 ?? getPolylinePlane(docPl1, doc);
+  const plane2 = planeOverrides?.plane2 ?? getPolylinePlane(docPl2, doc);
+
+  return { loftEntity, docPl1, docPl2, plane1, plane2 };
 }
 
 // Find the index pair (idxA, idxB) of closest vertices between two polylines

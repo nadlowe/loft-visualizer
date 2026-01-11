@@ -1,6 +1,7 @@
 import { sectionsToThree } from "@/lib/conversion/geomToThree";
 import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
 import { generateLoft, LOFT_SUBDIVISIONS } from "@/lib/generate/generateLoft";
+import { getLoftSubEntities } from "@/lib/geom/utils";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { LoftId, WorkPlaneId } from "@/lib/util/uid";
@@ -271,22 +272,20 @@ export function updateLoftGeometryDuringDrag(
   const loftGeometry = loftRefs.get(loftId);
   if (!loftGeometry) return;
 
-  const loftEntity = doc.lofts[loftId];
-  if (!loftEntity) return;
+  const subEntities = getLoftSubEntities(loftId, doc);
+  if (!subEntities) return;
 
-  const polyline1 = doc.polylines[loftEntity.polyline1];
-  const polyline2 = doc.polylines[loftEntity.polyline2];
-  if (!polyline1 || !polyline2) return;
+  const { docPl1, docPl2 } = subEntities;
 
   // Get work planes from refs (which have current drag positions) and convert to Plane3
   const wp1Group =
-    polyline1.workPlaneId === workPlaneId
+    docPl1.workPlaneId === workPlaneId
       ? currentWorkPlane
-      : workPlaneRefs.get(polyline1.workPlaneId || "");
+      : workPlaneRefs.get(docPl1.workPlaneId || "");
   const wp2Group =
-    polyline2.workPlaneId === workPlaneId
+    docPl2.workPlaneId === workPlaneId
       ? currentWorkPlane
-      : workPlaneRefs.get(polyline2.workPlaneId || "");
+      : workPlaneRefs.get(docPl2.workPlaneId || "");
 
   const plane1 = wp1Group ? workPlaneToPlane3(wp1Group) : undefined;
   const plane2 = wp2Group ? workPlaneToPlane3(wp2Group) : undefined;
