@@ -6,8 +6,11 @@ export type DrawPolylineCmd = {
   closeLoop: boolean;
 };
 
+export type LoftCmdType = "SIMPLE" | "SEAM";
+
 export type AddLoftCmd = {
   type: "ADD_LOFT";
+  loftType: LoftCmdType;
 };
 
 export type Cmd = DrawPolylineCmd | AddLoftCmd;

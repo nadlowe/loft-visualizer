@@ -1,27 +1,15 @@
-import { debugPolyline3s, debugVec3 } from "../debug/debugGeom";
 import { Plane3, Polyline2, Polyline3, Vec2 } from "./geomTypes";
 import { normalFromVec3sOnNormalAxis, plane3FromNormal } from "./plane3";
-import {
-  polyline2Centroid,
-  polyline2Reverse,
-  polyline2Shift,
-  polyline2SignedArea,
-} from "./polyline2";
-import {
-  projectPolyline2ToPlane3,
-  projectPolyline3ToPlane3,
-  projectVec2ToPlane3,
-} from "./project";
+import { polyline2Centroid } from "./polyline2";
+import { projectPolyline3ToPlane3, projectVec2ToPlane3 } from "./project";
 import { vec2Distance } from "./vec2";
 
 export interface AlignedPolylines {
-  guide: Polyline2;
-  follower: Polyline2;
-  guideIsA: boolean;
-  followerReversed: boolean;
+  seamIndexA: number;
+  seamIndexB: number;
 }
 
-export function alignPolylines(
+export function determineLoftSeam(
   pl2A: Polyline2,
   plane3A: Plane3,
   pl3A: Polyline3,
@@ -32,53 +20,30 @@ export function alignPolylines(
   const [xA, yA, zA] = projectVec2ToPlane3(polyline2Centroid(pl2A), plane3A);
   const [xB, yB, zB] = projectVec2ToPlane3(polyline2Centroid(pl2B), plane3B);
 
-  debugVec3([xA, yA, zA], "#ff00ff", "vec3A");
-  debugVec3([xB, yB, zB], "#00ff00", "vec3B");
-
   const normal = normalFromVec3sOnNormalAxis([xA, yA, zA], [xB, yB, zB]);
   const plane3 = plane3FromNormal([xA, yA, zA], normal);
 
-  // Project both arrays to XY plane as Polyline2s (lose z-axis)
-  let polyA = projectPolyline3ToPlane3(pl3A, plane3);
-  let polyB = projectPolyline3ToPlane3(pl3B, plane3);
+  const polyA = projectPolyline3ToPlane3(pl3A, plane3);
+  const polyB = projectPolyline3ToPlane3(pl3B, plane3);
 
-  const { pl3: debugA } = projectPolyline2ToPlane3(polyA, plane3);
-  const { pl3: debugB } = projectPolyline2ToPlane3(polyB, plane3);
-
-  debugPolyline3s([debugA, debugB], ["#ff00ff", "#00ff00"], ["polyA", "polyB"]);
-
-  // Set the one with more vertices as the "guide"
-  const guideIsA = polyA.length >= polyB.length;
-  let guide = guideIsA ? polyA : polyB;
-  let follower = guideIsA ? polyB : polyA;
+  // TODO: keep these for debugging
+  // debugVec3([xA, yA, zA], "#ff00ff", "vec3A");
+  // debugVec3([xB, yB, zB], "#00ff00", "vec3B");
+  // const { pl3: debugA } = projectPolyline2ToPlane3(polyA, plane3);
+  // const { pl3: debugB } = projectPolyline2ToPlane3(polyB, plane3);
+  // debugPolyline3s([debugA, debugB], ["#ff00ff", "#00ff00"], ["polyA", "polyB"]);
 
   // Find the two closest points to create the start seam
-  const { idxA, idxB } = findClosestVertexPair(guide, follower);
+  const { idxA, idxB } = findClosestVertexPair(polyA, polyB);
 
-  // Check that their windings are matched (both CCW or both CW)
-  const guideArea = polyline2SignedArea(guide);
-  const followerArea = polyline2SignedArea(follower);
-  const windingsMatch = guideArea * followerArea > 0;
-  const followerReversed = !windingsMatch;
-
-  // If windings don't match, reverse the follower to match
-  if (followerReversed) {
-    follower = polyline2Reverse(follower);
-    // After reversing, recalculate the closest point index for follower
-    const followerCount = follower.length / 2;
-    // Reversing maps index i to (n - 1 - i)
-    const newFollowerIdx = followerCount - 1 - idxB;
-    // Shift so seam vertex is at index 0
-    guide = polyline2Shift(guide, idxA);
-    follower = polyline2Shift(follower, newFollowerIdx);
-  } else {
-    // Shift both so seam vertex is at index 0
-    guide = polyline2Shift(guide, idxA);
-    follower = polyline2Shift(follower, idxB);
-  }
+  // debug the seam vertices
+  // const seamA: Vec3 = [pl3A[idxA * 3], pl3A[idxA * 3 + 1], pl3A[idxA * 3 + 2]];
+  // const seamB: Vec3 = [pl3B[idxB * 3], pl3B[idxB * 3 + 1], pl3B[idxB * 3 + 2]];
+  // debugVec3(seamA, "#ff00ff", "seamA", 3);
+  // debugVec3(seamB, "#00ff00", "seamB", 3);
 
   // stop here and I'll give more directions
-  return { guide, follower, guideIsA, followerReversed };
+  return { seamIndexA: idxA, seamIndexB: idxB };
 }
 
 // Find the index pair (idxA, idxB) of closest vertices between two polylines

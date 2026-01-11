@@ -6,8 +6,9 @@ import { entityName } from "@/lib/entity/entityTools/entityTypeToName";
 import { plane3New } from "@/lib/geom/plane3";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 import { usePanelResize } from "../usePanelResize";
-import { EntityMenu } from "./EntityMenu";
+import { AddOption, EntityMenu } from "./EntityMenu";
 
 interface ExplorerProps {
   width: number;
@@ -40,6 +41,14 @@ export function Explorer({
     addEntity(newWorkPlane);
   };
 
+  const loftAddOptions: AddOption[] = useMemo(
+    () => [
+      { label: "Simple", onClick: () => startAddLoft("SIMPLE") },
+      { label: "Seam", onClick: () => startAddLoft("SEAM") },
+    ],
+    [startAddLoft]
+  );
+
   return (
     <div
       className={cn(
@@ -62,7 +71,7 @@ export function Explorer({
               entityType="POLYLINE"
               onAdd={startDrawPolyline}
             />
-            <EntityMenu doc={doc} entityType="LOFT" onAdd={startAddLoft} />
+            <EntityMenu doc={doc} entityType="LOFT" addOptions={loftAddOptions} />
           </div>
         </div>
       )}

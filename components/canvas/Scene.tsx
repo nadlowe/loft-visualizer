@@ -63,11 +63,11 @@ export function Scene({
         ref={controlsRef}
         enableDamping={false}
         minDistance={1}
-        maxDistance={is2D ? 2000 : 5000}
+        maxDistance={is2D ? 25000 : 5000}
         rotateSpeed={0.5}
         zoomSpeed={1.2}
         screenSpacePanning={true}
-        enablePan={(!isDragging && !isDraggingVertex) || is2D}
+        enablePan={!isDragging && !isDraggingVertex}
         enableZoom={true}
         enableRotate={!is2D && !isDragging && !isDraggingVertex}
         minPolarAngle={is2D ? Math.PI / 2 : 0}

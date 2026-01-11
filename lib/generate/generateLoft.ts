@@ -1,11 +1,10 @@
-import { LoftEntity } from "../entity/loftEntity";
+import { isLoftSimpleEntity, LoftSimpleEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
-import { Plane3 } from "../geom/geomTypes";
+import { Plane3, Vec3 } from "../geom/geomTypes";
 import { worldPlaneXY } from "../geom/plane3";
 import { polyline2Reverse, polyline2Shift } from "../geom/polyline2";
 import { projectPolyline2ToPlane3 } from "../geom/project";
 import { Section } from "../geom/section";
-import { alignPolylines } from "../geom/utils";
 import { vec3Lerp } from "../geom/vec3";
 import { Doc } from "../state/doc";
 import { LoftId } from "../util/uid";
@@ -32,7 +31,9 @@ export function generateLoft(
   if (!docPl1 || !docPl2) return null;
 
   // Apply shift and reverse transformations
-  const { pl1, pl2 } = mutatePolyline2s(loftEntity, docPl1, docPl2);
+  const { pl1, pl2 } = isLoftSimpleEntity(loftEntity)
+    ? mutatePolyline2s(loftEntity, docPl1, docPl2)
+    : { pl1: docPl1.polyline, pl2: docPl2.polyline };
 
   // Use overrides if provided, otherwise look up from doc
   const plane1 =
@@ -59,45 +60,58 @@ export function generateLoft(
     bothClosed
   );
 
-  const alignedPolylines = alignPolylines(
-    pl2A,
-    plane1,
-    pl3A,
-    pl2B,
-    plane2,
-    pl3B
-  );
-
-  // Create sections (pairs of corresponding vertices)
   const sections: Section[] = [];
-  const count1 = pl3A.length / 3;
-  const count2 = pl3B.length / 3;
-  const maxCount = Math.max(count1, count2);
-  const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
-  const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
+  switch (loftEntity.loftType) {
+    case "SIMPLE": {
+      // Create sections (pairs of corresponding vertices)
+      const count1 = pl3A.length / 3;
+      const count2 = pl3B.length / 3;
+      const maxCount = Math.max(count1, count2);
+      const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
+      const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
 
-  for (let i = 0; i < maxCount; i++) {
-    const idx1 = Math.min(i, lastIdx1) * 3;
-    const idx2 = Math.min(i, lastIdx2) * 3;
-    sections.push([
-      [pl3A[idx1], pl3A[idx1 + 1], pl3A[idx1 + 2]],
-      [pl3B[idx2], pl3B[idx2 + 1], pl3B[idx2 + 2]],
-    ]);
-  }
+      for (let i = 0; i < maxCount; i++) {
+        const idx1 = Math.min(i, lastIdx1) * 3;
+        const idx2 = Math.min(i, lastIdx2) * 3;
+        sections.push([
+          [pl3A[idx1], pl3A[idx1 + 1], pl3A[idx1 + 2]],
+          [pl3B[idx2], pl3B[idx2 + 1], pl3B[idx2 + 2]],
+        ]);
+      }
 
-  // Close the loop by adding the first section again
-  if (bothClosed && count1 > 0 && count2 > 0) {
-    sections.push([
-      [pl3A[0], pl3A[1], pl3A[2]],
-      [pl3B[0], pl3B[1], pl3B[2]],
-    ]);
+      // Close the loop by adding the first section again
+      if (bothClosed && count1 > 0 && count2 > 0) {
+        sections.push([
+          [pl3A[0], pl3A[1], pl3A[2]],
+          [pl3B[0], pl3B[1], pl3B[2]],
+        ]);
+      }
+      break;
+    }
+    case "SEAM": {
+      // Debug the seam vertices
+      const seamA: Vec3 = [
+        pl3A[loftEntity.seamIndexA * 3],
+        pl3A[loftEntity.seamIndexA * 3 + 1],
+        pl3A[loftEntity.seamIndexA * 3 + 2],
+      ];
+      const seamB: Vec3 = [
+        pl3B[loftEntity.seamIndexB * 3],
+        pl3B[loftEntity.seamIndexB * 3 + 1],
+        pl3B[loftEntity.seamIndexB * 3 + 2],
+      ];
+
+      // debugVec3(seamA, "#ff00ff", "seamA", 3);
+      // debugVec3(seamB, "#00ff00", "seamB", 3);
+      break;
+    }
   }
 
   return subdivideSections(sections, LOFT_SUBDIVISIONS);
 }
 
 function mutatePolyline2s(
-  loftEntity: LoftEntity,
+  loftEntity: LoftSimpleEntity,
   docPl1: PolylineEntity,
   docPl2: PolylineEntity
 ) {

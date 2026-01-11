@@ -10,18 +10,29 @@ import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { EntityId } from "@/lib/util/uid";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fonts } from "../../fonts";
 import { EditableEntityName } from "../EditableEntityName";
 import { DuplicateIcon, EyeIcon, EyeSlashIcon, TrashIcon } from "../Icons";
 
+export interface AddOption {
+  label: string;
+  onClick: () => void;
+}
+
 interface EntityMenuProps {
   doc: Doc;
   entityType: EntityType;
-  onAdd: () => void;
+  onAdd?: () => void;
+  addOptions?: AddOption[];
 }
 
-export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
+export function EntityMenu({
+  doc,
+  entityType,
+  onAdd,
+  addOptions,
+}: EntityMenuProps) {
   const {
     isSelected,
     selectOnly,
@@ -35,6 +46,25 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
     setHidden,
   } = useStore();
   const [isExpanded, setIsExpanded] = useState(true);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    }
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showDropdown]);
   const entries = Object.entries(doc[entityTypeToDocField[entityType]]) as [
     string,
     { name: string; hidden?: boolean },
@@ -98,31 +128,65 @@ export function EntityMenu({ doc, entityType, onAdd }: EntityMenuProps) {
             />
           </svg>
         </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdd();
-          }}
-          className={cn(
-            "flex items-center justify-center rounded p-0.5 transition-colors",
-            "hover:" + colors.bg.secondary
-          )}
-          title={`Add ${entityTypeToName.singular[entityType]}`}
-        >
-          <svg
-            className="h-3.5 w-3.5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (addOptions) {
+                setShowDropdown(!showDropdown);
+              } else if (onAdd) {
+                onAdd();
+              }
+            }}
+            className={cn(
+              "flex items-center justify-center rounded p-0.5 transition-colors",
+              "hover:" + colors.bg.secondary
+            )}
+            title={`Add ${entityTypeToName.singular[entityType]}`}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-        </button>
+            <svg
+              className="h-3.5 w-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          </button>
+          {showDropdown && addOptions && (
+            <div
+              className={cn(
+                "absolute right-0 top-full z-50 mt-1 min-w-[100px] rounded border py-1 shadow-lg",
+                colors.bg.primary,
+                colors.border.primary
+              )}
+            >
+              {addOptions.map((option) => (
+                <button
+                  key={option.label}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    option.onClick();
+                    setShowDropdown(false);
+                  }}
+                  className={cn(
+                    "w-full px-3 py-1.5 text-left text-sm transition-colors",
+                    colors.text.primary,
+                    "hover:" + colors.bg.secondary,
+                    fonts.menu
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {isExpanded && (
         <div className="ml-6 flex flex-col">

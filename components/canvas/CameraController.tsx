@@ -62,24 +62,34 @@ export function CameraController({
         orthoCamera.right = viewSize * aspect;
         orthoCamera.top = viewSize;
         orthoCamera.bottom = -viewSize;
+        // Ensure camera is high enough for raycasting to work at any Z
+        orthoCamera.position.z = 20000;
+        orthoCamera.near = 0.1;
+        orthoCamera.far = 40000;
       } else {
+        // Use positive near/far for proper raycasting (TransformControls)
+        // Camera at z=20000 with far=40000 covers z range from +20000 to -20000
         orthoCamera = new THREE.OrthographicCamera(
           -viewSize * aspect,
           viewSize * aspect,
           viewSize,
           -viewSize,
-          -40000,
+          0.1,
           40000
         );
 
-        // Restore saved state if available
+        // Restore saved state if available (but always use high Z for raycasting)
         if (camera2DStateRef.current) {
-          orthoCamera.position.fromArray(camera2DStateRef.current.position);
+          orthoCamera.position.set(
+            camera2DStateRef.current.position[0],
+            camera2DStateRef.current.position[1],
+            20000
+          );
           orthoCamera.rotation.fromArray(camera2DStateRef.current.rotation);
           orthoCamera.zoom = camera2DStateRef.current.zoom;
           orthoCamera.up.set(0, 1, 0);
         } else {
-          orthoCamera.position.set(0, 0, 10);
+          orthoCamera.position.set(0, 0, 20000);
           orthoCamera.up.set(0, 1, 0);
           orthoCamera.lookAt(0, 0, 0);
         }
