@@ -55,7 +55,7 @@ export function generateLoft(
     plane2
   );
 
-  if (!sections) return null;
+  if (!sections || sections.length === 0) return null;
 
   return subdivideSections(sections, LOFT_SUBDIVISIONS);
 }
@@ -70,6 +70,9 @@ function generateLoftSections(
   closed2: boolean,
   plane2: Plane3
 ): Section[] {
+  // Guard against empty polylines
+  if (polyline1.length < 2 || polyline2.length < 2) return [];
+
   // Shift polylines so seams are at the start
   const pl1 = polyline2Shift(polyline1, seam1);
   const pl2 = polyline2Shift(polyline2, seam2);
@@ -155,28 +158,35 @@ function generateLoftSections(
   }
   // Add the final anchor pair
   const lastIdxL = paramsLeast.length - 1;
-  pairs.push([paramsLeast[lastIdxL], paramsMost[mappedIndicesMost[lastIdxL]]]);
+  if (lastIdxL >= 0) {
+    pairs.push([
+      paramsLeast[lastIdxL],
+      paramsMost[mappedIndicesMost[lastIdxL]],
+    ]);
+  }
 
-  console.log("pairs", pairs);
-
-  // 3. Evaluate polylines at each paired parameter and project to 3D
-  const sections: Section[] = [];
-  for (const [tL, tM] of pairs) {
-    const vL = polyline2Eval(plLeast, tL);
-    const vM = polyline2Eval(plMost, tM);
-
-    if (!swapped) {
-      sections.push([
-        projectVec2ToPlane3(vL, planeLeast),
-        projectVec2ToPlane3(vM, planeMost),
-      ]);
-    } else {
-      sections.push([
-        projectVec2ToPlane3(vM, planeMost),
-        projectVec2ToPlane3(vL, planeLeast),
-      ]);
+  // Deduplicate and sort pairs by the first parameter
+  const uniquePairs: [number, number][] = [];
+  pairs.sort((a, b) => a[0] - b[0]);
+  for (const pair of pairs) {
+    if (
+      uniquePairs.length === 0 ||
+      pair[0] > uniquePairs[uniquePairs.length - 1][0] + 1e-8
+    ) {
+      uniquePairs.push(pair);
     }
   }
+
+  // 3. Evaluate polylines at each paired parameter and project to 3D
+  const sections: Section[] = uniquePairs.map(([tL, tM]) => {
+    const vL_2d = polyline2Eval(plLeast, tL);
+    const vM_2d = polyline2Eval(plMost, tM);
+
+    const vL_3d = projectVec2ToPlane3(vL_2d, planeLeast);
+    const vM_3d = projectVec2ToPlane3(vM_2d, planeMost);
+
+    return swapped ? [vM_3d, vL_3d] : [vL_3d, vM_3d];
+  });
 
   return sections;
 }

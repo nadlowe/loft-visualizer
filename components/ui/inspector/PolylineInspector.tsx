@@ -3,7 +3,7 @@
 import { colors } from "@/components/colors";
 import { fonts } from "@/components/fonts";
 import { PolylineHandle } from "@/lib/entity/handleTypes";
-import { polyline2Shift } from "@/lib/geom/polyline2";
+import { polyline2Reverse, polyline2Shift } from "@/lib/geom/polyline2";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -29,6 +29,16 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
     }
   };
 
+  const handleReverse = () => {
+    if (polyline) {
+      updateEntity(handle, (entity) => ({
+        ...entity,
+        polyline: polyline2Reverse(entity.polyline),
+      }));
+      setShiftValue(0);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <EntityDropdown
@@ -50,6 +60,18 @@ export function PolylineInspector({ handle }: { handle: PolylineHandle }) {
         value={shiftValue}
         onChange={handleShiftChange}
       />
+      <button
+        onClick={handleReverse}
+        className={cn(
+          "mt-1 rounded border px-3 py-1.5 text-xs transition-all",
+          colors.border.primary,
+          colors.text.secondary,
+          "hover:" + colors.bg.secondary,
+          "active:bg-blue-500"
+        )}
+      >
+        Reverse Polyline
+      </button>
       <div className="flex items-center justify-between">
         <span className={cn(fonts.size.xs, colors.text.secondary)}>Closed</span>
         <span className={cn(fonts.size.sm, colors.text.primary)}>
