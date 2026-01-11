@@ -2,9 +2,8 @@
 
 import { loftNew } from "@/lib/entity/entityTools/entityNew";
 import { entityName } from "@/lib/entity/entityTools/entityTypeToName";
-import { worldPlaneXY } from "@/lib/geom/plane3";
 import { projectPolyline2ToPlane3 } from "@/lib/geom/project";
-import { determineLoftSeam } from "@/lib/geom/utils";
+import { determineLoftSeam, getPolylinePlane } from "@/lib/geom/utils";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useEffect } from "react";
@@ -33,12 +32,8 @@ export function LoftCmd() {
           const docPl1 = doc.polylines[pl1Id];
           const docPl2 = doc.polylines[pl2Id];
 
-          const plane1 = docPl1.workPlaneId
-            ? doc.workPlanes[docPl1.workPlaneId]?.plane3
-            : worldPlaneXY();
-          const plane2 = docPl2.workPlaneId
-            ? doc.workPlanes[docPl2.workPlaneId]?.plane3
-            : worldPlaneXY();
+          const plane1 = getPolylinePlane(docPl1, doc);
+          const plane2 = getPolylinePlane(docPl2, doc);
 
           const { pl3: pl3A, pl2: pl2A } = projectPolyline2ToPlane3(
             docPl1.polyline,
