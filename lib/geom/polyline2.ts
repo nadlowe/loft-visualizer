@@ -1,4 +1,4 @@
-import { Polyline2 } from "./geomTypes";
+import { Polyline2, Vec2 } from "./geomTypes";
 import { DIST_EPSILON } from "./scalar";
 import { vec2Distance } from "./vec2";
 
@@ -112,4 +112,31 @@ export function polyline2Shift(
   }
 
   return result;
+}
+
+export function polyline2Centroid(pl: Polyline2): Vec2 {
+  const count = pl.length / 2;
+  if (count === 0) return [0, 0];
+
+  let sumX = 0;
+  let sumY = 0;
+  for (let i = 0; i < count; i++) {
+    sumX += pl[i * 2];
+    sumY += pl[i * 2 + 1];
+  }
+  return [sumX / count, sumY / count];
+} // Compute signed area of a polyline (positive = CCW, negative = CW)
+export function polyline2SignedArea(polyline: Polyline2): number {
+  const n = polyline.length / 2;
+  if (n < 3) return 0;
+
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const x1 = polyline[i * 2];
+    const y1 = polyline[i * 2 + 1];
+    const x2 = polyline[((i + 1) % n) * 2];
+    const y2 = polyline[((i + 1) % n) * 2 + 1];
+    area += x1 * y2 - x2 * y1;
+  }
+  return area / 2;
 }

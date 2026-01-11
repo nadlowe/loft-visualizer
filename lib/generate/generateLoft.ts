@@ -1,9 +1,10 @@
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
-import { Plane3, Polyline2, Vec3 } from "../geom/geomTypes";
+import { Plane3 } from "../geom/geomTypes";
 import { polyline2Reverse, polyline2Shift } from "../geom/polyline2";
+import { projectPolyline2ToPlane3 } from "../geom/project";
 import { Section } from "../geom/section";
-import { computeDefaultU, vec3Cross, vec3Lerp } from "../geom/vec3";
+import { vec3Lerp } from "../geom/vec3";
 import { Doc } from "../state/doc";
 import { LoftId } from "../util/uid";
 
@@ -45,25 +46,32 @@ export function generateLoft(
 
   // If both polylines are closed, skip the duplicate closing vertex to avoid duplicate sections
   const bothClosed = docPl1.closed && docPl2.closed;
-  const vertices1 = polylineToWorldVertices(pl1, plane1, bothClosed);
-  const vertices2 = polylineToWorldVertices(pl2, plane2, bothClosed);
+  const poly1 = projectPolyline2ToPlane3(pl1, plane1, bothClosed);
+  const poly2 = projectPolyline2ToPlane3(pl2, plane2, bothClosed);
 
   // Create sections (pairs of corresponding vertices)
   const sections: Section[] = [];
-  const maxCount = Math.max(vertices1.length, vertices2.length);
-  const lastIdx1 = vertices1.length > 0 ? vertices1.length - 1 : 0;
-  const lastIdx2 = vertices2.length > 0 ? vertices2.length - 1 : 0;
+  const count1 = poly1.length / 3;
+  const count2 = poly2.length / 3;
+  const maxCount = Math.max(count1, count2);
+  const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
+  const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
 
   for (let i = 0; i < maxCount; i++) {
+    const idx1 = Math.min(i, lastIdx1) * 3;
+    const idx2 = Math.min(i, lastIdx2) * 3;
     sections.push([
-      vertices1[Math.min(i, lastIdx1)],
-      vertices2[Math.min(i, lastIdx2)],
+      [poly1[idx1], poly1[idx1 + 1], poly1[idx1 + 2]],
+      [poly2[idx2], poly2[idx2 + 1], poly2[idx2 + 2]],
     ]);
   }
 
   // Close the loop by adding the first section again
-  if (bothClosed && vertices1.length > 0 && vertices2.length > 0) {
-    sections.push([vertices1[0], vertices2[0]]);
+  if (bothClosed && count1 > 0 && count2 > 0) {
+    sections.push([
+      [poly1[0], poly1[1], poly1[2]],
+      [poly2[0], poly2[1], poly2[2]],
+    ]);
   }
 
   return subdivideSections(sections, LOFT_SUBDIVISIONS);
@@ -84,44 +92,6 @@ function mutatePolyline2s(
     pl2 = polyline2Reverse(pl2);
   }
   return { pl1, pl2 };
-}
-
-function polylineToWorldVertices(
-  polyline: Polyline2,
-  plane?: Plane3,
-  skipClosingVertex?: boolean
-): Vec3[] {
-  const vertices: Vec3[] = [];
-  // If skipClosingVertex is true, exclude the last vertex (which duplicates the first in closed polylines)
-  const rawCount = Math.floor(polyline.length / 2);
-  const count = skipClosingVertex ? rawCount - 1 : rawCount;
-
-  if (!plane) {
-    // No plane - points stay in XY plane at z=0
-    for (let i = 0; i < count; i++) {
-      vertices.push([polyline[i * 2], polyline[i * 2 + 1], 0]);
-    }
-    return vertices;
-  }
-
-  // Build transformation from plane basis vectors
-  const { origin, normal } = plane;
-  const u = plane.u ?? computeDefaultU(normal);
-  const v = vec3Cross(normal, u); // Y-axis = normal × u
-
-  for (let i = 0; i < count; i++) {
-    const x = polyline[i * 2];
-    const y = polyline[i * 2 + 1];
-
-    // worldPos = origin + x * u + y * v
-    vertices.push([
-      origin[0] + x * u[0] + y * v[0],
-      origin[1] + x * u[1] + y * v[1],
-      origin[2] + x * u[2] + y * v[2],
-    ]);
-  }
-
-  return vertices;
 }
 
 function subdivideSections(

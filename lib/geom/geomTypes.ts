@@ -1,5 +1,7 @@
 export type Polyline2 = number[];
 
+export type Polyline3 = number[];
+
 export type Vec2 = [number, number];
 
 export type Vec3 = [number, number, number];
