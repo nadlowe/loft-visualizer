@@ -5,6 +5,7 @@ import { useThree } from "@react-three/fiber";
 import { useEffect, useState } from "react";
 import { LoftCmd } from "./cmd/LoftCmd";
 import { PolylineCmd } from "./cmd/PolylineCmd";
+import { DebugPolylines } from "./DebugPolylines";
 import { Grid } from "./Grid";
 import { PolylineVertexEditing } from "./polylineVertexEditing/PolylineVertexEditing";
 import { RenderEntities } from "./RenderEntities";
@@ -78,6 +79,9 @@ export function Scene({
       {/* Helpers */}
       <axesHelper args={[2]} />
       <Grid cellSize={1} sectionSize={12} followCamera={true} />
+
+      {/* Debug visualization */}
+      <DebugPolylines />
     </>
   );
 }

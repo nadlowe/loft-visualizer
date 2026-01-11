@@ -1,3 +1,4 @@
+import { debugPolyline3s, debugVec3 } from "../debug/debugGeom";
 import { Plane3, Polyline2, Polyline3, Vec2 } from "./geomTypes";
 import { normalFromVec3sOnNormalAxis, plane3FromNormal } from "./plane3";
 import {
@@ -6,7 +7,11 @@ import {
   polyline2Shift,
   polyline2SignedArea,
 } from "./polyline2";
-import { projectPolyline3ToPlane3, projectVec2ToPlane3 } from "./project";
+import {
+  projectPolyline2ToPlane3,
+  projectPolyline3ToPlane3,
+  projectVec2ToPlane3,
+} from "./project";
 import { vec2Distance } from "./vec2";
 
 export interface AlignedPolylines {
@@ -19,13 +24,16 @@ export interface AlignedPolylines {
 export function alignPolylines(
   pl2A: Polyline2,
   plane3A: Plane3,
+  pl3A: Polyline3,
   pl2B: Polyline2,
   plane3B: Plane3,
-  pl3A: Polyline3,
   pl3B: Polyline3
 ): AlignedPolylines {
   const [xA, yA, zA] = projectVec2ToPlane3(polyline2Centroid(pl2A), plane3A);
   const [xB, yB, zB] = projectVec2ToPlane3(polyline2Centroid(pl2B), plane3B);
+
+  debugVec3([xA, yA, zA], "#ff00ff", "vec3A");
+  debugVec3([xB, yB, zB], "#00ff00", "vec3B");
 
   const normal = normalFromVec3sOnNormalAxis([xA, yA, zA], [xB, yB, zB]);
   const plane3 = plane3FromNormal([xA, yA, zA], normal);
@@ -33,6 +41,11 @@ export function alignPolylines(
   // Project both arrays to XY plane as Polyline2s (lose z-axis)
   let polyA = projectPolyline3ToPlane3(pl3A, plane3);
   let polyB = projectPolyline3ToPlane3(pl3B, plane3);
+
+  const { pl3: debugA } = projectPolyline2ToPlane3(polyA, plane3);
+  const { pl3: debugB } = projectPolyline2ToPlane3(polyB, plane3);
+
+  debugPolyline3s([debugA, debugB], ["#ff00ff", "#00ff00"], ["polyA", "polyB"]);
 
   // Set the one with more vertices as the "guide"
   const guideIsA = polyA.length >= polyB.length;

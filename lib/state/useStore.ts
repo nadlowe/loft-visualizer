@@ -6,11 +6,18 @@ import { createSnapSlice, GridSnapMode, SnapSlice } from "./snapSlice";
 
 export type { GridSnapMode };
 
-type AppState = DocSlice & SelectionSlice & CmdSlice & SnapSlice;
+interface RenderSlice {
+  renderKey: number;
+  forceRender: () => void;
+}
+
+type AppState = DocSlice & SelectionSlice & CmdSlice & SnapSlice & RenderSlice;
 
 export const useStore = createWithEqualityFn<AppState>()((...a) => ({
   ...createDocSlice(...a),
   ...createSelectionSlice(...a),
   ...createCmdSlice(...a),
   ...createSnapSlice(...a),
+  renderKey: 0,
+  forceRender: () => a[0]((state) => ({ renderKey: state.renderKey + 1 })),
 }));

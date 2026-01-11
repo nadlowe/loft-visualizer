@@ -20,3 +20,11 @@ export function plane3FromNormal(origin: Vec3, normal: Vec3): Plane3 {
     u: computeDefaultU(normal),
   };
 }
+
+export function worldPlaneXY(): Plane3 {
+  return {
+    origin: [0, 0, 0],
+    normal: [0, 0, 1],
+    u: [1, 0, 0],
+  };
+}

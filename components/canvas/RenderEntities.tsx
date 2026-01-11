@@ -35,6 +35,7 @@ export function RenderEntities({
 }) {
   const { size } = useThree();
   const doc = useStore((state) => state.doc, shallow);
+  const renderKey = useStore((state) => state.renderKey);
   const { workPlanes, polylines, lofts } = doc;
   const isSelected = useStore((state) => state.isSelected);
   const updateEntity = useStore((state) => state.updateEntity);
@@ -79,7 +80,7 @@ export function RenderEntities({
         renderedPolylines: polylinesArray,
         renderedLofts: loftsArray,
       };
-    }, [workPlanes, polylines, lofts, doc]);
+    }, [workPlanes, polylines, lofts, doc, renderKey]);
 
   useEffect(() => {
     if (!isDragging) {

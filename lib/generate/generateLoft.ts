@@ -1,9 +1,11 @@
 import { LoftEntity } from "../entity/loftEntity";
 import { PolylineEntity } from "../entity/polylineEntity";
 import { Plane3 } from "../geom/geomTypes";
+import { worldPlaneXY } from "../geom/plane3";
 import { polyline2Reverse, polyline2Shift } from "../geom/polyline2";
 import { projectPolyline2ToPlane3 } from "../geom/project";
 import { Section } from "../geom/section";
+import { alignPolylines } from "../geom/utils";
 import { vec3Lerp } from "../geom/vec3";
 import { Doc } from "../state/doc";
 import { LoftId } from "../util/uid";
@@ -37,22 +39,39 @@ export function generateLoft(
     planeOverrides?.plane1 ??
     (docPl1.workPlaneId
       ? doc.workPlanes[docPl1.workPlaneId]?.plane3
-      : undefined);
+      : worldPlaneXY());
   const plane2 =
     planeOverrides?.plane2 ??
     (docPl2.workPlaneId
       ? doc.workPlanes[docPl2.workPlaneId]?.plane3
-      : undefined);
+      : worldPlaneXY());
 
   // If both polylines are closed, skip the duplicate closing vertex to avoid duplicate sections
   const bothClosed = docPl1.closed && docPl2.closed;
-  const poly1 = projectPolyline2ToPlane3(pl1, plane1, bothClosed);
-  const poly2 = projectPolyline2ToPlane3(pl2, plane2, bothClosed);
+  const { pl3: pl3A, pl2: pl2A } = projectPolyline2ToPlane3(
+    pl1,
+    plane1,
+    bothClosed
+  );
+  const { pl3: pl3B, pl2: pl2B } = projectPolyline2ToPlane3(
+    pl2,
+    plane2,
+    bothClosed
+  );
+
+  const alignedPolylines = alignPolylines(
+    pl2A,
+    plane1,
+    pl3A,
+    pl2B,
+    plane2,
+    pl3B
+  );
 
   // Create sections (pairs of corresponding vertices)
   const sections: Section[] = [];
-  const count1 = poly1.length / 3;
-  const count2 = poly2.length / 3;
+  const count1 = pl3A.length / 3;
+  const count2 = pl3B.length / 3;
   const maxCount = Math.max(count1, count2);
   const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
   const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
@@ -61,16 +80,16 @@ export function generateLoft(
     const idx1 = Math.min(i, lastIdx1) * 3;
     const idx2 = Math.min(i, lastIdx2) * 3;
     sections.push([
-      [poly1[idx1], poly1[idx1 + 1], poly1[idx1 + 2]],
-      [poly2[idx2], poly2[idx2 + 1], poly2[idx2 + 2]],
+      [pl3A[idx1], pl3A[idx1 + 1], pl3A[idx1 + 2]],
+      [pl3B[idx2], pl3B[idx2 + 1], pl3B[idx2 + 2]],
     ]);
   }
 
   // Close the loop by adding the first section again
   if (bothClosed && count1 > 0 && count2 > 0) {
     sections.push([
-      [poly1[0], poly1[1], poly1[2]],
-      [poly2[0], poly2[1], poly2[2]],
+      [pl3A[0], pl3A[1], pl3A[2]],
+      [pl3B[0], pl3B[1], pl3B[2]],
     ]);
   }
 

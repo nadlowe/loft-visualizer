@@ -1,12 +1,18 @@
 import { Plane3, Polyline2, Polyline3, Vec2, Vec3 } from "./geomTypes";
 import { computeDefaultU, vec3Cross, vec3Dot, vec3Subtract } from "./vec3";
 
+export interface ProjectedPolyline {
+  pl2: Polyline2;
+  pl3: Polyline3;
+}
+
 export function projectPolyline2ToPlane3(
   polyline: Polyline2,
   plane?: Plane3,
   skipClosingVertex?: boolean
-): Polyline3 {
-  const result: Polyline3 = [];
+): ProjectedPolyline {
+  const pl2: Polyline2 = [];
+  const pl3: Polyline3 = [];
   // If skipClosingVertex is true, exclude the last vertex (which duplicates the first in closed polylines)
   const rawCount = Math.floor(polyline.length / 2);
   const count = skipClosingVertex ? rawCount - 1 : rawCount;
@@ -14,9 +20,10 @@ export function projectPolyline2ToPlane3(
   if (!plane) {
     // No plane - points stay in XY plane at z=0
     for (let i = 0; i < count; i++) {
-      result.push(polyline[i * 2], polyline[i * 2 + 1], 0);
+      pl2.push(polyline[i * 2], polyline[i * 2 + 1]);
+      pl3.push(polyline[i * 2], polyline[i * 2 + 1], 0);
     }
-    return result;
+    return { pl2, pl3 };
   }
 
   // Build transformation from plane basis vectors
@@ -27,16 +34,17 @@ export function projectPolyline2ToPlane3(
   for (let i = 0; i < count; i++) {
     const x = polyline[i * 2];
     const y = polyline[i * 2 + 1];
+    pl2.push(x, y);
 
     // worldPos = origin + x * u + y * v
-    result.push(
+    pl3.push(
       origin[0] + x * u[0] + y * v[0],
       origin[1] + x * u[1] + y * v[1],
       origin[2] + x * u[2] + y * v[2]
     );
   }
 
-  return result;
+  return { pl2, pl3 };
 }
 
 // Project Polyline3 to Polyline2 (drop z-axis)
