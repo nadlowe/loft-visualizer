@@ -1,7 +1,10 @@
 "use client";
 
-import { loftSeamNew, loftSimpleNew } from "@/lib/entity/entityTools/entityNew";
+import { loftNew } from "@/lib/entity/entityTools/entityNew";
 import { entityName } from "@/lib/entity/entityTools/entityTypeToName";
+import { worldPlaneXY } from "@/lib/geom/plane3";
+import { projectPolyline2ToPlane3 } from "@/lib/geom/project";
+import { determineLoftSeam } from "@/lib/geom/utils";
 import { useStore } from "@/lib/state/useStore";
 import { PolylineId } from "@/lib/util/uid";
 import { useEffect } from "react";
@@ -20,14 +23,47 @@ export function LoftCmd() {
 
       if (polylineHandles.length === 2) {
         const name = entityName(doc, "LOFT");
-        const pl1 = polylineHandles[0].id as PolylineId;
-        const pl2 = polylineHandles[1].id as PolylineId;
+        const pl1Id = polylineHandles[0].id as PolylineId;
+        const pl2Id = polylineHandles[1].id as PolylineId;
 
-        const newLoft =
-          cmd.loftType === "SEAM"
-            ? loftSeamNew(doc, pl1, pl2, name)
-            : loftSimpleNew(pl1, pl2, name);
+        let seamIndexA = 0;
+        let seamIndexB = 0;
 
+        if (cmd.loftType === "BEST_SEAM") {
+          const docPl1 = doc.polylines[pl1Id];
+          const docPl2 = doc.polylines[pl2Id];
+
+          const plane1 = docPl1.workPlaneId
+            ? doc.workPlanes[docPl1.workPlaneId]?.plane3
+            : worldPlaneXY();
+          const plane2 = docPl2.workPlaneId
+            ? doc.workPlanes[docPl2.workPlaneId]?.plane3
+            : worldPlaneXY();
+
+          const { pl3: pl3A, pl2: pl2A } = projectPolyline2ToPlane3(
+            docPl1.polyline,
+            plane1,
+            docPl1.closed
+          );
+          const { pl3: pl3B, pl2: pl2B } = projectPolyline2ToPlane3(
+            docPl2.polyline,
+            plane2,
+            docPl2.closed
+          );
+
+          const seam = determineLoftSeam(
+            pl2A,
+            plane1,
+            pl3A,
+            pl2B,
+            plane2,
+            pl3B
+          );
+          seamIndexA = seam.seamIndexA;
+          seamIndexB = seam.seamIndexB;
+        }
+
+        const newLoft = loftNew(pl1Id, pl2Id, name, seamIndexA, seamIndexB);
         addEntity(newLoft);
         finishCmd();
       }

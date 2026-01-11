@@ -18,7 +18,8 @@ export function GridSnapButton() {
     <button
       onClick={cycleGridSnap}
       className={cn(
-        "z-10 rounded-md px-4 py-2 text-sm font-medium transition-all",
+        "z-10 w-[120px] rounded-md px-4 py-2 text-sm font-medium transition-all",
+        "active:bg-blue-500",
         colors.bg.secondary,
         colors.text.primary,
         "hover:" + colors.bg.secondary

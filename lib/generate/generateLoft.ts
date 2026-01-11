@@ -1,8 +1,6 @@
-import { isLoftSimpleEntity, LoftSimpleEntity } from "../entity/loftEntity";
-import { PolylineEntity } from "../entity/polylineEntity";
-import { Plane3, Vec3 } from "../geom/geomTypes";
+import { Plane3 } from "../geom/geomTypes";
 import { worldPlaneXY } from "../geom/plane3";
-import { polyline2Reverse, polyline2Shift } from "../geom/polyline2";
+import { polyline2Shift } from "../geom/polyline2";
 import { projectPolyline2ToPlane3 } from "../geom/project";
 import { Section } from "../geom/section";
 import { vec3Lerp } from "../geom/vec3";
@@ -30,10 +28,9 @@ export function generateLoft(
   const docPl2 = doc.polylines[loftEntity.polyline2];
   if (!docPl1 || !docPl2) return null;
 
-  // Apply shift and reverse transformations
-  const { pl1, pl2 } = isLoftSimpleEntity(loftEntity)
-    ? mutatePolyline2s(loftEntity, docPl1, docPl2)
-    : { pl1: docPl1.polyline, pl2: docPl2.polyline };
+  // Shift polylines to start at seam indices
+  const pl1 = polyline2Shift(docPl1.polyline, loftEntity.seamIndexA);
+  const pl2 = polyline2Shift(docPl2.polyline, loftEntity.seamIndexB);
 
   // Use overrides if provided, otherwise look up from doc
   const plane1 =
@@ -47,84 +44,39 @@ export function generateLoft(
       ? doc.workPlanes[docPl2.workPlaneId]?.plane3
       : worldPlaneXY());
 
-  // If both polylines are closed, skip the duplicate closing vertex to avoid duplicate sections
+  // Skip the duplicate closing vertex if a polyline is closed to avoid duplicate sections
+  const { pl3: pl3A } = projectPolyline2ToPlane3(pl1, plane1, docPl1.closed);
+  const { pl3: pl3B } = projectPolyline2ToPlane3(pl2, plane2, docPl2.closed);
+
+  // If both polylines are closed, we'll manually add the closing section later
   const bothClosed = docPl1.closed && docPl2.closed;
-  const { pl3: pl3A, pl2: pl2A } = projectPolyline2ToPlane3(
-    pl1,
-    plane1,
-    bothClosed
-  );
-  const { pl3: pl3B, pl2: pl2B } = projectPolyline2ToPlane3(
-    pl2,
-    plane2,
-    bothClosed
-  );
 
+  // Create sections (pairs of corresponding vertices)
   const sections: Section[] = [];
-  switch (loftEntity.loftType) {
-    case "SIMPLE": {
-      // Create sections (pairs of corresponding vertices)
-      const count1 = pl3A.length / 3;
-      const count2 = pl3B.length / 3;
-      const maxCount = Math.max(count1, count2);
-      const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
-      const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
+  const count1 = pl3A.length / 3;
+  const count2 = pl3B.length / 3;
+  const maxCount = Math.max(count1, count2);
+  const lastIdx1 = count1 > 0 ? count1 - 1 : 0;
+  const lastIdx2 = count2 > 0 ? count2 - 1 : 0;
 
-      for (let i = 0; i < maxCount; i++) {
-        const idx1 = Math.min(i, lastIdx1) * 3;
-        const idx2 = Math.min(i, lastIdx2) * 3;
-        sections.push([
-          [pl3A[idx1], pl3A[idx1 + 1], pl3A[idx1 + 2]],
-          [pl3B[idx2], pl3B[idx2 + 1], pl3B[idx2 + 2]],
-        ]);
-      }
+  for (let i = 0; i < maxCount; i++) {
+    const idx1 = Math.min(i, lastIdx1) * 3;
+    const idx2 = Math.min(i, lastIdx2) * 3;
+    sections.push([
+      [pl3A[idx1], pl3A[idx1 + 1], pl3A[idx1 + 2]],
+      [pl3B[idx2], pl3B[idx2 + 1], pl3B[idx2 + 2]],
+    ]);
+  }
 
-      // Close the loop by adding the first section again
-      if (bothClosed && count1 > 0 && count2 > 0) {
-        sections.push([
-          [pl3A[0], pl3A[1], pl3A[2]],
-          [pl3B[0], pl3B[1], pl3B[2]],
-        ]);
-      }
-      break;
-    }
-    case "SEAM": {
-      // Debug the seam vertices
-      const seamA: Vec3 = [
-        pl3A[loftEntity.seamIndexA * 3],
-        pl3A[loftEntity.seamIndexA * 3 + 1],
-        pl3A[loftEntity.seamIndexA * 3 + 2],
-      ];
-      const seamB: Vec3 = [
-        pl3B[loftEntity.seamIndexB * 3],
-        pl3B[loftEntity.seamIndexB * 3 + 1],
-        pl3B[loftEntity.seamIndexB * 3 + 2],
-      ];
-
-      // debugVec3(seamA, "#ff00ff", "seamA", 3);
-      // debugVec3(seamB, "#00ff00", "seamB", 3);
-      break;
-    }
+  // Close the loop by adding the first section again
+  if (bothClosed && count1 > 0 && count2 > 0) {
+    sections.push([
+      [pl3A[0], pl3A[1], pl3A[2]],
+      [pl3B[0], pl3B[1], pl3B[2]],
+    ]);
   }
 
   return subdivideSections(sections, LOFT_SUBDIVISIONS);
-}
-
-function mutatePolyline2s(
-  loftEntity: LoftSimpleEntity,
-  docPl1: PolylineEntity,
-  docPl2: PolylineEntity
-) {
-  let pl1 = polyline2Shift(docPl1.polyline, loftEntity.polyline1Shift ?? 0);
-  let pl2 = polyline2Shift(docPl2.polyline, loftEntity.polyline2Shift ?? 0);
-
-  if (loftEntity.polyline1Reverse) {
-    pl1 = polyline2Reverse(pl1);
-  }
-  if (loftEntity.polyline2Reverse) {
-    pl2 = polyline2Reverse(pl2);
-  }
-  return { pl1, pl2 };
 }
 
 function subdivideSections(

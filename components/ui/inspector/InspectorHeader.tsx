@@ -2,7 +2,7 @@
 
 import { colors } from "@/components/colors";
 import { entityTypeToName } from "@/lib/entity/entityTools/entityTypeToName";
-import { EntityHandle, LoftHandle, SelectableHandle } from "@/lib/entity/handleTypes";
+import { EntityHandle, SelectableHandle } from "@/lib/entity/handleTypes";
 import { useStore } from "@/lib/state/useStore";
 import { cn } from "@/lib/utils";
 import { fonts } from "../../fonts";
@@ -21,12 +21,6 @@ const typeIcons: Record<
   POLYLINE: PolylineIcon,
   LOFT: LoftIcon,
 };
-
-function getLoftTypeLabel(handle: LoftHandle, doc: ReturnType<typeof useStore>["doc"]): string {
-  const loft = doc.lofts[handle.id];
-  if (!loft) return "";
-  return loft.loftType === "SIMPLE" ? "Simple" : "Seam";
-}
 
 export function InspectorHeader({ handle }: InspectorHeaderProps) {
   const { doc } = useStore();
@@ -64,7 +58,6 @@ export function InspectorHeader({ handle }: InspectorHeaderProps) {
   const entityType = handle.type;
   const Icon = typeIcons[entityType];
   const typeLabel = entityTypeToName.singular[entityType];
-  const loftTypeLabel = handle.type === "LOFT" ? getLoftTypeLabel(handle, doc) : "";
 
   return (
     <div
@@ -84,7 +77,6 @@ export function InspectorHeader({ handle }: InspectorHeaderProps) {
           )}
         >
           {typeLabel}
-          {loftTypeLabel && ` (${loftTypeLabel})`}
         </span>
       </div>
       <EditableEntityName handle={handle} />

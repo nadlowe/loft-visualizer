@@ -44,3 +44,9 @@ Then final steps...
 
 1. Finish above... make sure all geometric operations have unit tests.
 2. Create a readme file explaining the repo.
+
+DON'T FORGET
+
+- deploy on vercel
+- the seam should not change when adding or removing vertices... please add more nuanced behavior here... likely if the vertex where the seam is removed then re-seaming should occur.
+- finish this up above and then call it good. Then create the script for describing the codebase....

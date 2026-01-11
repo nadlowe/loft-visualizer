@@ -43,8 +43,8 @@ export function Explorer({
 
   const loftAddOptions: AddOption[] = useMemo(
     () => [
-      { label: "Simple", onClick: () => startAddLoft("SIMPLE") },
-      { label: "Seam", onClick: () => startAddLoft("SEAM") },
+      { label: "Seam At Start", onClick: () => startAddLoft("SEAM_AT_START") },
+      { label: "Best Seam", onClick: () => startAddLoft("BEST_SEAM") },
     ],
     [startAddLoft]
   );

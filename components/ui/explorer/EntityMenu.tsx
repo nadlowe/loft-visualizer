@@ -161,7 +161,7 @@ export function EntityMenu({
           {showDropdown && addOptions && (
             <div
               className={cn(
-                "absolute right-0 top-full z-50 mt-1 min-w-[100px] rounded border py-1 shadow-lg",
+                "absolute right-0 top-full z-50 mt-1 min-w-[120px]  rounded border py-1 shadow-lg",
                 colors.bg.primary,
                 colors.border.primary
               )}

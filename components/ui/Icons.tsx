@@ -146,3 +146,25 @@ export function EyeSlashIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function RefreshIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={1.5}
+    >
+      {/* Circular arrow path */}
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 12a8 8 0 0114.5-4.5M20 12a8 8 0 01-14.5 4.5"
+      />
+      {/* Arrow heads */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.5 4v4h-4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5.5 20v-4h4" />
+    </svg>
+  );
+}

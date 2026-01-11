@@ -112,7 +112,7 @@ export function WorkPlaneInspector({ handle }: { handle: WorkPlaneHandle }) {
           colors.border.primary,
           colors.text.secondary,
           "hover:" + colors.bg.secondary,
-          "active:scale-95 active:border-blue-500 active:bg-blue-600"
+          "active:scale-95 active:border-blue-500 active:bg-blue-500"
         )}
       >
         Clear Rotation

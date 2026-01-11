@@ -5,6 +5,7 @@ import {
   RenderedLoft,
   updateLoftGeometry,
   updateLoftGeometryDuringDrag,
+  updateSeamGeometry,
 } from "@/lib/canvas/render/renderLoft";
 import {
   polylineTableToRendered,
@@ -21,12 +22,57 @@ import { handleNew } from "@/lib/entity/handleTools/handleNew";
 import { handleToHash } from "@/lib/entity/handleTools/handleTools";
 import { useStore } from "@/lib/state/useStore";
 import { LoftId, PolylineId, WorkPlaneId } from "@/lib/util/uid";
-import { useThree } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
 import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import { shallow } from "zustand/shallow";
 import { WorkPlaneWidget } from "./WorkPlaneWidget";
+
+function SeamLine({ geometry }: { geometry: LineGeometry }) {
+  const { size } = useThree();
+  const lineRef = useRef<Line2>(null);
+
+  const line = useMemo(() => {
+    const material = new LineMaterial({
+      color: colors.canvas.white,
+      linewidth: 1.5,
+      resolution: new THREE.Vector2(size.width, size.height),
+      dashed: true,
+      dashSize: 8,
+      gapSize: 4,
+    });
+    const l = new Line2(geometry, material);
+    l.computeLineDistances();
+    return l;
+  }, [geometry, size.width, size.height]);
+
+  // Update dash size for screen-space scaling
+  useFrame(({ camera, size: frameSize }) => {
+    let worldUnitsPerPixel: number;
+    if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+      const orthoCamera = camera as THREE.OrthographicCamera;
+      const visibleWidth =
+        (orthoCamera.right - orthoCamera.left) / orthoCamera.zoom;
+      worldUnitsPerPixel = visibleWidth / frameSize.width;
+    } else {
+      const distance = camera.position.length();
+      const fov = (camera as THREE.PerspectiveCamera).fov || 75;
+      const vFov = (fov * Math.PI) / 180;
+      const visibleHeight = 2 * Math.tan(vFov / 2) * distance;
+      worldUnitsPerPixel = visibleHeight / frameSize.height;
+    }
+
+    const material = line.material as LineMaterial;
+    material.dashSize = 8 * worldUnitsPerPixel;
+    material.gapSize = 4 * worldUnitsPerPixel;
+    line.computeLineDistances();
+  });
+
+  return <primitive ref={lineRef} object={line} />;
+}
 
 export function RenderEntities({
   onDraggingChange,
@@ -48,6 +94,7 @@ export function RenderEntities({
   const loftWireframeRefs = useRef<Map<string, THREE.BufferGeometry>>(
     new Map()
   );
+  const loftSeamRefs = useRef<Map<string, LineGeometry>>(new Map());
   const selectedHandles = useStore((state) => state.selectedHandles);
   const initialPositionsRef = useRef<Map<string, THREE.Vector3>>(new Map());
   const dragSourceIdRef = useRef<string | null>(null);
@@ -73,6 +120,7 @@ export function RenderEntities({
           loftSurfaceRefs.current,
           loftWireframeRefs.current
         );
+        updateSeamGeometry(l, loftSeamRefs.current);
       });
 
       return {
@@ -249,7 +297,8 @@ export function RenderEntities({
                   workPlaneRefs.current,
                   loftRefs.current,
                   loftSurfaceRefs.current,
-                  loftWireframeRefs.current
+                  loftWireframeRefs.current,
+                  loftSeamRefs.current
                 );
               }
             }
@@ -363,12 +412,14 @@ export function RenderEntities({
           const geometry = loftRefs.current.get(loft.id);
           const surfaceGeometry = loftSurfaceRefs.current.get(loft.id);
           const wireframeGeometry = loftWireframeRefs.current.get(loft.id);
+          const seamGeometry = loftSeamRefs.current.get(loft.id);
           if (!geometry) return null;
           const selected = isSelected(handle);
           const color = selected
             ? colors.canvas.selected
             : colors.canvas.unselected;
           const pathPoints = loft.sections.flat();
+
           return (
             <group key={loft.id}>
               {surfaceGeometry && (
@@ -395,6 +446,7 @@ export function RenderEntities({
               >
                 <lineBasicMaterial color={color} transparent opacity={0.75} />
               </lineSegments>
+              {seamGeometry && <SeamLine geometry={seamGeometry} />}
             </group>
           );
         })}

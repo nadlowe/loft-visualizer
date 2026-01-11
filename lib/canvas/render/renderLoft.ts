@@ -5,6 +5,7 @@ import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { LoftId, WorkPlaneId } from "@/lib/util/uid";
 import * as THREE from "three";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
 
 // ─────────────────────────────────────────────────────────────────
 // 1. PERSISTED DATA TYPES
@@ -15,6 +16,7 @@ export interface RenderedLoft {
   id: string;
   sections: THREE.Vector3[][];
   subdivisions: number;
+  seamPoints: THREE.Vector3[];
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -24,12 +26,18 @@ export interface RenderedLoft {
 
 function loftToRendered(loftId: LoftId, doc: Doc): RenderedLoft | null {
   const sections = generateLoft(loftId, doc);
-  if (!sections) return null;
+  if (!sections || sections.length === 0) return null;
+
+  const threeSections = sectionsToThree(sections);
+  // First section is the seam
+  const seamPoints =
+    threeSections.length > 0 ? [threeSections[0][0], threeSections[0][1]] : [];
 
   return {
     id: loftId,
-    sections: sectionsToThree(sections),
+    sections: threeSections,
     subdivisions: LOFT_SUBDIVISIONS,
+    seamPoints,
   };
 }
 
@@ -227,6 +235,27 @@ export function updateLoftGeometry(
   }
 }
 
+export function updateSeamGeometry(
+  loft: RenderedLoft,
+  seamRefs: Map<string, LineGeometry>
+): void {
+  if (loft.seamPoints.length < 2) return;
+
+  const positions: number[] = [];
+  loft.seamPoints.forEach((v) => {
+    positions.push(v.x, v.y, v.z);
+  });
+
+  const existingGeometry = seamRefs.get(loft.id);
+  if (existingGeometry) {
+    existingGeometry.setPositions(positions);
+  } else {
+    const geometry = new LineGeometry();
+    geometry.setPositions(positions);
+    seamRefs.set(loft.id, geometry);
+  }
+}
+
 export function updateLoftGeometryDuringDrag(
   loftId: LoftId,
   workPlaneId: WorkPlaneId,
@@ -234,7 +263,8 @@ export function updateLoftGeometryDuringDrag(
   workPlaneRefs: Map<string, THREE.Group>,
   loftRefs: Map<string, THREE.BufferGeometry>,
   loftSurfaceRefs: Map<string, THREE.BufferGeometry>,
-  loftWireframeRefs: Map<string, THREE.BufferGeometry>
+  loftWireframeRefs: Map<string, THREE.BufferGeometry>,
+  loftSeamRefs: Map<string, LineGeometry>
 ): void {
   const { doc } = useStore.getState();
 
@@ -304,5 +334,12 @@ export function updateLoftGeometryDuringDrag(
       wireframeGeometry.setIndex(wireframeIndices);
       wireframeGeometry.attributes.position.needsUpdate = true;
     }
+  }
+
+  // Update seam geometry (first section)
+  const seamGeometry = loftSeamRefs.get(loftId);
+  if (seamGeometry && sections.length > 0) {
+    const seamPositions = [...sections[0][0], ...sections[0][1]];
+    seamGeometry.setPositions(seamPositions);
   }
 }
