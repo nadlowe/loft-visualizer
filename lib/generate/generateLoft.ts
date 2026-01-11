@@ -43,8 +43,10 @@ export function generateLoft(
       ? doc.workPlanes[docPl2.workPlaneId]?.plane3
       : undefined);
 
-  const vertices1 = polylineToWorldVertices(pl1, plane1);
-  const vertices2 = polylineToWorldVertices(pl2, plane2);
+  // If both polylines are closed, skip the duplicate closing vertex to avoid duplicate sections
+  const bothClosed = docPl1.closed && docPl2.closed;
+  const vertices1 = polylineToWorldVertices(pl1, plane1, bothClosed);
+  const vertices2 = polylineToWorldVertices(pl2, plane2, bothClosed);
 
   // Create sections (pairs of corresponding vertices)
   const sections: Section[] = [];
@@ -57,6 +59,11 @@ export function generateLoft(
       vertices1[Math.min(i, lastIdx1)],
       vertices2[Math.min(i, lastIdx2)],
     ]);
+  }
+
+  // Close the loop by adding the first section again
+  if (bothClosed && vertices1.length > 0 && vertices2.length > 0) {
+    sections.push([vertices1[0], vertices2[0]]);
   }
 
   return subdivideSections(sections, LOFT_SUBDIVISIONS);
@@ -79,9 +86,15 @@ function mutatePolyline2s(
   return { pl1, pl2 };
 }
 
-function polylineToWorldVertices(polyline: Polyline2, plane?: Plane3): Vec3[] {
+function polylineToWorldVertices(
+  polyline: Polyline2,
+  plane?: Plane3,
+  skipClosingVertex?: boolean
+): Vec3[] {
   const vertices: Vec3[] = [];
-  const count = Math.floor(polyline.length / 2);
+  // If skipClosingVertex is true, exclude the last vertex (which duplicates the first in closed polylines)
+  const rawCount = Math.floor(polyline.length / 2);
+  const count = skipClosingVertex ? rawCount - 1 : rawCount;
 
   if (!plane) {
     // No plane - points stay in XY plane at z=0

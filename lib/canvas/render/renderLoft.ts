@@ -1,6 +1,6 @@
-import { generateLoft, LOFT_SUBDIVISIONS } from "@/lib/conversion/generateLoft";
 import { sectionsToThree } from "@/lib/conversion/geomToThree";
 import { workPlaneToPlane3 } from "@/lib/conversion/threeToGeom";
+import { generateLoft, LOFT_SUBDIVISIONS } from "@/lib/generate/generateLoft";
 import { Doc } from "@/lib/state/doc";
 import { useStore } from "@/lib/state/useStore";
 import { LoftId, WorkPlaneId } from "@/lib/util/uid";
