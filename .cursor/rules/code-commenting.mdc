@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+
+1. Commenting inside a function is great as long as it's minimal and clear.
+2. Don't comment about the function (say what it does tsdoc, etc) or decorate it's properties. A short explanation only if the purpose isn't self-evident from the name.
