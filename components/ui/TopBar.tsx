@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { fonts } from "../fonts";
 import { EditMenu } from "./EditMenu";
 import { FileMenu } from "./FileMenu";
+import { HowToMenu } from "./HowToMenu";
 
 export function TopBar() {
   const { doc, transact } = useStore();
@@ -70,6 +71,7 @@ export function TopBar() {
       <div className="flex items-center gap-1">
         <FileMenu />
         <EditMenu />
+        <HowToMenu />
       </div>
 
       {/* Document name with icon - centered */}
